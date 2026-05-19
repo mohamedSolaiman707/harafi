@@ -52,7 +52,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
         .from('technicians')
         .insert(tech.toJson())
         .select()
-        .single();
+        .maybeSingle();
+    if (data == null) throw Exception('فشل إنشاء الفني');
     return Technician.fromJson(data);
   }
 
@@ -63,7 +64,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
         .update(data)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
+    if (response == null) throw Exception('الفني غير موجود');
     return Technician.fromJson(response);
   }
 
@@ -90,7 +92,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .from('technicians')
           .insert(dto.toJson())
           .select()
-          .single();
+          .maybeSingle();
+      if (data == null) return Left(DatabaseFailure('فشل إضافة الفني'));
       return Right(Technician.fromJson(data));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -114,7 +117,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .from('technicians')
           .select()
           .eq('id', id)
-          .single();
+          .maybeSingle();
+      if (response == null) return Left(DatabaseFailure('الفني غير موجود'));
       return Right(Technician.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -155,7 +159,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .update(dto.toJson())
           .eq('id', id)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) return Left(DatabaseFailure('الفني غير موجود لتحديثه'));
       return Right(Technician.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -173,11 +178,12 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .update({'status': status.label})
           .eq('id', id)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) return Left(DatabaseFailure('الفني غير موجود لتحديث حالته'));
       return Right(Technician.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
-    }
+)    }
   }
 
   @override
@@ -192,7 +198,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
               .update({'total_jobs': tech.totalJobs + 1})
               .eq('id', id)
               .select()
-              .single();
+              .maybeSingle();
+          if (response == null) return Left(DatabaseFailure('فشل تحديث عدد المهام'));
           return Right(Technician.fromJson(response));
         },
       );
@@ -212,7 +219,8 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .update({'rating': rating})
           .eq('id', id)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) return Left(DatabaseFailure('فشل تحديث التقييم'));
       return Right(Technician.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
