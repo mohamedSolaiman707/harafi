@@ -83,14 +83,21 @@ class SupabaseOrdersRepository implements OrdersRepository {
 
   @override
   Future<Order> update(String id, Map<String, dynamic> data) async {
-    final response = await _client
-        .from('orders')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .maybeSingle();
-    if (response == null) throw Exception('الطلب غير موجود للتحديث');
-    return Order.fromJson(response);
+    try {
+      final response = await _client
+          .from('orders')
+          .update(data)
+          .eq('id', id)
+          .select()
+          .maybeSingle();
+      if (response == null) throw Exception('لا توجد صلاحية لتحديث هذا الطلب أو أنه غير موجود');
+      return Order.fromJson(response);
+    } catch (e) {
+      if (e.toString().contains('PGRST116')) {
+        throw Exception('خطأ في الصلاحيات: لا يمكن الوصول لهذا السجل');
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -212,7 +219,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
       if (response == null) {
         return Left(
           DatabaseFailure(
-            'لم يتم العثور على الطلب أو ليس لديك صلاحية لتعديله.',
+            'لم يتم العثور على الطلب أو ليس لديك صلاحية لتعديله (تأكد من سياسات RLS).',
           ),
         );
       }

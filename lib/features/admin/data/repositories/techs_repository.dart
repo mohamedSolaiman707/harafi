@@ -183,7 +183,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
       return Right(Technician.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
-)    }
+    }
   }
 
   @override

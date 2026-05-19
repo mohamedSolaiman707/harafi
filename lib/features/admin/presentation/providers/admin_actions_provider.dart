@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/business/admin_business_rules.dart';
 import '../../domain/dtos/technician_dtos.dart';
@@ -51,18 +52,32 @@ class AdminActions {
       );
     }
 
+    debugPrint('جاري تعيين الفني ${tech.name} للطلب ${order.id}');
+
     final assignment = await _ref
         .read(ordersRepositoryProvider)
         .assignTechnician(order.id, tech.id);
+        
     return await assignment.when(
-      left: (failure) => Left(failure),
+      left: (failure) {
+        debugPrint('فشل في تحديث الطلب: ${failure.message}');
+        return Left(failure);
+      },
       right: (updatedOrder) async {
+        debugPrint('تم تحديث الطلب بنجاح، جاري تحديث حالة الفني...');
         final techUpdate = await _ref
             .read(techsRepositoryProvider)
             .updateTechStatus(tech.id, TechStatus.busy);
+            
         return techUpdate.when(
-          left: (failure) => Left(failure),
-          right: (_) => Right(updatedOrder),
+          left: (failure) {
+            debugPrint('فشل في تحديث حالة الفني: ${failure.message}');
+            return Left(failure);
+          },
+          right: (_) {
+            debugPrint('تمت العملية بنجاح كامل');
+            return Right(updatedOrder);
+          },
         );
       },
     );
@@ -86,13 +101,14 @@ class AdminActions {
           final freeTech = await _ref
               .read(techsRepositoryProvider)
               .updateTechStatus(order.techId!, TechStatus.available);
-          if (freeTech.isLeft)
+          if (freeTech.isLeft) {
             return Left(
               freeTech.when(
                 left: (f) => f,
                 right: (_) => throw StateError('unexpected'),
               ),
             );
+          }
           final incrementResult = await _ref
               .read(techsRepositoryProvider)
               .incrementJobCount(order.techId!);
@@ -162,13 +178,14 @@ class AdminActions {
       final freeTech = await _ref
           .read(techsRepositoryProvider)
           .updateTechStatus(order.techId!, TechStatus.available);
-      if (freeTech.isLeft)
+      if (freeTech.isLeft) {
         return Left(
           freeTech.when(
             left: (f) => f,
             right: (_) => throw StateError('unexpected'),
           ),
         );
+      }
     }
     return await _ref.read(ordersRepositoryProvider).deleteOrder(order.id);
   }
