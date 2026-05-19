@@ -53,7 +53,8 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .from('orders')
         .select()
         .eq('tracking_code', code)
-        .single();
+        .maybeSingle();
+    if (data == null) throw Exception('الطلب غير موجود');
     return Order.fromJson(data);
   }
 
@@ -75,7 +76,8 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .from('orders')
         .insert(orderData)
         .select()
-        .single();
+        .maybeSingle();
+    if (data == null) throw Exception('فشل إنشاء الطلب');
     return Order.fromJson(data);
   }
 
@@ -86,7 +88,8 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .update(data)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
+    if (response == null) throw Exception('الطلب غير موجود للتحديث');
     return Order.fromJson(response);
   }
 
@@ -111,7 +114,8 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .from('orders')
           .insert(dto.toJson())
           .select()
-          .single();
+          .maybeSingle();
+      if (data == null) return Left(DatabaseFailure('فشل إنشاء الطلب'));
       return Right(Order.fromJson(data));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -131,7 +135,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Either<Failure, Order>> getOrderById(String id) async {
     try {
-      final data = await _client.from('orders').select().eq('id', id).single();
+      final data = await _client.from('orders').select().eq('id', id).maybeSingle();
+      if (data == null) {
+        return Left(DatabaseFailure('الطلب غير موجود أو ليس لديك صلاحية الوصول إليه.'));
+      }
       return Right(Order.fromJson(data));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -145,7 +152,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .from('orders')
           .select()
           .eq('tracking_code', code)
-          .single();
+          .maybeSingle();
+      if (data == null) {
+        return Left(DatabaseFailure('كود التتبع غير صحيح أو الطلب غير متاح.'));
+      }
       return Right(Order.fromJson(data));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -253,7 +263,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .update({'admin_notes': notes})
           .eq('id', orderId)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) {
+        return Left(DatabaseFailure('الطلب غير موجود لإضافة الملاحظات.'));
+      }
       return Right(Order.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -268,7 +281,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .update({'rating': rating})
           .eq('id', orderId)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) {
+        return Left(DatabaseFailure('الطلب غير موجود لتقييمه.'));
+      }
       return Right(Order.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
