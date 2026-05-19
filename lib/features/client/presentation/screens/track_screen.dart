@@ -51,8 +51,10 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
     super.dispose();
   }
 
-  void _loadOrder() {
-    _orderFuture = ref.read(ordersRepositoryProvider).getByTrackingCode(widget.code);
+  Future<void> _loadOrder() async {
+    setState(() {
+      _orderFuture = ref.read(ordersRepositoryProvider).getByTrackingCode(widget.code);
+    });
   }
 
   Future<void> _searchByPhone() async {
@@ -79,49 +81,70 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
   Future<void> _submitRating(String orderId) async {
     if (_selectedRating == 0) return;
     setState(() => _isRating = true);
-    try {
-      await ref.read(ordersRepositoryProvider).rateOrder(
-        orderId, 
-        _selectedRating,
-        comment: _commentController.text,
-      );
-      _loadOrder();
-      setState(() {});
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل إرسال التقييم')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isRating = false);
-    }
+    
+    final result = await ref.read(ordersRepositoryProvider).rateOrder(
+      orderId, 
+      _selectedRating,
+      comment: _commentController.text,
+    );
+
+    result.when(
+      left: (failure) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل إرسال التقييم: ${failure.message}')),
+          );
+        }
+      },
+      right: (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم إرسال تقييمك بنجاح. شكراً لك!')),
+          );
+          _loadOrder();
+        }
+      },
+    );
+    
+    if (mounted) setState(() => _isRating = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تتبع طلبك')),
-      body: FutureBuilder<Order>(
-        future: _orderFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const LoadingWidget();
-          }
+      appBar: AppBar(
+        title: const Text('تتبع طلبك'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadOrder,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadOrder,
+        child: FutureBuilder<Order>(
+          future: _orderFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const LoadingWidget();
+            }
 
-          if (snapshot.hasError || !snapshot.hasData) {
-            return _buildNotFoundView();
-          }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return _buildNotFoundView();
+            }
 
-          final order = snapshot.data!;
-          return _buildOrderDetails(order);
-        },
+            final order = snapshot.data!;
+            return _buildOrderDetails(order);
+          },
+        ),
       ),
     );
   }
 
   Widget _buildNotFoundView() {
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         children: [
@@ -239,6 +262,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
     ];
 
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -347,7 +371,8 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: 'واتساب الدعم الفني',
-            onTap: () => launchUrl(Uri.parse('https://wa.me/201012121211')),
+            // استبدل هذا الرقم برقم الدعم الفني الخاص بك
+            onTap: () => launchUrl(Uri.parse('https://wa.me/20123456789'), mode: LaunchMode.externalApplication),
             variant: ButtonVariant.ghost,
             icon: Icons.help_outline,
           ),

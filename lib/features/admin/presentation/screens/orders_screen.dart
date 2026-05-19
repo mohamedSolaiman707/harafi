@@ -65,6 +65,8 @@ class OrdersScreen extends ConsumerWidget {
                           );
                         },
                         right: (_) {
+                          // إجبار الواجهة على التحديث فوراً
+                          ref.invalidate(ordersStreamProvider);
                           Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -170,6 +172,7 @@ class OrdersScreen extends ConsumerWidget {
     final result = await ref
         .read(adminActionsProvider)
         .updateOrderStatus(order, selectedStatus, finalPrice: finalPrice);
+    
     result.when(
       left: (failure) {
         if (context.mounted) {
@@ -179,6 +182,8 @@ class OrdersScreen extends ConsumerWidget {
         }
       },
       right: (_) {
+        // إجبار الواجهة على التحديث فوراً بعد تغيير الحالة
+        ref.invalidate(ordersStreamProvider);
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,

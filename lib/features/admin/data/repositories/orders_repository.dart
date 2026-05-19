@@ -93,7 +93,6 @@ class SupabaseOrdersRepository implements OrdersRepository {
       orderData.remove('tech_id');
     }
 
-    // إرسال النص العربي صراحةً لـ Supabase
     orderData['status'] = order.status.label;
 
     final List data = await _client
@@ -116,7 +115,6 @@ class SupabaseOrdersRepository implements OrdersRepository {
   Future<Order> update(String id, Map<String, dynamic> data) async {
     final Map<String, dynamic> updateData = Map<String, dynamic>.from(data);
     
-    // تحويل أي Enum يرسل في الـ Map إلى نص عربي (label)
     if (updateData.containsKey('status')) {
       final status = updateData['status'];
       if (status is OrderStatus) {
@@ -143,13 +141,12 @@ class SupabaseOrdersRepository implements OrdersRepository {
 
   @override
   Stream<List<Order>> watchAll() {
+    // نستخدم stream للتحسس بأي تغيير في الجدول
+    // ونستخدم asyncMap لإعادة جلب البيانات كاملة بالعلاقات (Joins)
     return _client
         .from('orders')
         .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .asyncMap((data) async {
-          return data.map((e) => Order.fromJson(e)).toList();
-        });
+        .asyncMap((_) => getAll());
   }
 
   @override
@@ -187,7 +184,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
     try {
       final List data = await _client.from('orders').select(_orderSelect).eq('id', id);
       if (data.isEmpty) {
-        return Left(DatabaseFailure('الطلب غير موجود أو ليس لديك صلاحية الوصول إليه.'));
+        return Left(DatabaseFailure('الطلب غير موجود.'));
       }
       return Right(Order.fromJson(data.first));
     } catch (error) {
@@ -247,7 +244,6 @@ class SupabaseOrdersRepository implements OrdersRepository {
     {DateTime? estimatedArrival}
   ) async {
     try {
-      // إرسال النص العربي (label) صراحةً لمنع أي استنتاج خاطئ من المكتبة
       final Map<String, dynamic> data = {
         'tech_id': techId,
         'status': OrderStatus.assigned.label, 
@@ -286,7 +282,6 @@ class SupabaseOrdersRepository implements OrdersRepository {
     String? logMessage,
   }) async {
     try {
-      // إرسال الـ label العربي كنص (String) صريح لضمان القبول في Supabase
       final String statusText = status.label;
       final Map<String, dynamic> data = {'status': statusText};
       

@@ -11,8 +11,8 @@ final ordersRepositoryProvider = Provider<OrdersRepository>((ref) {
   return SupabaseOrdersRepository(Supabase.instance.client);
 });
 
-final ordersProvider = StreamProvider<List<Order>>((ref) {
-  return ref.watch(ordersRepositoryProvider).watchOrders();
+final ordersProvider = FutureProvider<List<Order>>((ref) {
+  return ref.watch(ordersRepositoryProvider).getAll();
 });
 
 final ordersStreamProvider = ordersProvider;
