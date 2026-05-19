@@ -91,11 +91,12 @@ class TechCard extends StatelessWidget {
                       side: const BorderSide(color: AppColors.borderDefault),
                     ),
                     onPressed: () {
-                      final link = WhatsAppUtils.buildLink(
+                      // استخدام buildUri بدلاً من buildLink
+                      final uri = WhatsAppUtils.buildUri(
                         tech.phone,
                         'السلام عليكم يا بشمهندس ${tech.name}',
                       );
-                      launchUrl(Uri.parse(link));
+                      launchUrl(uri, mode: LaunchMode.externalApplication);
                     },
                     icon: const Icon(Icons.phone),
                     label: const Text('اتصال واتساب'),

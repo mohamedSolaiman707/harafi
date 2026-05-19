@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
 import '../../domain/models/order.dart';
 import '../../domain/enums/order_status.dart';
+import '../providers/techs_provider.dart';
 
-class OrderCard extends StatelessWidget {
+class OrderCard extends ConsumerWidget {
   final Order order;
   final VoidCallback? onUpdateStatus;
   final VoidCallback? onAssignTech;
@@ -18,7 +20,11 @@ class OrderCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // جلب بيانات كل الفنيين لنجد الفني المعين لهذا الطلب ونحصل على رقمه
+    final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
+    final assignedTech = techs.where((t) => t.id == order.techId).firstOrNull;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -35,10 +41,7 @@ class OrderCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: AppColors.info.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(AppRadius.md),
@@ -62,48 +65,71 @@ class OrderCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             _IconText(icon: Icons.person, text: order.clientName),
             _IconText(icon: Icons.phone, text: order.clientPhone),
-            _IconText(
-              icon: Icons.location_on,
-              text: order.area ?? 'بدون عنوان',
-            ),
+            _IconText(icon: Icons.location_on, text: order.area ?? 'بدون عنوان'),
             if (order.description != null && order.description!.isNotEmpty)
               _IconText(icon: Icons.description, text: order.description!),
-            if (order.finalPrice != null)
-              _IconText(
-                icon: Icons.attach_money,
-                text: 'السعر النهائي: ${order.finalPrice} ج.م',
-              ),
+            
             const SizedBox(height: AppSpacing.lg),
             const Divider(color: AppColors.borderDefault),
             const SizedBox(height: AppSpacing.lg),
+            
             Row(
               children: [
+                // زر الواتساب للعميل (أخضر)
                 Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.borderDefault),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366), // لون واتساب
+                      foregroundColor: Colors.white,
+                      elevation: 0,
                     ),
                     onPressed: () {
-                      final link = WhatsAppUtils.buildLink(
+                      final uri = WhatsAppUtils.buildUri(
                         order.clientPhone,
-                        WhatsAppUtils.techMessage(order),
+                        WhatsAppUtils.clientMessage(order),
                       );
-                      launchUrl(Uri.parse(link));
+                      launchUrl(uri, mode: LaunchMode.externalApplication);
                     },
-                    icon: const Icon(Icons.send, size: 18),
-                    label: const Text('واتساب العميل'),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                    label: const Text('عميل', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
+                
+                // زر الواتساب للفني (أصفر/برتقالي)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber[700],
+                      foregroundColor: Colors.black,
+                      elevation: 0,
+                    ),
+                    onPressed: assignedTech == null 
+                      ? null // معطل إذا لم يتم تعيين فني
+                      : () {
+                          final uri = WhatsAppUtils.buildUri(
+                            assignedTech.phone,
+                            WhatsAppUtils.techMessage(order),
+                          );
+                          launchUrl(uri, mode: LaunchMode.externalApplication);
+                        },
+                    icon: const Icon(Icons.engineering_outlined, size: 18),
+                    label: Text(
+                      assignedTech == null ? 'فني (لم يحدد)' : 'فني',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: AppSpacing.sm),
                 IconButton(
                   onPressed: onUpdateStatus,
-                  icon: const Icon(Icons.edit_note),
+                  icon: const Icon(Icons.edit_note, color: Colors.white70),
                   tooltip: 'تحديث الحالة',
                 ),
                 IconButton(
                   onPressed: onAssignTech,
-                  icon: const Icon(Icons.person_add_alt_1),
+                  icon: const Icon(Icons.person_add_alt_1, color: Colors.white70),
                   tooltip: 'تعيين فني',
                 ),
               ],
@@ -123,15 +149,9 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     Color color;
     switch (status) {
-      case OrderStatus.pending:
-        color = AppColors.info;
-        break;
-      case OrderStatus.completed:
-        color = AppColors.success;
-        break;
-      case OrderStatus.cancelled:
-        color = AppColors.error;
-        break;
+      case OrderStatus.pending: color = AppColors.info; break;
+      case OrderStatus.completed: color = AppColors.success; break;
+      case OrderStatus.cancelled: color = AppColors.error; break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -159,17 +179,17 @@ class _IconText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.textSecondary),
+          Icon(icon, size: 14, color: AppColors.textSecondary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               text,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: AppColors.textPrimary,
-              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.displayMedium.copyWith(color: AppColors.textPrimary),
             ),
           ),
         ],
