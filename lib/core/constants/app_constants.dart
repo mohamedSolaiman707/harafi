@@ -2,8 +2,7 @@ class AppConstants {
   static const String appName = 'خدمات منزلية — كفر الزيات';
   
   // Supabase Configuration
-  // These are fetched from environment variables during build time
-  // Example: flutter build web --dart-define=SUPABASE_URL=your_url --dart-define=SUPABASE_ANON_KEY=your_key
+  // Values are injected via --dart-define=SUPABASE_URL=... and --dart-define=SUPABASE_ANON_KEY=...
   
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',

@@ -15,6 +15,13 @@ class HomeScreen extends StatelessWidget {
             expandedHeight: 200,
             floating: false,
             pinned: true,
+            actions: [
+              IconButton(
+                onPressed: () => context.push('/admin'),
+                icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white),
+                tooltip: 'دخول الإدارة',
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               title: const Text(
                 AppConstants.appName,
@@ -55,7 +62,7 @@ class HomeScreen extends StatelessWidget {
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
+                    crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
                     children: ServiceType.values.map((type) {
@@ -67,6 +74,15 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
                   _TrackingSection(),
+                  const SizedBox(height: 60),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () => context.push('/login'),
+                      icon: const Icon(Icons.lock_outline, size: 16),
+                      label: const Text('دخول الإدارة'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.grey),
+                    ),
+                  ),
                 ],
               ),
             ),

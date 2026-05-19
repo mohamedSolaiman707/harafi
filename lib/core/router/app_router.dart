@@ -12,10 +12,23 @@ import '../../../features/admin/presentation/screens/admin_shell.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
+  // لضمان أن التطبيق يقرأ الرابط الحالي عند البدء على الويب
+  overridePlatformDefaultLocation: true, 
   redirect: (context, state) {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-    final isAdminRoute = state.uri.toString().startsWith('/admin');
-    if (isAdminRoute && !isLoggedIn) return '/login';
+    
+    // استخدام matchedLocation لضمان مطابقة المسار بدقة
+    final location = state.matchedLocation;
+    final isAdminRoute = location.startsWith('/admin');
+    
+    if (isAdminRoute && !isLoggedIn) {
+      return '/login';
+    }
+    
+    if (location == '/login' && isLoggedIn) {
+      return '/admin';
+    }
+    
     return null;
   },
   routes: [
@@ -37,7 +50,6 @@ final appRouter = GoRouter(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
     ),
-    // Admin Shell
     ShellRoute(
       builder: (context, state, child) => AdminShell(child: child),
       routes: [
