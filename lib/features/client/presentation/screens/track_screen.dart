@@ -33,7 +33,9 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
   }
 
   void _loadOrder() {
-    _orderFuture = ref.read(ordersRepositoryProvider).getByTrackingCode(widget.code);
+    _orderFuture = ref
+        .read(ordersRepositoryProvider)
+        .getByTrackingCode(widget.code);
   }
 
   Future<void> _searchByPhone() async {
@@ -44,15 +46,17 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
     });
 
     try {
-      final results = await ref.read(ordersRepositoryProvider).getByPhone(_phoneController.text);
+      final results = await ref
+          .read(ordersRepositoryProvider)
+          .getByPhone(_phoneController.text);
       setState(() {
         _foundOrders = results;
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء البحث')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('حدث خطأ أثناء البحث')));
       }
     } finally {
       if (mounted) setState(() => _isSearchingPhone = false);
@@ -94,15 +98,14 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
           const SizedBox(height: AppSpacing.xxl),
           const Divider(),
           const SizedBox(height: AppSpacing.xxl),
-          Text(
-            'نسيت كود التتبع؟',
-            style: AppTextStyles.headlineMed,
-          ),
+          Text('نسيت كود التتبع؟', style: AppTextStyles.headlineMed),
           const SizedBox(height: AppSpacing.md),
           Text(
             'أدخل رقم الهاتف المستخدم في الطلب لاسترجاع بياناتك',
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.bodyMed.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
           AppTextField(
@@ -125,7 +128,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('الطلبات الموجودة:', style: AppTextStyles.titleMedium),
+                  Text('الطلبات الموجودة:', style: AppTextStyles.titleMed),
                   const SizedBox(height: AppSpacing.md),
                   ..._foundOrders!.map((order) => _buildFoundOrderCard(order)),
                 ],
@@ -138,7 +141,6 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
 
   Widget _buildFoundOrderCard(Order order) {
     return AppCard(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       onTap: () => context.go('/track/${order.trackingCode}'),
       child: Row(
         children: [
@@ -148,15 +150,21 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
               color: AppColors.surface1,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Text(order.service.icon, style: const TextStyle(fontSize: 24)),
+            child: Text(
+              order.service.icon,
+              style: const TextStyle(fontSize: 24),
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(order.service.label, style: AppTextStyles.titleMedium),
-                Text('كود: ${order.trackingCode}', style: AppTextStyles.bodySmall),
+                Text(order.service.label, style: AppTextStyles.titleMed),
+                Text(
+                  'كود: ${order.trackingCode}',
+                  style: AppTextStyles.bodyMed,
+                ),
               ],
             ),
           ),
@@ -169,10 +177,13 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
   Widget _buildOrderDetails(Order order) {
     final isCompleted = order.status == OrderStatus.completed;
     final isCancelled = order.status == OrderStatus.cancelled;
-    
+
     final timeline = [
       _ProgressStep(title: 'تم استلام الطلب', completed: true),
-      _ProgressStep(title: 'جاري تعيين فني', completed: !isCancelled && order.techId != null),
+      _ProgressStep(
+        title: 'جاري تعيين فني',
+        completed: !isCancelled && order.techId != null,
+      ),
       _ProgressStep(title: 'الفني في الطريق', completed: isCompleted),
       _ProgressStep(
         title: isCompleted ? 'تم إنجاز الشغل' : 'قيد التنفيذ',
@@ -189,7 +200,9 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
             child: Column(
               children: [
                 Icon(
-                  isCancelled ? Icons.cancel_outlined : Icons.check_circle_outline,
+                  isCancelled
+                      ? Icons.cancel_outlined
+                      : Icons.check_circle_outline,
                   size: 64,
                   color: isCancelled ? AppColors.error : AppColors.success,
                 ),
@@ -197,17 +210,24 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
                 Text(
                   'حالة الطلب: ${order.status.label}',
                   style: AppTextStyles.headlineLarge.copyWith(
-                    color: isCancelled ? AppColors.error : AppColors.textPrimary,
+                    color: isCancelled
+                        ? AppColors.error
+                        : AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 InkWell(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: order.trackingCode));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ كود التتبع')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم نسخ كود التتبع')),
+                    );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface1,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -217,7 +237,10 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
                       children: [
                         const Icon(Icons.copy, size: 14, color: AppColors.gold),
                         const SizedBox(width: 8),
-                        Text('كود التتبع: ${order.trackingCode}', style: AppTextStyles.labelLarge),
+                        Text(
+                          'كود التتبع: ${order.trackingCode}',
+                          style: AppTextStyles.labelLarge,
+                        ),
                       ],
                     ),
                   ),
@@ -246,7 +269,10 @@ class _TrackScreenState extends ConsumerState<TrackScreen> {
                 _DetailRow(label: 'نوع الخدمة', value: order.service.label),
                 _DetailRow(label: 'الاسم', value: order.clientName),
                 _DetailRow(label: 'المنطقة', value: order.area ?? 'غير محدد'),
-                _DetailRow(label: 'تاريخ الطلب', value: order.createdAt.toString().split(' ')[0]),
+                _DetailRow(
+                  label: 'تاريخ الطلب',
+                  value: order.createdAt.toString().split(' ')[0],
+                ),
               ],
             ),
           ),
@@ -285,12 +311,15 @@ class _TimelineRow extends StatelessWidget {
             child: Text(
               step.title,
               style: AppTextStyles.bodyLarge.copyWith(
-                color: step.completed ? AppColors.textPrimary : AppColors.textSecondary,
+                color: step.completed
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
                 fontWeight: step.completed ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
           ),
-          if (step.completed) const Icon(Icons.check_circle, size: 18, color: AppColors.gold),
+          if (step.completed)
+            const Icon(Icons.check_circle, size: 18, color: AppColors.gold),
         ],
       ),
     );
@@ -309,8 +338,18 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary)),
-          Text(value, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary)),
+          Text(
+            label,
+            style: AppTextStyles.bodyMed.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
