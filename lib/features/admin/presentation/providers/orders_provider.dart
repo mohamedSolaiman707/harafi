@@ -39,6 +39,8 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
         .length,
     totalTechs: techs.length,
     availableTechs: techs.where((t) => t.status == TechStatus.available).length,
+    busyTechs: techs.where((t) => t.status == TechStatus.busy).length,
+    onLeaveTechs: techs.where((t) => t.status == TechStatus.onLeave).length,
   );
 });
 
@@ -48,5 +50,7 @@ final statsProvider = Provider((ref) {
     'total': stats.totalOrders,
     'pending': stats.pendingOrders,
     'completed': stats.completedOrders,
+    'techTotal': stats.totalTechs,
+    'techAvailable': stats.availableTechs,
   };
 });

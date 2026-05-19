@@ -13,6 +13,8 @@ class DashboardStats {
   final int cancelledOrders;
   final int totalTechs;
   final int availableTechs;
+  final int busyTechs;
+  final int onLeaveTechs;
 
   DashboardStats({
     required this.totalOrders,
@@ -21,5 +23,7 @@ class DashboardStats {
     required this.cancelledOrders,
     required this.totalTechs,
     required this.availableTechs,
+    required this.busyTechs,
+    required this.onLeaveTechs,
   });
 }

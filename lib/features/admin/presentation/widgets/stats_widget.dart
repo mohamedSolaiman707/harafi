@@ -8,13 +8,22 @@ class StatsWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(statsProvider);
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width > 1100
+        ? 4
+        : width > 800
+            ? 3
+            : width > 600
+                ? 2
+                : 1;
 
     return GridView.count(
       shrinkWrap: true,
-      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: crossAxisCount,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: 2.5,
+      childAspectRatio: width > 900 ? 3 : 2.5,
       children: [
         _StatCard(
           title: 'إجمالي الطلبات',
@@ -33,6 +42,18 @@ class StatsWidget extends ConsumerWidget {
           value: stats['completed'].toString(),
           icon: Icons.task_alt,
           color: Colors.green,
+        ),
+        _StatCard(
+          title: 'إجمالي الفنيين',
+          value: stats['techTotal'].toString(),
+          icon: Icons.handyman,
+          color: Colors.purple,
+        ),
+        _StatCard(
+          title: 'الفنيين المتاحين',
+          value: stats['techAvailable'].toString(),
+          icon: Icons.check_circle_outline,
+          color: Colors.teal,
         ),
       ],
     );
