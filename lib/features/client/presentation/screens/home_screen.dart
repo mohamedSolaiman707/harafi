@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisCount: columns,
                         mainAxisSpacing: AppSpacing.md,
                         crossAxisSpacing: AppSpacing.md,
-                        childAspectRatio: 1.2,
+                        childAspectRatio: width > 900 ? 1.1 : 1.3,
                         children: ServiceType.values.map((type) {
                           return _ServiceCard(
                             type: type,
@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       AppButton(
                         label: 'سجل طلبك الآن',
                         onTap: () => context.push('/request'),
-                        icon: Icons.arrow_back_ios_new,
+                        icon: Icons.arrow_forward_ios,
                       ),
                     ],
                   ),

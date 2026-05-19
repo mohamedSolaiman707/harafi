@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
 import '../../domain/models/order.dart';
 import '../../domain/enums/order_status.dart';
@@ -18,11 +19,15 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: AppColors.surface3,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.borderDefault),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -30,40 +35,53 @@ class OrderCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.info.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Text(
                     order.trackingCode,
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.info,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 _StatusBadge(status: order.status),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               '${order.service.icon} ${order.service.label}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: AppTextStyles.headlineMed,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.md),
             _IconText(icon: Icons.person, text: order.clientName),
             _IconText(icon: Icons.phone, text: order.clientPhone),
-            _IconText(icon: Icons.location_on, text: order.area ?? 'بدون عنوان'),
+            _IconText(
+              icon: Icons.location_on,
+              text: order.area ?? 'بدون عنوان',
+            ),
             if (order.description != null && order.description!.isNotEmpty)
               _IconText(icon: Icons.description, text: order.description!),
-            
-            const Divider(height: 32),
-            
+            const SizedBox(height: AppSpacing.lg),
+            const Divider(color: AppColors.borderDefault),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.borderDefault),
+                    ),
                     onPressed: () {
                       final link = WhatsAppUtils.buildLink(
-                        order.clientPhone, 
+                        order.clientPhone,
                         WhatsAppUtils.techMessage(order),
                       );
                       launchUrl(Uri.parse(link));
@@ -72,7 +90,7 @@ class OrderCard extends StatelessWidget {
                     label: const Text('واتساب العميل'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 IconButton(
                   onPressed: onUpdateStatus,
                   icon: const Icon(Icons.edit_note),
@@ -100,20 +118,29 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     Color color;
     switch (status) {
-      case OrderStatus.pending: color = Colors.orange; break;
-      case OrderStatus.completed: color = Colors.green; break;
-      case OrderStatus.cancelled: color = Colors.red; break;
+      case OrderStatus.pending:
+        color = AppColors.info;
+        break;
+      case OrderStatus.completed:
+        color = AppColors.success;
+        break;
+      case OrderStatus.cancelled:
+        color = AppColors.error;
+        break;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color),
+        color: color.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Text(
         status.label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+        style: AppTextStyles.labelLarge.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -127,12 +154,19 @@ class _IconText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
         ],
       ),
     );

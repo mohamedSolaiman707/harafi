@@ -26,7 +26,7 @@ class CreateTechnicianDto {
       if (priceRange != null) 'price_range': priceRange,
       if (visitPrice != null) 'visit_price': visitPrice,
       if (area != null) 'area': area,
-      'status': TechStatus.available.name,
+      'status': TechStatus.available.label,
     };
   }
 }
@@ -58,7 +58,7 @@ class UpdateTechnicianDto {
       if (priceRange != null) 'price_range': priceRange,
       if (visitPrice != null) 'visit_price': visitPrice,
       if (area != null) 'area': area,
-      if (status != null) 'status': status!.name,
+      if (status != null) 'status': status!.label,
     };
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class AdminShell extends StatelessWidget {
   final Widget child;
@@ -8,42 +9,98 @@ class AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
+    final isWide = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
       body: Row(
         children: [
-          if (MediaQuery.of(context).size.width > 800)
-            NavigationRail(
-              extended: true,
-              selectedIndex: _getSelectedIndex(location),
-              onDestinationSelected: (index) => _onItemTapped(index, context),
-              labelType: NavigationRailLabelType.none,
-              destinations: const [
-                NavigationRailDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  selectedIcon: Icon(Icons.dashboard),
-                  label: Text('لوحة التحكم'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.assignment_outlined),
-                  selectedIcon: Icon(Icons.assignment),
-                  label: Text('الطلبات'),
-                ),
-                NavigationRailDestination(
-                  icon: Icon(Icons.people_outline),
-                  selectedIcon: Icon(Icons.people),
-                  label: Text('الفنيين'),
-                ),
-              ],
+          if (isWide)
+            Container(
+              width: 240,
+              color: AppColors.surface2,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.xl,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.menu,
+                          size: 24,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          'لوحة التحكم',
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(color: AppColors.borderDefault, height: 1),
+                  Expanded(
+                    child: NavigationRail(
+                      backgroundColor: AppColors.surface2,
+                      extended: false,
+                      selectedIndex: _getSelectedIndex(location),
+                      onDestinationSelected: (index) =>
+                          _onItemTapped(index, context),
+                      groupAlignment: 0,
+                      labelType: NavigationRailLabelType.all,
+                      selectedLabelTextStyle: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.gold,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      unselectedLabelTextStyle: AppTextStyles.bodyLarge
+                          .copyWith(color: AppColors.textSecondary),
+                      selectedIconTheme: const IconThemeData(
+                        color: AppColors.gold,
+                      ),
+                      unselectedIconTheme: const IconThemeData(
+                        color: AppColors.textSecondary,
+                      ),
+                      destinations: const [
+                        NavigationRailDestination(
+                          icon: Icon(Icons.dashboard_outlined),
+                          selectedIcon: Icon(Icons.dashboard),
+                          label: Text('لوحة التحكم'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.assignment_outlined),
+                          selectedIcon: Icon(Icons.assignment),
+                          label: Text('الطلبات'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.people_outline),
+                          selectedIcon: Icon(Icons.people),
+                          label: Text('الفنيين'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          const VerticalDivider(thickness: 1, width: 1),
+          if (isWide)
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: AppColors.borderDefault,
+            ),
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar: MediaQuery.of(context).size.width <= 800
-          ? NavigationBar(
+      bottomNavigationBar: isWide
+          ? null
+          : NavigationBar(
               selectedIndex: _getSelectedIndex(location),
               onDestinationSelected: (index) => _onItemTapped(index, context),
+              backgroundColor: AppColors.surface2,
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.dashboard_outlined),
@@ -58,8 +115,7 @@ class AdminShell extends StatelessWidget {
                   label: 'الفنيين',
                 ),
               ],
-            )
-          : null,
+            ),
     );
   }
 
