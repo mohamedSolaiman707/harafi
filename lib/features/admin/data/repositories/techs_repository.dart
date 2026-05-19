@@ -48,25 +48,23 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
 
   @override
   Future<Technician> create(Technician tech) async {
-    final data = await _client
+    final List data = await _client
         .from('technicians')
         .insert(tech.toJson())
-        .select()
-        .maybeSingle();
-    if (data == null) throw Exception('فشل إنشاء الفني');
-    return Technician.fromJson(data);
+        .select();
+    if (data.isEmpty) throw Exception('فشل إنشاء الفني');
+    return Technician.fromJson(data.first);
   }
 
   @override
   Future<Technician> update(String id, Map<String, dynamic> data) async {
-    final response = await _client
+    final List response = await _client
         .from('technicians')
         .update(data)
         .eq('id', id)
-        .select()
-        .maybeSingle();
-    if (response == null) throw Exception('الفني غير موجود');
-    return Technician.fromJson(response);
+        .select();
+    if (response.isEmpty) throw Exception('الفني غير موجود');
+    return Technician.fromJson(response.first);
   }
 
   @override
@@ -88,13 +86,12 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     CreateTechnicianDto dto,
   ) async {
     try {
-      final data = await _client
+      final List data = await _client
           .from('technicians')
           .insert(dto.toJson())
-          .select()
-          .maybeSingle();
-      if (data == null) return Left(DatabaseFailure('فشل إضافة الفني'));
-      return Right(Technician.fromJson(data));
+          .select();
+      if (data.isEmpty) return Left(DatabaseFailure('فشل إضافة الفني'));
+      return Right(Technician.fromJson(data.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
     }
@@ -113,13 +110,12 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   @override
   Future<Either<Failure, Technician>> getTechnicianById(String id) async {
     try {
-      final response = await _client
+      final List response = await _client
           .from('technicians')
           .select()
-          .eq('id', id)
-          .maybeSingle();
-      if (response == null) return Left(DatabaseFailure('الفني غير موجود'));
-      return Right(Technician.fromJson(response));
+          .eq('id', id);
+      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود'));
+      return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
     }
@@ -154,14 +150,13 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     UpdateTechnicianDto dto,
   ) async {
     try {
-      final response = await _client
+      final List response = await _client
           .from('technicians')
           .update(dto.toJson())
           .eq('id', id)
-          .select()
-          .maybeSingle();
-      if (response == null) return Left(DatabaseFailure('الفني غير موجود لتحديثه'));
-      return Right(Technician.fromJson(response));
+          .select();
+      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود لتحديثه'));
+      return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
     }
@@ -173,14 +168,13 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     TechStatus status,
   ) async {
     try {
-      final response = await _client
+      final List response = await _client
           .from('technicians')
           .update({'status': status.label})
           .eq('id', id)
-          .select()
-          .maybeSingle();
-      if (response == null) return Left(DatabaseFailure('الفني غير موجود لتحديث حالته'));
-      return Right(Technician.fromJson(response));
+          .select();
+      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود لتحديث حالته'));
+      return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
     }
@@ -193,14 +187,13 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
       return await currentResult.when(
         left: (failure) => Left(failure),
         right: (tech) async {
-          final response = await _client
+          final List response = await _client
               .from('technicians')
               .update({'total_jobs': tech.totalJobs + 1})
               .eq('id', id)
-              .select()
-              .maybeSingle();
-          if (response == null) return Left(DatabaseFailure('فشل تحديث عدد المهام'));
-          return Right(Technician.fromJson(response));
+              .select();
+          if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث عدد المهام'));
+          return Right(Technician.fromJson(response.first));
         },
       );
     } catch (error) {
@@ -214,14 +207,13 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     double rating,
   ) async {
     try {
-      final response = await _client
+      final List response = await _client
           .from('technicians')
           .update({'rating': rating})
           .eq('id', id)
-          .select()
-          .maybeSingle();
-      if (response == null) return Left(DatabaseFailure('فشل تحديث التقييم'));
-      return Right(Technician.fromJson(response));
+          .select();
+      if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث التقييم'));
+      return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
     }
