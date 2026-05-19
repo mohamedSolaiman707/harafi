@@ -1,11 +1,11 @@
 {
-    "name": "harafi",
-    "short_name": "harafi",
+    "name": "خدمات منزلية — كفر الزيات",
+    "short_name": "حرفي",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Harafi to deliver techs to houses",
+    "background_color": "#2E7D32",
+    "theme_color": "#2E7D32",
+    "description": "منصة لتقديم الخدمات المنزلية في كفر الزيات",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

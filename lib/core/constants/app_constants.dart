@@ -1,6 +1,9 @@
 class AppConstants {
   static const String appName = 'خدمات منزلية — كفر الزيات';
   
+  // Assets
+  static const String logoPath = 'assets/images/logo.png';
+
   // Supabase Configuration
   // Values are injected via --dart-define=SUPABASE_URL=... and --dart-define=SUPABASE_ANON_KEY=...
   
