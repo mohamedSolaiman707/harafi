@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -69,8 +70,10 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
           barrierDismissible: false,
           builder: (context) => AlertDialog(
             backgroundColor: AppColors.surface2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
             title: Text(
               'تم تقديم الطلب بنجاح',
+              textAlign: TextAlign.center,
               style: AppTextStyles.headlineMed,
             ),
             content: Column(
@@ -83,34 +86,51 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface1,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Text(
-                    result.trackingCode,
-                    style: AppTextStyles.headlineLarge.copyWith(
-                      color: AppColors.gold,
-                      letterSpacing: 2,
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: result.trackingCode));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم نسخ الكود')),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface1,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.copy, color: AppColors.gold, size: 20),
+                        const SizedBox(width: AppSpacing.md),
+                        Text(
+                          result.trackingCode,
+                          style: AppTextStyles.headlineLarge.copyWith(
+                            color: AppColors.gold,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'اضغط على الكود للنسخ',
+                  style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted),
                 ),
               ],
             ),
             actions: [
               TextButton(
-                onPressed: () {
-                  context.go('/');
-                },
+                onPressed: () => context.go('/'),
                 child: const Text('العودة للرئيسية'),
               ),
               AppButton(
                 label: 'تتبع الطلب',
-                onTap: () {
-                  context.go('/track/${result.trackingCode}');
-                },
+                onTap: () => context.go('/track/${result.trackingCode}'),
                 variant: ButtonVariant.ghost,
                 size: ButtonSize.md,
               ),
@@ -120,9 +140,9 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('حدث خطأ: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -202,12 +222,9 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                         children: ServiceType.values.map((type) {
                           final selected = _selectedService == type;
                           return GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedService = type),
+                            onTap: () => setState(() => _selectedService = type),
                             child: AppCard(
-                              color: selected
-                                  ? AppColors.surface1
-                                  : AppColors.surface3,
+                              color: selected ? AppColors.surface1 : AppColors.surface3,
                               padding: const EdgeInsets.symmetric(
                                 vertical: AppSpacing.lg,
                                 horizontal: AppSpacing.xl,
@@ -249,8 +266,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                 AppTextField(
                   label: 'الاسم بالكامل',
                   controller: _nameController,
-                  validator: (val) =>
-                      val == null || val.isEmpty ? 'يرجى إدخال الاسم' : null,
+                  validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال الاسم' : null,
                   prefixIcon: Icons.person_outline,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -258,16 +274,14 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                   label: 'رقم واتساب',
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  validator: (val) =>
-                      val == null || val.isEmpty ? 'يرجى إدخال الرقم' : null,
+                  validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال الرقم' : null,
                   prefixIcon: Icons.phone_outlined,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppTextField(
                   label: 'المنطقة / العنوان',
                   controller: _areaController,
-                  validator: (val) =>
-                      val == null || val.isEmpty ? 'يرجى إدخال العنوان' : null,
+                  validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال العنوان' : null,
                   prefixIcon: Icons.location_on_outlined,
                 ),
                 const SizedBox(height: AppSpacing.md),
