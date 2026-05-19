@@ -149,9 +149,24 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     Color color;
     switch (status) {
-      case OrderStatus.pending: color = AppColors.info; break;
-      case OrderStatus.completed: color = AppColors.success; break;
-      case OrderStatus.cancelled: color = AppColors.error; break;
+      case OrderStatus.pending:
+        color = AppColors.info;
+        break;
+      case OrderStatus.assigned:
+        color = Colors.orange;
+        break;
+      case OrderStatus.onTheWay:
+        color = Colors.amber;
+        break;
+      case OrderStatus.started:
+        color = Colors.blue;
+        break;
+      case OrderStatus.completed:
+        color = AppColors.success;
+        break;
+      case OrderStatus.cancelled:
+        color = AppColors.error;
+        break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
