@@ -93,6 +93,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
       orderData.remove('tech_id');
     }
 
+    // إرسال النص العربي صراحةً لـ Supabase
+    orderData['status'] = order.status.label;
+
     final List data = await _client
         .from('orders')
         .insert(orderData)
@@ -100,10 +103,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
         
     if (data.isEmpty) throw Exception('فشل إنشاء الطلب');
     
-    // Create initial log
     await _client.from('order_logs').insert({
       'order_id': data.first['id'],
-      'status': OrderStatus.pending.name,
+      'status': OrderStatus.pending.label,
       'message': 'تم استلام الطلب وبانتظار المراجعة',
     });
 
@@ -112,9 +114,21 @@ class SupabaseOrdersRepository implements OrdersRepository {
 
   @override
   Future<Order> update(String id, Map<String, dynamic> data) async {
+    final Map<String, dynamic> updateData = Map<String, dynamic>.from(data);
+    
+    // تحويل أي Enum يرسل في الـ Map إلى نص عربي (label)
+    if (updateData.containsKey('status')) {
+      final status = updateData['status'];
+      if (status is OrderStatus) {
+        updateData['status'] = status.label;
+      } else {
+        updateData['status'] = status.toString();
+      }
+    }
+
     final List response = await _client
         .from('orders')
-        .update(data)
+        .update(updateData)
         .eq('id', id)
         .select(_orderSelect);
         
@@ -134,9 +148,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
         .asyncMap((data) async {
-          // Simplification for the stream
-          final orders = data.map((e) => Order.fromJson(e)).toList();
-          return orders;
+          return data.map((e) => Order.fromJson(e)).toList();
         });
   }
 
@@ -201,7 +213,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
       final response = await _client
           .from('orders')
           .select(_orderSelect)
-          .eq('status', status.name)
+          .eq('status', status.label)
           .order('created_at', ascending: false);
       return Right((response as List).map((e) => Order.fromJson(e)).toList());
     } catch (error) {
@@ -235,9 +247,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
     {DateTime? estimatedArrival}
   ) async {
     try {
-      final data = <String, dynamic>{
+      // إرسال النص العربي (label) صراحةً لمنع أي استنتاج خاطئ من المكتبة
+      final Map<String, dynamic> data = {
         'tech_id': techId,
-        'status': OrderStatus.assigned.name,
+        'status': OrderStatus.assigned.label, 
       };
       if (estimatedArrival != null) {
         data['estimated_arrival'] = estimatedArrival.toIso8601String();
@@ -255,7 +268,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
 
       await _client.from('order_logs').insert({
         'order_id': orderId,
-        'status': OrderStatus.assigned.name,
+        'status': OrderStatus.assigned.label,
         'message': 'تم تعيين فني للطلب',
       });
 
@@ -273,7 +286,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
     String? logMessage,
   }) async {
     try {
-      final Map<String, dynamic> data = {'status': status.name};
+      // إرسال الـ label العربي كنص (String) صريح لضمان القبول في Supabase
+      final String statusText = status.label;
+      final Map<String, dynamic> data = {'status': statusText};
+      
       if (finalPrice != null) data['final_price'] = finalPrice;
       
       final List response = await _client
@@ -286,7 +302,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
 
       await _client.from('order_logs').insert({
         'order_id': orderId,
-        'status': status.name,
+        'status': status.label,
         'message': logMessage ?? 'تم تغيير حالة الطلب إلى ${status.label}',
       });
 
