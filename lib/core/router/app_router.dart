@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/presentation/screens/login_screen.dart';
 import '../../../features/client/presentation/screens/home_screen.dart';
 import '../../../features/client/presentation/screens/request_screen.dart';
@@ -13,57 +13,63 @@ import '../../../features/admin/presentation/screens/admin_shell.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   // لضمان أن التطبيق يقرأ الرابط الحالي عند البدء على الويب
-  overridePlatformDefaultLocation: true, 
+  overridePlatformDefaultLocation: true,
   redirect: (context, state) {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-    
+
     // استخدام matchedLocation لضمان مطابقة المسار بدقة
     final location = state.matchedLocation;
     final isAdminRoute = location.startsWith('/admin');
-    
+
     if (isAdminRoute && !isLoggedIn) {
       return '/login';
     }
-    
+
     if (location == '/login' && isLoggedIn) {
       return '/admin';
     }
-    
+
     return null;
   },
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const HomeScreen(),
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const HomeScreen()),
     ),
     GoRoute(
       path: '/request',
-      builder: (context, state) => const RequestScreen(),
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const RequestScreen()),
     ),
     GoRoute(
       path: '/track/:code',
-      builder: (context, state) => TrackScreen(
-        code: state.pathParameters['code']!,
+      pageBuilder: (context, state) => AppAnimations.fadeSlide(
+        child: TrackScreen(code: state.pathParameters['code']!),
       ),
     ),
     GoRoute(
       path: '/login',
-      builder: (context, state) => const LoginScreen(),
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const LoginScreen()),
     ),
     ShellRoute(
       builder: (context, state, child) => AdminShell(child: child),
       routes: [
         GoRoute(
           path: '/admin',
-          builder: (context, state) => const DashboardScreen(),
+          pageBuilder: (context, state) =>
+              AppAnimations.fadeSlide(child: const DashboardScreen()),
         ),
         GoRoute(
           path: '/admin/orders',
-          builder: (context, state) => const OrdersScreen(),
+          pageBuilder: (context, state) =>
+              AppAnimations.fadeSlide(child: const OrdersScreen()),
         ),
         GoRoute(
           path: '/admin/techs',
-          builder: (context, state) => const TechniciansScreen(),
+          pageBuilder: (context, state) =>
+              AppAnimations.fadeSlide(child: const TechniciansScreen()),
         ),
       ],
     ),

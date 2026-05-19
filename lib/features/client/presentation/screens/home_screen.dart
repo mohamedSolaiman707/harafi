@@ -1,90 +1,186 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../features/admin/domain/enums/service_type.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_badge.dart';
+import '../../../../shared/widgets/app_button.dart';
+import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/app_text_field.dart';
+import '../../../admin/domain/enums/service_type.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _trackingController = TextEditingController();
+
+  @override
+  void dispose() {
+    _trackingController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final columns = width > 900
+        ? 3
+        : width > 600
+        ? 2
+        : 1;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 260,
             floating: false,
             pinned: true,
+            backgroundColor: AppColors.surface2,
+            automaticallyImplyLeading: false,
             actions: [
               IconButton(
                 onPressed: () => context.push('/admin'),
-                icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.white),
+                icon: const Icon(
+                  Icons.admin_panel_settings_outlined,
+                  color: AppColors.textPrimary,
+                ),
                 tooltip: 'دخول الإدارة',
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
+              titlePadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              title: Text(
                 AppConstants.appName,
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: AppTextStyles.titleMed.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                    colors: [AppColors.background, AppColors.surface2],
                   ),
                 ),
-                child: const Icon(
-                  Icons.home_repair_service,
-                  size: 80,
-                  color: Colors.white24,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'بيتك في إيدنا',
+                          style: AppTextStyles.displayMedium.copyWith(
+                            color: AppColors.gold,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'خدمات منزلية سريعة وآمنة في كفر الزيات',
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'اختر الخدمة المطلوبة',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.xl,
+            ),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                AppCard(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'اختر الخدمة المناسبة',
+                        style: AppTextStyles.headlineLarge,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'أطلب فني سباكة أو كهرباء أو نجارة خلال دقائق مع سعر واضح وشغل مضمون.',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: columns,
+                        mainAxisSpacing: AppSpacing.md,
+                        crossAxisSpacing: AppSpacing.md,
+                        childAspectRatio: 1.2,
+                        children: ServiceType.values.map((type) {
+                          return _ServiceCard(
+                            type: type,
+                            isSelected: false,
+                            onTap: () => context.push('/request', extra: type),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      const _WhyTrustSection(),
+                      const SizedBox(height: AppSpacing.xl),
+                      AppButton(
+                        label: 'سجل طلبك الآن',
+                        onTap: () => context.push('/request'),
+                        icon: Icons.arrow_back_ios_new,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'نوفر لك أفضل الحرفيين في كفر الزيات بضغطة زر',
-                    style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'تتبع طلبك بسهولة',
+                        style: AppTextStyles.headlineLarge,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'أدخل كود التتبع',
+                        hint: 'مثال: A1B2C3D4',
+                        controller: _trackingController,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppButton(
+                        label: 'تتبع',
+                        onTap: () {
+                          if (_trackingController.text.isNotEmpty) {
+                            context.push('/track/${_trackingController.text}');
+                          }
+                        },
+                        variant: ButtonVariant.ghost,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    children: ServiceType.values.map((type) {
-                      return _ServiceCard(
-                        type: type,
-                        onTap: () => context.push('/request', extra: type),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 40),
-                  _TrackingSection(),
-                  const SizedBox(height: 60),
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () => context.push('/login'),
-                      icon: const Icon(Icons.lock_outline, size: 16),
-                      label: const Text('دخول الإدارة'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+              ]),
             ),
           ),
         ],
@@ -95,86 +191,53 @@ class HomeScreen extends StatelessWidget {
 
 class _ServiceCard extends StatelessWidget {
   final ServiceType type;
+  final bool isSelected;
   final VoidCallback onTap;
 
-  const _ServiceCard({required this.type, required this.onTap});
+  const _ServiceCard({
+    required this.type,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return AppCard(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      color: isSelected
+          ? AppColors.primaryDark.withAlpha(40)
+          : AppColors.surface3,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(type.icon, style: const TextStyle(fontSize: 40)),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            type.label,
+            style: AppTextStyles.titleLarge.copyWith(
+              color: AppColors.textPrimary,
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(type.icon, style: const TextStyle(fontSize: 40)),
-            const SizedBox(height: 12),
-            Text(
-              type.label,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _TrackingSection extends StatelessWidget {
-  final _controller = TextEditingController();
+class _WhyTrustSection extends StatelessWidget {
+  const _WhyTrustSection();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'تتبع طلبك',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(
-                    hintText: 'أدخل كود التتبع (مثال: A1B2C3D4)',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () {
-                  if (_controller.text.isNotEmpty) {
-                    context.push('/track/${_controller.text}');
-                  }
-                },
-                child: const Text('تتبع'),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return Wrap(
+      spacing: AppSpacing.md,
+      runSpacing: AppSpacing.sm,
+      children: const [
+        AppBadge(label: 'سعر واضح', variant: BadgeVariant.success),
+        AppBadge(label: 'شغل مضمون', variant: BadgeVariant.info),
+        AppBadge(label: 'فنيين معتمدين', variant: BadgeVariant.success),
+      ],
     );
   }
 }

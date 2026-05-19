@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/domain/models/order.dart';
+import '../../../admin/domain/enums/order_status.dart';
 
 class TrackScreen extends ConsumerWidget {
   final String code;
@@ -12,43 +15,125 @@ class TrackScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تتبع حالة الطلب')),
+      appBar: AppBar(title: const Text('تتبع طلبك')),
       body: FutureBuilder<Order>(
         future: ref.read(ordersRepositoryProvider).getByTrackingCode(code),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const LoadingWidget();
           }
-          if (snapshot.hasError) {
+          if (snapshot.hasError || !snapshot.hasData) {
             return AppErrorWidget(
               message: 'تعذر العثور على طلب بهذا الكود. تأكد من صحة الكود.',
               onRetry: () => Navigator.of(context).pop(),
             );
           }
           final order = snapshot.data!;
+          final isCompleted = order.status == OrderStatus.completed;
+          final isCancelled = order.status == OrderStatus.cancelled;
+          final timeline = [
+            _ProgressStep(title: 'تم استلام الطلب', completed: true),
+            _ProgressStep(title: 'جاري تعيين فني', completed: !isCancelled),
+            _ProgressStep(title: 'الفني في الطريق', completed: isCompleted),
+            _ProgressStep(
+              title: isCompleted ? 'تم إنجاز الشغل' : 'قيد التنفيذ',
+              completed: isCompleted,
+            ),
+          ];
+
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _StatusHeader(status: order.status),
-                const SizedBox(height: 32),
-                _OrderDetails(order: order),
-                const SizedBox(height: 32),
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.blue),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'سنتواصل معك هاتفياً فور تعيين فني لطلبك.',
-                            style: TextStyle(fontSize: 14),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isCancelled
+                            ? Icons.cancel_outlined
+                            : Icons.check_circle_outline,
+                        size: 64,
+                        color: isCancelled
+                            ? AppColors.error
+                            : AppColors.success,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'حالة الطلب: ${order.status.label}',
+                        style: AppTextStyles.headlineLarge.copyWith(
+                          color: isCancelled
+                              ? AppColors.error
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        isCancelled
+                            ? 'الطلب ملغي حاليًا. تواصل معنا لمزيد من التفاصيل.'
+                            : 'سيتم تحديث حالة الطلب عند كل مرحلة جديدة.',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('مسار التتبع', style: AppTextStyles.headlineMed),
+                      const SizedBox(height: AppSpacing.md),
+                      ...timeline.map((step) => _TimelineRow(step: step)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('بيانات الطلب', style: AppTextStyles.headlineMed),
+                      const SizedBox(height: AppSpacing.lg),
+                      _DetailRow(
+                        label: 'رقم التتبع',
+                        value: order.trackingCode,
+                      ),
+                      _DetailRow(
+                        label: 'نوع الخدمة',
+                        value: order.service.label,
+                      ),
+                      _DetailRow(label: 'الاسم', value: order.clientName),
+                      _DetailRow(
+                        label: 'المنطقة',
+                        value: order.area ?? 'غير محدد',
+                      ),
+                      _DetailRow(
+                        label: 'تاريخ الطلب',
+                        value: order.createdAt.toString().split(' ')[0],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AppCard(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: AppColors.info),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          'سنتواصل معك هاتفياً فور تعيين فني لطلبك. يمكنك أيضًا حفظ كود التتبع للرجوع إليه لاحقاً.',
+                          style: AppTextStyles.bodyMed.copyWith(
+                            color: AppColors.textSecondary,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -60,54 +145,49 @@ class TrackScreen extends ConsumerWidget {
   }
 }
 
-class _StatusHeader extends StatelessWidget {
-  final dynamic status;
-  const _StatusHeader({required this.status});
+class _ProgressStep {
+  final String title;
+  final bool completed;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.green.withOpacity(0.2)),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
-          const SizedBox(height: 16),
-          Text(
-            'حالة الطلب: ${status.label}',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
+  _ProgressStep({required this.title, required this.completed});
 }
 
-class _OrderDetails extends StatelessWidget {
-  final Order order;
-  const _OrderDetails({required this.order});
+class _TimelineRow extends StatelessWidget {
+  final _ProgressStep step;
+
+  const _TimelineRow({required this.step});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'تفاصيل الطلب',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        _DetailRow(label: 'رقم التتبع', value: order.trackingCode),
-        _DetailRow(label: 'نوع الخدمة', value: order.service.label),
-        _DetailRow(label: 'الاسم', value: order.clientName),
-        _DetailRow(label: 'المنطقة', value: order.area ?? 'غير محدد'),
-        _DetailRow(label: 'تاريخ الطلب', value: order.createdAt.toString().split(' ')[0]),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: step.completed ? AppColors.gold : AppColors.surface1,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              step.title,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: step.completed
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontWeight: step.completed ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+          ),
+          if (step.completed)
+            const Icon(Icons.check_circle, size: 18, color: AppColors.gold),
+        ],
+      ),
     );
   }
 }
@@ -120,12 +200,22 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.bodyMed.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodyLarge.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
