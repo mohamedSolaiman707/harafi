@@ -18,6 +18,7 @@ _$OrderImpl _$$OrderImplFromJson(Map<String, dynamic> json) => _$OrderImpl(
   status:
       $enumDecodeNullable(_$OrderStatusEnumMap, json['status']) ??
       OrderStatus.pending,
+  finalPrice: (json['final_price'] as num?)?.toInt(),
   adminNotes: json['admin_notes'] as String?,
   rating: (json['rating'] as num?)?.toInt(),
   createdAt: DateTime.parse(json['created_at'] as String),
@@ -35,6 +36,7 @@ Map<String, dynamic> _$$OrderImplToJson(_$OrderImpl instance) =>
       'description': instance.description,
       'tech_id': instance.techId,
       'status': _$OrderStatusEnumMap[instance.status]!,
+      'final_price': instance.finalPrice,
       'admin_notes': instance.adminNotes,
       'rating': instance.rating,
       'created_at': instance.createdAt.toIso8601String(),

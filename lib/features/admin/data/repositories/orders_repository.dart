@@ -26,8 +26,9 @@ abstract class OrdersRepository {
   );
   Future<Either<Failure, Order>> updateOrderStatus(
     String orderId,
-    OrderStatus status,
-  );
+    OrderStatus status, {
+    int? finalPrice,
+  });
   Future<Either<Failure, Order>> addAdminNotes(String orderId, String notes);
   Future<Either<Failure, Order>> rateOrder(String orderId, int rating);
   Future<Either<Failure, void>> deleteOrder(String id);
@@ -197,7 +198,14 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .update({'tech_id': techId})
           .eq('id', orderId)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) {
+        return Left(
+          DatabaseFailure(
+            'لم يتم العثور على الطلب أو ليس لديك صلاحية لتعديله.',
+          ),
+        );
+      }
       return Right(Order.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -207,15 +215,27 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Either<Failure, Order>> updateOrderStatus(
     String orderId,
-    OrderStatus status,
-  ) async {
+    OrderStatus status, {
+    int? finalPrice,
+  }) async {
     try {
+      final Map<String, dynamic> data = {'status': status.label};
+      if (finalPrice != null) {
+        data['final_price'] = finalPrice;
+      }
       final response = await _client
           .from('orders')
-          .update({'status': status.label})
+          .update(data)
           .eq('id', orderId)
           .select()
-          .single();
+          .maybeSingle();
+      if (response == null) {
+        return Left(
+          DatabaseFailure(
+            'لم يتم العثور على الطلب أو ليس لديك صلاحية لتعديله.',
+          ),
+        );
+      }
       return Right(Order.fromJson(response));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));

@@ -84,6 +84,56 @@ class OrdersScreen extends ConsumerWidget {
     );
   }
 
+  Future<int?> _showFinalPriceDialog(BuildContext context) async {
+    final priceController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('أدخل السعر النهائي'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: priceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'السعر النهائي (ج.م)',
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'يرجى إدخال السعر النهائي';
+                }
+                final parsed = int.tryParse(value);
+                if (parsed == null || parsed <= 0) {
+                  return 'أدخل مبلغًا صالحًا';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('إلغاء'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.of(
+                    dialogContext,
+                  ).pop(int.parse(priceController.text.trim()));
+                }
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _showStatusSheet(
     BuildContext context,
     WidgetRef ref,
@@ -111,9 +161,15 @@ class OrdersScreen extends ConsumerWidget {
 
     if (selectedStatus == null || selectedStatus == order.status) return;
 
+    int? finalPrice;
+    if (selectedStatus == OrderStatus.completed) {
+      finalPrice = await _showFinalPriceDialog(context);
+      if (finalPrice == null) return;
+    }
+
     final result = await ref
         .read(adminActionsProvider)
-        .updateOrderStatus(order, selectedStatus);
+        .updateOrderStatus(order, selectedStatus, finalPrice: finalPrice);
     result.when(
       left: (failure) {
         if (context.mounted) {

@@ -12,10 +12,10 @@ class StatsWidget extends ConsumerWidget {
     final crossAxisCount = width > 1100
         ? 4
         : width > 800
-            ? 3
-            : width > 600
-                ? 2
-                : 1;
+        ? 3
+        : width > 600
+        ? 2
+        : 1;
 
     return GridView.count(
       shrinkWrap: true,

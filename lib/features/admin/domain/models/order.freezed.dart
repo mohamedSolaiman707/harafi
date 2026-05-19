@@ -34,6 +34,8 @@ mixin _$Order {
   @JsonKey(name: 'tech_id')
   String? get techId => throw _privateConstructorUsedError;
   OrderStatus get status => throw _privateConstructorUsedError;
+  @JsonKey(name: 'final_price')
+  int? get finalPrice => throw _privateConstructorUsedError;
   @JsonKey(name: 'admin_notes')
   String? get adminNotes => throw _privateConstructorUsedError;
   int? get rating => throw _privateConstructorUsedError;
@@ -66,6 +68,7 @@ abstract class $OrderCopyWith<$Res> {
     String? description,
     @JsonKey(name: 'tech_id') String? techId,
     OrderStatus status,
+    @JsonKey(name: 'final_price') int? finalPrice,
     @JsonKey(name: 'admin_notes') String? adminNotes,
     int? rating,
     @JsonKey(name: 'created_at') DateTime createdAt,
@@ -97,6 +100,7 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
     Object? description = freezed,
     Object? techId = freezed,
     Object? status = null,
+    Object? finalPrice = freezed,
     Object? adminNotes = freezed,
     Object? rating = freezed,
     Object? createdAt = null,
@@ -140,6 +144,10 @@ class _$OrderCopyWithImpl<$Res, $Val extends Order>
                 ? _value.status
                 : status // ignore: cast_nullable_to_non_nullable
                       as OrderStatus,
+            finalPrice: freezed == finalPrice
+                ? _value.finalPrice
+                : finalPrice // ignore: cast_nullable_to_non_nullable
+                      as int?,
             adminNotes: freezed == adminNotes
                 ? _value.adminNotes
                 : adminNotes // ignore: cast_nullable_to_non_nullable
@@ -180,6 +188,7 @@ abstract class _$$OrderImplCopyWith<$Res> implements $OrderCopyWith<$Res> {
     String? description,
     @JsonKey(name: 'tech_id') String? techId,
     OrderStatus status,
+    @JsonKey(name: 'final_price') int? finalPrice,
     @JsonKey(name: 'admin_notes') String? adminNotes,
     int? rating,
     @JsonKey(name: 'created_at') DateTime createdAt,
@@ -210,6 +219,7 @@ class __$$OrderImplCopyWithImpl<$Res>
     Object? description = freezed,
     Object? techId = freezed,
     Object? status = null,
+    Object? finalPrice = freezed,
     Object? adminNotes = freezed,
     Object? rating = freezed,
     Object? createdAt = null,
@@ -253,6 +263,10 @@ class __$$OrderImplCopyWithImpl<$Res>
             ? _value.status
             : status // ignore: cast_nullable_to_non_nullable
                   as OrderStatus,
+        finalPrice: freezed == finalPrice
+            ? _value.finalPrice
+            : finalPrice // ignore: cast_nullable_to_non_nullable
+                  as int?,
         adminNotes: freezed == adminNotes
             ? _value.adminNotes
             : adminNotes // ignore: cast_nullable_to_non_nullable
@@ -287,6 +301,7 @@ class _$OrderImpl implements _Order {
     this.description,
     @JsonKey(name: 'tech_id') this.techId,
     this.status = OrderStatus.pending,
+    @JsonKey(name: 'final_price') this.finalPrice,
     @JsonKey(name: 'admin_notes') this.adminNotes,
     this.rating,
     @JsonKey(name: 'created_at') required this.createdAt,
@@ -320,6 +335,9 @@ class _$OrderImpl implements _Order {
   @JsonKey()
   final OrderStatus status;
   @override
+  @JsonKey(name: 'final_price')
+  final int? finalPrice;
+  @override
   @JsonKey(name: 'admin_notes')
   final String? adminNotes;
   @override
@@ -333,7 +351,7 @@ class _$OrderImpl implements _Order {
 
   @override
   String toString() {
-    return 'Order(id: $id, trackingCode: $trackingCode, clientName: $clientName, clientPhone: $clientPhone, service: $service, area: $area, description: $description, techId: $techId, status: $status, adminNotes: $adminNotes, rating: $rating, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Order(id: $id, trackingCode: $trackingCode, clientName: $clientName, clientPhone: $clientPhone, service: $service, area: $area, description: $description, techId: $techId, status: $status, finalPrice: $finalPrice, adminNotes: $adminNotes, rating: $rating, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 
   @override
@@ -354,6 +372,8 @@ class _$OrderImpl implements _Order {
                 other.description == description) &&
             (identical(other.techId, techId) || other.techId == techId) &&
             (identical(other.status, status) || other.status == status) &&
+            (identical(other.finalPrice, finalPrice) ||
+                other.finalPrice == finalPrice) &&
             (identical(other.adminNotes, adminNotes) ||
                 other.adminNotes == adminNotes) &&
             (identical(other.rating, rating) || other.rating == rating) &&
@@ -376,6 +396,7 @@ class _$OrderImpl implements _Order {
     description,
     techId,
     status,
+    finalPrice,
     adminNotes,
     rating,
     createdAt,
@@ -407,6 +428,7 @@ abstract class _Order implements Order {
     final String? description,
     @JsonKey(name: 'tech_id') final String? techId,
     final OrderStatus status,
+    @JsonKey(name: 'final_price') final int? finalPrice,
     @JsonKey(name: 'admin_notes') final String? adminNotes,
     final int? rating,
     @JsonKey(name: 'created_at') required final DateTime createdAt,
@@ -437,6 +459,9 @@ abstract class _Order implements Order {
   String? get techId;
   @override
   OrderStatus get status;
+  @override
+  @JsonKey(name: 'final_price')
+  int? get finalPrice;
   @override
   @JsonKey(name: 'admin_notes')
   String? get adminNotes;

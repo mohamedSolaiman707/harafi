@@ -68,6 +68,11 @@ class OrderCard extends StatelessWidget {
             ),
             if (order.description != null && order.description!.isNotEmpty)
               _IconText(icon: Icons.description, text: order.description!),
+            if (order.finalPrice != null)
+              _IconText(
+                icon: Icons.attach_money,
+                text: 'السعر النهائي: ${order.finalPrice} ج.م',
+              ),
             const SizedBox(height: AppSpacing.lg),
             const Divider(color: AppColors.borderDefault),
             const SizedBox(height: AppSpacing.lg),

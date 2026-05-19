@@ -68,10 +68,17 @@ class AdminActions {
     );
   }
 
-  Future<Either<Failure, Order>> completeOrder(Order order) async {
+  Future<Either<Failure, Order>> completeOrder(
+    Order order, {
+    int? finalPrice,
+  }) async {
     final statusResult = await _ref
         .read(ordersRepositoryProvider)
-        .updateOrderStatus(order.id, OrderStatus.completed);
+        .updateOrderStatus(
+          order.id,
+          OrderStatus.completed,
+          finalPrice: finalPrice,
+        );
     return await statusResult.when(
       left: (failure) => Left(failure),
       right: (updatedOrder) async {
@@ -122,10 +129,11 @@ class AdminActions {
 
   Future<Either<Failure, Order>> updateOrderStatus(
     Order order,
-    OrderStatus status,
-  ) async {
+    OrderStatus status, {
+    int? finalPrice,
+  }) async {
     if (status == OrderStatus.completed) {
-      return await completeOrder(order);
+      return await completeOrder(order, finalPrice: finalPrice);
     }
     if (status == OrderStatus.cancelled) {
       return await cancelOrder(order);

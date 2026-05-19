@@ -17,12 +17,12 @@ class Order with _$Order {
     String? description,
     @JsonKey(name: 'tech_id') String? techId,
     @Default(OrderStatus.pending) OrderStatus status,
+    @JsonKey(name: 'final_price') int? finalPrice,
     @JsonKey(name: 'admin_notes') String? adminNotes,
     int? rating,
     @JsonKey(name: 'created_at') required DateTime createdAt,
     @JsonKey(name: 'updated_at') required DateTime updatedAt,
   }) = _Order;
 
-  factory Order.fromJson(Map<String, dynamic> json) =>
-      _$OrderFromJson(json);
+  factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 }
