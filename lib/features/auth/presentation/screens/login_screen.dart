@@ -1,29 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty)
-      return;
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+
     try {
       await Supabase.instance.client.auth.signInWithPassword(
         email: _emailController.text.trim(),
@@ -32,9 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) context.go('/admin');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('خطأ في تسجيل الدخول: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في تسجيل الدخول: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -44,67 +53,69 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('دخول الإدارة'), elevation: 0),
+      appBar: AppBar(title: const Text('دخول الإدارة')),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.xl,
-          ),
+          padding: const EdgeInsets.all(AppSpacing.xl),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: 450),
             child: AppCard(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Image.asset(
-                      AppConstants.logoPath,
-                      height: 100,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.admin_panel_settings,
-                        size: 80,
-                        color: AppColors.textSecondary,
+              padding: const EdgeInsets.all(AppSpacing.xxl),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Icon(Icons.lock_person_outlined, size: 64, color: AppColors.gold),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      'مرحباً بك مجدداً',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.headlineMed,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Text(
+                      'سجل دخولك لإدارة الطلبات والفنيين',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    AppTextField(
+                      label: 'البريد الإلكتروني',
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      prefixIcon: Icons.email_outlined,
+                      autofocus: true, // تفعيل التركيز التلقائي هنا
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'يرجى إدخال البريد الإلكتروني' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      style: AppTextStyles.bodyLarge,
+                      decoration: InputDecoration(
+                        labelText: 'كلمة المرور',
+                        prefixIcon: const Icon(Icons.lock_outlined, color: AppColors.textMuted),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: AppColors.textMuted,
+                          ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
                       ),
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'يرجى إدخال كلمة المرور' : null,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Text(
-                    'مرحباً بك في لوحة تحكم حِرَفي',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.headlineLarge,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppTextField(
-                    label: 'البريد الإلكتروني',
-                    hint: 'example@mail.com',
-                    controller: _emailController,
-                    prefixIcon: Icons.email_outlined,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  AppTextField(
-                    label: 'كلمة المرور',
-                    controller: _passwordController,
-                    prefixIcon: Icons.lock_outline,
-                    keyboardType: TextInputType.visiblePassword,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppButton(
-                    label: 'تسجيل الدخول',
-                    onTap: _isLoading ? null : _login,
-                    isLoading: _isLoading,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextButton(
-                    onPressed: () => context.go('/'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.gold,
+                    const SizedBox(height: AppSpacing.xxl),
+                    AppButton(
+                      label: 'تسجيل الدخول',
+                      onTap: _login,
+                      isLoading: _isLoading,
                     ),
-                    child: const Text('العودة للرئيسية'),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

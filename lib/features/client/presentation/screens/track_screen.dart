@@ -168,6 +168,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
             label: 'رقم الهاتف',
             keyboardType: TextInputType.phone,
             prefixIcon: Icons.phone_outlined,
+            autofocus: true, // فوكاس عند ظهور هذه الشاشة (بحث)
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
@@ -371,8 +372,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
           const SizedBox(height: AppSpacing.xl),
           AppButton(
             label: 'واتساب الدعم الفني',
-            // استبدل هذا الرقم برقم الدعم الفني الخاص بك
-            onTap: () => launchUrl(Uri.parse('https://wa.me/20123456789'), mode: LaunchMode.externalApplication),
+            onTap: () => launchUrl(Uri.parse('https://wa.me/201014250577'), mode: LaunchMode.externalApplication),
             variant: ButtonVariant.ghost,
             icon: Icons.help_outline,
           ),
@@ -381,37 +381,27 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildETA(DateTime eta) {
-    final diff = eta.difference(DateTime.now());
-    final minutes = diff.inMinutes;
-    
-    if (minutes <= 0) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.only(bottom:AppSpacing.xl),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
+  Widget _buildETA(DateTime arrival) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+      child: AppCard(
         color: AppColors.gold.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.timer_outlined, color: AppColors.gold),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
+        child: Row(
+          children: [
+            const Icon(Icons.timer_outlined, color: AppColors.gold),
+            const SizedBox(width: AppSpacing.md),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('الوقت المتوقع للوصول', style: AppTextStyles.titleMed),
+                Text('موعد الوصول المتوقع', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
                 Text(
-                  'سيصل الفني خلال $minutes دقيقة تقريباً',
-                  style: AppTextStyles.headlineMed.copyWith(color: AppColors.gold),
+                  '${arrival.hour}:${arrival.minute.toString().padLeft(2, '0')}',
+                  style: AppTextStyles.headlineMed,
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -445,6 +435,7 @@ class _TrackScreenState extends ConsumerState<TrackScreen> with SingleTickerProv
               controller: _commentController,
               label: 'أضف تعليقاً (اختياري)',
               maxLines: 2,
+              autofocus: true, // فوكاس بمجرد ما العميل يبدأ يقيّم بالنجوم
             ),
             const SizedBox(height: AppSpacing.md),
             AppButton(

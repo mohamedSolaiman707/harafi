@@ -9,6 +9,7 @@ class AppTextField extends StatelessWidget {
   final IconData? prefixIcon;
   final TextInputType keyboardType;
   final int maxLines;
+  final bool autofocus;
 
   const AppTextField({
     super.key,
@@ -19,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.prefixIcon,
     this.keyboardType = TextInputType.text,
     this.maxLines = 1,
+    this.autofocus = false,
   });
 
   @override
@@ -28,6 +30,7 @@ class AppTextField extends StatelessWidget {
       validator: validator,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      autofocus: autofocus,
       style: AppTextStyles.bodyLarge,
       decoration: InputDecoration(
         labelText: label,

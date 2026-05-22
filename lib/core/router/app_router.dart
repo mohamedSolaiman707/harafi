@@ -5,6 +5,7 @@ import '../../../features/auth/presentation/screens/login_screen.dart';
 import '../../../features/client/presentation/screens/home_screen.dart';
 import '../../../features/client/presentation/screens/request_screen.dart';
 import '../../../features/client/presentation/screens/track_screen.dart';
+import '../../../features/client/presentation/screens/services_screen.dart';
 import '../../../features/admin/presentation/screens/dashboard_screen.dart';
 import '../../../features/admin/presentation/screens/orders_screen.dart';
 import '../../../features/admin/presentation/screens/technicians_screen.dart';
@@ -12,12 +13,9 @@ import '../../../features/admin/presentation/screens/admin_shell.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
-  // لضمان أن التطبيق يقرأ الرابط الحالي عند البدء على الويب
   overridePlatformDefaultLocation: true,
   redirect: (context, state) {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-
-    // استخدام matchedLocation لضمان مطابقة المسار بدقة
     final location = state.matchedLocation;
     final isAdminRoute = location.startsWith('/admin');
 
@@ -36,6 +34,11 @@ final appRouter = GoRouter(
       path: '/',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const HomeScreen()),
+    ),
+    GoRoute(
+      path: '/services',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const ServicesScreen()),
     ),
     GoRoute(
       path: '/request',
