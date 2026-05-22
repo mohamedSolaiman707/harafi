@@ -30,6 +30,10 @@ class TechniciansScreen extends ConsumerWidget {
     final visitPriceController = TextEditingController(
       text: technician?.visitPrice.toString() ?? '',
     );
+    final photoUrlController = TextEditingController(text: technician?.photoUrl ?? '');
+    final bioController = TextEditingController(text: technician?.bio ?? '');
+    final earningsController = TextEditingController(text: technician?.totalEarnings.toString() ?? '0');
+
     ServiceType selectedSpec = technician?.spec ?? ServiceType.plumbing;
     TechStatus selectedStatus = technician?.status ?? TechStatus.available;
 
@@ -85,7 +89,7 @@ class TechniciansScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<ServiceType>(
-                    initialValue: selectedSpec,
+                    value: selectedSpec,
                     decoration: const InputDecoration(labelText: 'التخصص'),
                     items: ServiceType.values.map((service) {
                       return DropdownMenuItem(
@@ -120,8 +124,34 @@ class TechniciansScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  TextFormField(
+                    controller: photoUrlController,
+                    decoration: const InputDecoration(
+                      labelText: 'رابط الصورة الشخصية',
+                    ),
+                    keyboardType: TextInputType.url,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: bioController,
+                    decoration: const InputDecoration(
+                      labelText: 'نبذة عن الفني',
+                    ),
+                    maxLines: 3,
+                  ),
+                  if (technician != null) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: earningsController,
+                      decoration: const InputDecoration(
+                        labelText: 'إجمالي الأرباح (ج.م)',
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<TechStatus>(
-                    initialValue: selectedStatus,
+                    value: selectedStatus,
                     decoration: const InputDecoration(labelText: 'الحالة'),
                     items: TechStatus.values.map((status) {
                       return DropdownMenuItem(
@@ -152,6 +182,8 @@ class TechniciansScreen extends ConsumerWidget {
                           area: areaController.text.trim().isEmpty
                               ? null
                               : areaController.text.trim(),
+                          photoUrl: photoUrlController.text.trim().isEmpty ? null : photoUrlController.text.trim(),
+                          bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
                         );
                         final result = await ref
                             .read(adminActionsProvider)
@@ -187,6 +219,9 @@ class TechniciansScreen extends ConsumerWidget {
                             ? null
                             : areaController.text.trim(),
                         status: selectedStatus,
+                        photoUrl: photoUrlController.text.trim().isEmpty ? null : photoUrlController.text.trim(),
+                        bio: bioController.text.trim().isEmpty ? null : bioController.text.trim(),
+                        totalEarnings: int.tryParse(earningsController.text.trim()),
                       );
                       final result = await ref
                           .read(adminActionsProvider)

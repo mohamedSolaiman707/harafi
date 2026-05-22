@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
-enum ButtonVariant { primary, ghost, danger, whatsapp }
+enum ButtonVariant { primary, ghost, danger, whatsapp, success }
 
 enum ButtonSize { sm, md, lg }
 
@@ -31,6 +31,8 @@ class AppButton extends StatelessWidget {
         return AppColors.error;
       case ButtonVariant.whatsapp:
         return const Color(0xFF25D366);
+      case ButtonVariant.success:
+        return AppColors.success;
       case ButtonVariant.primary:
         return AppColors.gold;
     }
@@ -41,8 +43,8 @@ class AppButton extends StatelessWidget {
       case ButtonVariant.ghost:
         return AppColors.textPrimary;
       case ButtonVariant.danger:
-        return Colors.white;
       case ButtonVariant.whatsapp:
+      case ButtonVariant.success:
         return Colors.white;
       case ButtonVariant.primary:
         return AppColors.background;
@@ -94,7 +96,7 @@ class AppButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: _background,
           foregroundColor: _foreground,
-          elevation: variant == ButtonVariant.ghost ? 0 : 0,
+          elevation: 0,
           side: variant == ButtonVariant.ghost
               ? const BorderSide(color: AppColors.borderDefault)
               : BorderSide.none,
@@ -102,7 +104,6 @@ class AppButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          textStyle: AppTextStyles.titleLarge,
         ),
         child: buttonChild,
       ),

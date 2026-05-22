@@ -42,7 +42,7 @@ class OrderCard extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.info.withOpacity(0.12),
+                    color: AppColors.info.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
                   child: Text(
@@ -71,9 +71,9 @@ class OrderCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.gold.withOpacity(0.1),
+                  color: AppColors.gold.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,29 +109,32 @@ class OrderCard extends ConsumerWidget {
                       elevation: 0,
                     ),
                     onPressed: () {
-                      final uri = WhatsAppUtils.buildUri(order.clientPhone, WhatsAppUtils.clientMessage(order));
+                      final message = assignedTech != null 
+                        ? WhatsAppUtils.techAssignedClient(assignedTech.name, order.trackingCode)
+                        : WhatsAppUtils.orderCreated(order.trackingCode);
+                      final uri = WhatsAppUtils.buildUri(order.clientPhone, message);
                       launchUrl(uri, mode: LaunchMode.externalApplication);
                     },
                     icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                    label: const Text('عميل', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text('واتساب العميل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber[700],
+                      backgroundColor: AppColors.gold,
                       foregroundColor: Colors.black,
                       elevation: 0,
                     ),
                     onPressed: assignedTech == null 
                       ? null 
                       : () {
-                          final uri = WhatsAppUtils.buildUri(assignedTech.phone, WhatsAppUtils.techMessage(order));
+                          final uri = WhatsAppUtils.buildUri(assignedTech.phone, WhatsAppUtils.techAssignedTech(order));
                           launchUrl(uri, mode: LaunchMode.externalApplication);
                         },
                     icon: const Icon(Icons.engineering_outlined, size: 18),
-                    label: Text(assignedTech == null ? 'فني (لم يحدد)' : 'فني', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(assignedTech == null ? 'لا يوجد فني' : 'واتساب الفني', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -172,9 +175,9 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(status.label, style: AppTextStyles.labelLarge.copyWith(color: color, fontWeight: FontWeight.w700)),
     );
@@ -195,7 +198,12 @@ class _IconText extends StatelessWidget {
           Icon(icon, size: 14, color: AppColors.textSecondary),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.displayMedium.copyWith(color: AppColors.textPrimary)),
+            child: Text(
+              text, 
+              maxLines: 1, 
+              overflow: TextOverflow.ellipsis, 
+              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
+            ),
           ),
         ],
       ),

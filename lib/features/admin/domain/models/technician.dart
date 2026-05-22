@@ -18,6 +18,9 @@ class Technician with _$Technician {
     @Default(TechStatus.available) TechStatus status,
     @Default(0.0) double rating,
     @JsonKey(name: 'total_jobs') @Default(0) int totalJobs,
+    @JsonKey(name: 'photo_url') String? photoUrl,
+    String? bio,
+    @JsonKey(name: 'total_earnings') @Default(0) int totalEarnings,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _Technician;
 

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -24,7 +26,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   final _areaController = TextEditingController();
   final _descriptionController = TextEditingController();
   ServiceType? _selectedService;
-  bool _isPreSelected = false; // هل العميل اختار الخدمة من الشاشة الرئيسية؟
+  bool _isPreSelected = false;
   bool _isLoading = false;
 
   @override
@@ -124,6 +126,19 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.xl),
+                  AppButton(
+                    label: 'حفظ الكود في واتساب',
+                    onTap: () {
+                      final uri = WhatsAppUtils.buildUri(
+                        result.clientPhone,
+                        WhatsAppUtils.orderCreated(result.trackingCode),
+                      );
+                      launchUrl(uri, mode: LaunchMode.externalApplication);
+                    },
+                    variant: ButtonVariant.primary,
+                    icon: Icons.send,
+                  ),
                 ],
               ),
             ),
@@ -133,7 +148,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                 child: const Text('العودة للرئيسية'),
               ),
               AppButton(
-                label: 'تتبع الطلب',
+                label: 'تتبع الآن',
                 onTap: () => context.go('/track/${result.trackingCode}'),
                 variant: ButtonVariant.ghost,
                 size: ButtonSize.md,
@@ -185,12 +200,10 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xxl),
                 
-                // قسم الخدمات - يظهر بذكاء
                 _buildServiceSelection(),
                 
                 const SizedBox(height: AppSpacing.xl),
                 
-                // بيانات العميل
                 AppCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +265,6 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   }
 
   Widget _buildServiceSelection() {
-    // إذا كان العميل اختار من الصفحة الرئيسية، نعرض له الخدمة المختارة فقط مع إمكانية التغيير إذا أراد
     if (_isPreSelected && _selectedService != null) {
       return AppCard(
         color: AppColors.gold.withValues(alpha: 0.05),
@@ -285,7 +297,6 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       );
     }
 
-    // الحالة الطبيعية: عرض كل الخدمات مقسمة
     return Column(
       children: ServiceCategory.values.map((category) {
         final services = ServiceType.values.where((s) => s.category == category).toList();

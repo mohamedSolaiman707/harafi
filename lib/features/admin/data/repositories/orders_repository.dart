@@ -13,6 +13,7 @@ abstract class OrdersRepository {
   Future<Order> update(String id, Map<String, dynamic> data);
   Future<void> delete(String id);
   Stream<List<Order>> watchAll();
+  Stream<List<Order>> watchTechOrders(String techId);
 
   Future<Either<Failure, Order>> createOrder(CreateOrderDto dto);
   Future<Either<Failure, List<Order>>> getAllOrders();
@@ -141,12 +142,26 @@ class SupabaseOrdersRepository implements OrdersRepository {
 
   @override
   Stream<List<Order>> watchAll() {
-    // نستخدم stream للتحسس بأي تغيير في الجدول
-    // ونستخدم asyncMap لإعادة جلب البيانات كاملة بالعلاقات (Joins)
     return _client
         .from('orders')
         .stream(primaryKey: ['id'])
         .asyncMap((_) => getAll());
+  }
+
+  @override
+  Stream<List<Order>> watchTechOrders(String techId) {
+    return _client
+        .from('orders')
+        .stream(primaryKey: ['id'])
+        .eq('tech_id', techId)
+        .asyncMap((_) async {
+          final data = await _client
+              .from('orders')
+              .select(_orderSelect)
+              .eq('tech_id', techId)
+              .order('created_at', ascending: false);
+          return (data as List).map((e) => Order.fromJson(e)).toList();
+        });
   }
 
   @override

@@ -29,6 +29,7 @@ abstract class TechniciansRepository {
     TechStatus status,
   );
   Future<Either<Failure, Technician>> incrementJobCount(String id);
+  Future<Either<Failure, Technician>> incrementEarnings(String id, int amount);
   Future<Either<Failure, Technician>> updateRating(String id, double rating);
   Future<Either<Failure, void>> deleteTechnician(String id);
 }
@@ -193,6 +194,27 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
               .eq('id', id)
               .select();
           if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث عدد المهام'));
+          return Right(Technician.fromJson(response.first));
+        },
+      );
+    } catch (error) {
+      return Left(DatabaseFailure(error.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Technician>> incrementEarnings(String id, int amount) async {
+    try {
+      final currentResult = await getTechnicianById(id);
+      return await currentResult.when(
+        left: (failure) => Left(failure),
+        right: (tech) async {
+          final List response = await _client
+              .from('technicians')
+              .update({'total_earnings': tech.totalEarnings + amount})
+              .eq('id', id)
+              .select();
+          if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث الأرباح'));
           return Right(Technician.fromJson(response.first));
         },
       );

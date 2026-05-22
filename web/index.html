@@ -5,7 +5,26 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="خدمات منزلية — كفر الزيات - منصة الحرفيين المتخصصين">
+  
+  <!-- SEO Meta Tags -->
+  <title>حرفي — خدمات منزلية ذكية في كفر الزيات</title>
+  <meta name="description" content="حرفي هي المنصة الأولى للخدمات المنزلية في كفر الزيات. سباكة، كهرباء، نجارة، تكييفات وأجهزة كهربائية. فنيين موثوقين وشغل مضمون بضغطة زر.">
+  <meta name="keywords" content="فني كفر الزيات، سباك كفر الزيات، كهربائي كفر الزيات، نجار كفر الزيات، تصليح تكييفات، صيانة غسالات، بوتاجازات، خدمات منزلية الغربية">
+  <meta name="author" content="Harafi Team">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://harafi-eg.vercel.app/">
+  <meta property="og:title" content="حرفي — خدمات منزلية ذكية في كفر الزيات">
+  <meta property="og:description" content="بنوصلك بأحسن الفنيين في منطقتك. سباكة، كهرباء، نجارة، وأجهزة منزلية.">
+  <meta property="og:image" content="https://7arafi.com/og-image.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://harafi-eg.vercel.app/">
+  <meta property="twitter:title" content="حرفي — خدمات منزلية ذكية في كفر الزيات">
+  <meta property="twitter:description" content="بنوصلك بأحسن الفنيين في منطقتك. سباكة، كهرباء، نجارة، وأجهزة منزلية.">
+  <meta property="twitter:image" content="https://7arafi.com/og-image.png">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -16,10 +35,85 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>خدمات منزلية — كفر الزيات</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "حرفي - Harafi",
+    "description": "منصة خدمات منزلية متكاملة في كفر الزيات",
+    "url": "https://harafi-eg.vercel.app/",
+    "telephone": "+201014250577",
+    "image": "https://7arafi.com/favicon.png",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "كفر الزيات",
+      "addressRegion": "الغربية",
+      "addressCountry": "EG"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 30.8247,
+      "longitude": 30.8122
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ],
+      "opens": "09:00",
+      "closes": "22:00"
+    }
+  }
+  </script>
+
+  <style>
+    body {
+      background-color: #09090D;
+    }
+    /* Simple CSS loading screen before Flutter initializes */
+    .initial-loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      color: #F0A500;
+      font-family: 'Cairo', sans-serif;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(240, 165, 0, 0.1);
+      border-left-color: #F0A500;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <div id="loading-container" class="initial-loader">
+    <div class="spinner"></div>
+    <div style="font-weight: bold; letter-spacing: 2px;">حرفي</div>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Remove loader once Flutter is ready
+    window.addEventListener('load', function(ev) {
+      // Optional: you can hide it here or let Flutter app cover it
+    });
+  </script>
 </body>
 </html>

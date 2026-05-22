@@ -34,6 +34,11 @@ mixin _$Technician {
   double get rating => throw _privateConstructorUsedError;
   @JsonKey(name: 'total_jobs')
   int get totalJobs => throw _privateConstructorUsedError;
+  @JsonKey(name: 'photo_url')
+  String? get photoUrl => throw _privateConstructorUsedError;
+  String? get bio => throw _privateConstructorUsedError;
+  @JsonKey(name: 'total_earnings')
+  int get totalEarnings => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
 
@@ -65,6 +70,9 @@ abstract class $TechnicianCopyWith<$Res> {
     TechStatus status,
     double rating,
     @JsonKey(name: 'total_jobs') int totalJobs,
+    @JsonKey(name: 'photo_url') String? photoUrl,
+    String? bio,
+    @JsonKey(name: 'total_earnings') int totalEarnings,
     @JsonKey(name: 'created_at') DateTime createdAt,
   });
 }
@@ -94,6 +102,9 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
     Object? status = null,
     Object? rating = null,
     Object? totalJobs = null,
+    Object? photoUrl = freezed,
+    Object? bio = freezed,
+    Object? totalEarnings = null,
     Object? createdAt = null,
   }) {
     return _then(
@@ -138,6 +149,18 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
                 ? _value.totalJobs
                 : totalJobs // ignore: cast_nullable_to_non_nullable
                       as int,
+            photoUrl: freezed == photoUrl
+                ? _value.photoUrl
+                : photoUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            bio: freezed == bio
+                ? _value.bio
+                : bio // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            totalEarnings: null == totalEarnings
+                ? _value.totalEarnings
+                : totalEarnings // ignore: cast_nullable_to_non_nullable
+                      as int,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -168,6 +191,9 @@ abstract class _$$TechnicianImplCopyWith<$Res>
     TechStatus status,
     double rating,
     @JsonKey(name: 'total_jobs') int totalJobs,
+    @JsonKey(name: 'photo_url') String? photoUrl,
+    String? bio,
+    @JsonKey(name: 'total_earnings') int totalEarnings,
     @JsonKey(name: 'created_at') DateTime createdAt,
   });
 }
@@ -196,6 +222,9 @@ class __$$TechnicianImplCopyWithImpl<$Res>
     Object? status = null,
     Object? rating = null,
     Object? totalJobs = null,
+    Object? photoUrl = freezed,
+    Object? bio = freezed,
+    Object? totalEarnings = null,
     Object? createdAt = null,
   }) {
     return _then(
@@ -240,6 +269,18 @@ class __$$TechnicianImplCopyWithImpl<$Res>
             ? _value.totalJobs
             : totalJobs // ignore: cast_nullable_to_non_nullable
                   as int,
+        photoUrl: freezed == photoUrl
+            ? _value.photoUrl
+            : photoUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        bio: freezed == bio
+            ? _value.bio
+            : bio // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        totalEarnings: null == totalEarnings
+            ? _value.totalEarnings
+            : totalEarnings // ignore: cast_nullable_to_non_nullable
+                  as int,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -263,6 +304,9 @@ class _$TechnicianImpl implements _Technician {
     this.status = TechStatus.available,
     this.rating = 0.0,
     @JsonKey(name: 'total_jobs') this.totalJobs = 0,
+    @JsonKey(name: 'photo_url') this.photoUrl,
+    this.bio,
+    @JsonKey(name: 'total_earnings') this.totalEarnings = 0,
     @JsonKey(name: 'created_at') required this.createdAt,
   });
 
@@ -295,12 +339,20 @@ class _$TechnicianImpl implements _Technician {
   @JsonKey(name: 'total_jobs')
   final int totalJobs;
   @override
+  @JsonKey(name: 'photo_url')
+  final String? photoUrl;
+  @override
+  final String? bio;
+  @override
+  @JsonKey(name: 'total_earnings')
+  final int totalEarnings;
+  @override
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
   @override
   String toString() {
-    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, createdAt: $createdAt)';
+    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, bio: $bio, totalEarnings: $totalEarnings, createdAt: $createdAt)';
   }
 
   @override
@@ -321,6 +373,11 @@ class _$TechnicianImpl implements _Technician {
             (identical(other.rating, rating) || other.rating == rating) &&
             (identical(other.totalJobs, totalJobs) ||
                 other.totalJobs == totalJobs) &&
+            (identical(other.photoUrl, photoUrl) ||
+                other.photoUrl == photoUrl) &&
+            (identical(other.bio, bio) || other.bio == bio) &&
+            (identical(other.totalEarnings, totalEarnings) ||
+                other.totalEarnings == totalEarnings) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -339,6 +396,9 @@ class _$TechnicianImpl implements _Technician {
     status,
     rating,
     totalJobs,
+    photoUrl,
+    bio,
+    totalEarnings,
     createdAt,
   );
 
@@ -368,6 +428,9 @@ abstract class _Technician implements Technician {
     final TechStatus status,
     final double rating,
     @JsonKey(name: 'total_jobs') final int totalJobs,
+    @JsonKey(name: 'photo_url') final String? photoUrl,
+    final String? bio,
+    @JsonKey(name: 'total_earnings') final int totalEarnings,
     @JsonKey(name: 'created_at') required final DateTime createdAt,
   }) = _$TechnicianImpl;
 
@@ -397,6 +460,14 @@ abstract class _Technician implements Technician {
   @override
   @JsonKey(name: 'total_jobs')
   int get totalJobs;
+  @override
+  @JsonKey(name: 'photo_url')
+  String? get photoUrl;
+  @override
+  String? get bio;
+  @override
+  @JsonKey(name: 'total_earnings')
+  int get totalEarnings;
   @override
   @JsonKey(name: 'created_at')
   DateTime get createdAt;

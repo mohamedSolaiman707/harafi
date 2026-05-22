@@ -20,6 +20,9 @@ _$TechnicianImpl _$$TechnicianImplFromJson(Map<String, dynamic> json) =>
           TechStatus.available,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       totalJobs: (json['total_jobs'] as num?)?.toInt() ?? 0,
+      photoUrl: json['photo_url'] as String?,
+      bio: json['bio'] as String?,
+      totalEarnings: (json['total_earnings'] as num?)?.toInt() ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
 
@@ -35,6 +38,9 @@ Map<String, dynamic> _$$TechnicianImplToJson(_$TechnicianImpl instance) =>
       'status': _$TechStatusEnumMap[instance.status]!,
       'rating': instance.rating,
       'total_jobs': instance.totalJobs,
+      'photo_url': instance.photoUrl,
+      'bio': instance.bio,
+      'total_earnings': instance.totalEarnings,
       'created_at': instance.createdAt.toIso8601String(),
     };
 
@@ -42,6 +48,11 @@ const _$ServiceTypeEnumMap = {
   ServiceType.plumbing: 'سباكة',
   ServiceType.electrical: 'كهرباء',
   ServiceType.carpentry: 'نجارة',
+  ServiceType.ac: 'تكييفات',
+  ServiceType.refrigerators: 'تلاجات',
+  ServiceType.washingMachines: 'غسالات',
+  ServiceType.screens: 'شاشات',
+  ServiceType.stoves: 'بوتاجازات',
 };
 
 const _$TechStatusEnumMap = {

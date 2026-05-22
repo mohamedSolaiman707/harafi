@@ -15,7 +15,14 @@ final ordersProvider = FutureProvider<List<Order>>((ref) {
   return ref.watch(ordersRepositoryProvider).getAll();
 });
 
-final ordersStreamProvider = ordersProvider;
+final ordersStreamProvider = StreamProvider<List<Order>>((ref) {
+  return ref.watch(ordersRepositoryProvider).watchOrders();
+});
+
+// Provider خاص بطلبات الفني الحالي
+final techOrdersStreamProvider = StreamProvider.family<List<Order>, String>((ref, techId) {
+  return ref.watch(ordersRepositoryProvider).watchTechOrders(techId);
+});
 
 final ordersByStatusProvider = Provider.family<List<Order>, OrderStatus>((
   ref,
