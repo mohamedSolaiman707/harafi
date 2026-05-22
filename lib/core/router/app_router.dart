@@ -14,6 +14,7 @@ import '../../../features/admin/presentation/screens/admin_shell.dart';
 import '../../../features/tech/presentation/screens/tech_login_screen.dart';
 import '../../../features/tech/presentation/screens/tech_dashboard_screen.dart';
 import '../../../features/tech/presentation/screens/tech_order_detail_screen.dart';
+import '../../../features/tech/presentation/screens/tech_register_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -23,7 +24,9 @@ final appRouter = GoRouter(
     final location = state.matchedLocation;
     
     final isAdminRoute = location.startsWith('/admin');
-    final isTechRoute = location.startsWith('/tech') && location != '/tech/login';
+    final isTechRoute = location.startsWith('/tech') && 
+                       location != '/tech/login' && 
+                       location != '/tech/register';
 
     if ((isAdminRoute || isTechRoute) && !isLoggedIn) {
       return isAdminRoute ? '/login' : '/tech/login';
@@ -68,6 +71,11 @@ final appRouter = GoRouter(
       path: '/tech/login',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const TechLoginScreen()),
+    ),
+    GoRoute(
+      path: '/tech/register',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const TechRegisterScreen()),
     ),
     GoRoute(
       path: '/tech/dashboard',

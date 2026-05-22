@@ -32,7 +32,7 @@ class CreateTechnicianDto {
       if (area != null) 'area': area,
       if (photoUrl != null) 'photo_url': photoUrl,
       if (bio != null) 'bio': bio,
-      'status': TechStatus.available.label,
+      'status': TechStatus.pending.label,
       'total_earnings': 0,
       'total_jobs': 0,
       'rating': 0.0,

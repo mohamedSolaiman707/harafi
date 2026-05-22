@@ -15,7 +15,7 @@ class Technician with _$Technician {
     @JsonKey(name: 'price_range') String? priceRange,
     @JsonKey(name: 'visit_price') @Default(50) int visitPrice,
     String? area,
-    @Default(TechStatus.available) TechStatus status,
+    @Default(TechStatus.pending) TechStatus status,
     @Default(0.0) double rating,
     @JsonKey(name: 'total_jobs') @Default(0) int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,

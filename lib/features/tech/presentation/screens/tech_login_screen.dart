@@ -18,7 +18,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   bool _isLoading = false;
-  bool _showOtpField = false; // هل ننتظر إدخال الكود؟
+  bool _showOtpField = false;
 
   @override
   void dispose() {
@@ -27,13 +27,11 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
     super.dispose();
   }
 
-  // المرحلة 1: إرسال كود OTP
   Future<void> _sendOtp() async {
     if (_phoneController.text.isEmpty) return;
     
     setState(() => _isLoading = true);
     try {
-      // تنسيق الرقم ليكون دولياً (مثال: +201012345678)
       String phone = _phoneController.text.trim();
       if (!phone.startsWith('+')) {
         if (phone.startsWith('0')) {
@@ -64,7 +62,6 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
     }
   }
 
-  // المرحلة 2: التحقق من الكود
   Future<void> _verifyOtp() async {
     if (_otpController.text.isEmpty) return;
 
@@ -157,6 +154,19 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
+                // زر الانضمام الجديد
+                if (!_showOtpField) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('ليس لديك حساب؟'),
+                      TextButton(
+                        onPressed: () => context.push('/tech/register'),
+                        child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
                 TextButton(
                   onPressed: () => context.go('/'),
                   child: const Text('العودة للرئيسية'),

@@ -123,6 +123,18 @@ class AppAnimations {
 }
 
 class AppTheme {
+  static InputDecoration textFieldDecoration({
+    required String label,
+    String? hint,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+    );
+  }
+
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,

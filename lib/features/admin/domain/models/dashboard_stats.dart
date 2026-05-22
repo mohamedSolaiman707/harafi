@@ -2,8 +2,14 @@ class TechStats {
   final int total;
   final int available;
   final int busy;
+  final int pending;
 
-  TechStats({required this.total, required this.available, required this.busy});
+  TechStats({
+    required this.total, 
+    required this.available, 
+    required this.busy,
+    required this.pending,
+  });
 }
 
 class DashboardStats {
@@ -15,6 +21,7 @@ class DashboardStats {
   final int availableTechs;
   final int busyTechs;
   final int onLeaveTechs;
+  final int pendingTechs;
 
   DashboardStats({
     required this.totalOrders,
@@ -25,5 +32,6 @@ class DashboardStats {
     required this.availableTechs,
     required this.busyTechs,
     required this.onLeaveTechs,
+    required this.pendingTechs,
   });
 }
