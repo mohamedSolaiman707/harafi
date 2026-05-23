@@ -51,7 +51,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   Future<Technician> create(Technician tech) async {
     final List data = await _client
         .from('technicians')
-        .insert(tech.toJson())
+        .upsert(tech.toJson()) // تغيير insert إلى upsert
         .select();
     if (data.isEmpty) throw Exception('فشل إنشاء الفني');
     return Technician.fromJson(data.first);
@@ -87,9 +87,10 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     CreateTechnicianDto dto,
   ) async {
     try {
+      // استخدام upsert لضمان عدم حدوث خطأ Duplicate Key
       final List data = await _client
           .from('technicians')
-          .insert(dto.toJson())
+          .upsert(dto.toJson())
           .select();
       if (data.isEmpty) return Left(DatabaseFailure('فشل إضافة الفني'));
       return Right(Technician.fromJson(data.first));
