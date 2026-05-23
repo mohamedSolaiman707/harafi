@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
@@ -6,6 +7,7 @@ import '../../../features/client/presentation/screens/home_screen.dart';
 import '../../../features/client/presentation/screens/request_screen.dart';
 import '../../../features/client/presentation/screens/track_screen.dart';
 import '../../../features/client/presentation/screens/services_screen.dart';
+import '../../../features/client/presentation/screens/tech_portfolio_screen.dart';
 import '../../../features/admin/presentation/screens/dashboard_screen.dart';
 import '../../../features/admin/presentation/screens/orders_screen.dart';
 import '../../../features/admin/presentation/screens/technicians_screen.dart';
@@ -23,9 +25,7 @@ final appRouter = GoRouter(
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final location = state.matchedLocation;
     
-    // حماية مسارات الإدارة
     final isAdminRoute = location.startsWith('/admin');
-    // حماية مسارات الفنيين (ماعدا صفحات الدخول والتسجيل)
     final isTechRoute = location.startsWith('/tech') && 
                        location != '/tech/login' && 
                        location != '/tech/register';
@@ -34,9 +34,13 @@ final appRouter = GoRouter(
       return isAdminRoute ? '/login' : '/tech/login';
     }
 
-    // منع المسجلين دخول من العودة لصفحات الدخول
-    if (location == '/login' && isLoggedIn) return '/admin';
-    if (location == '/tech/login' && isLoggedIn) return '/tech/dashboard';
+    if (location == '/login' && isLoggedIn) {
+      return '/admin';
+    }
+
+    if (location == '/tech/login' && isLoggedIn) {
+      return '/tech/dashboard';
+    }
 
     return null;
   },
@@ -63,12 +67,18 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(
+      path: '/tech/portfolio/:id',
+      pageBuilder: (context, state) => AppAnimations.fadeSlide(
+        child: TechPortfolioScreen(techId: state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
       path: '/login',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const LoginScreen()),
     ),
     
-    // Technician System
+    // Technician Routes
     GoRoute(
       path: '/tech/login',
       pageBuilder: (context, state) =>
@@ -96,7 +106,6 @@ final appRouter = GoRouter(
           AppAnimations.fadeSlide(child: const TechProfileScreen()),
     ),
 
-    // Admin System (ShellRoute for BottomNav/Sidebar)
     ShellRoute(
       builder: (context, state, child) => AdminShell(child: child),
       routes: [

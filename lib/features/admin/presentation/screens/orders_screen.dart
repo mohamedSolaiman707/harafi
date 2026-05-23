@@ -38,7 +38,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('إدارة الطلبات'),
+        title: const Text('إدارة الطلبات والعمليات'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -66,11 +66,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
                 orders: orders.where((o) => 
                   [OrderStatus.assigned, OrderStatus.onTheWay, OrderStatus.started].contains(o.status)
                 ).toList(),
-                emptyMessage: 'لا توجد طلبات جاري تنفيذها',
+                emptyMessage: 'لا توجد طلبات قيد التنفيذ',
               ),
               _OrdersList(
                 orders: orders.where((o) => o.status == OrderStatus.completed).toList(),
-                emptyMessage: 'لم تكتمل أي طلبات بعد',
+                emptyMessage: 'سجل الطلبات المكتملة فارغ',
               ),
               _OrdersList(
                 orders: orders.where((o) => o.status == OrderStatus.cancelled).toList(),
@@ -81,7 +81,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
         },
         loading: () => const LoadingWidget(),
         error: (err, stack) => AppErrorWidget(
-          message: 'خطأ في تحميل البيانات',
+          message: 'فشل الاتصال بقاعدة البيانات',
           onRetry: () => ref.invalidate(ordersStreamProvider),
         ),
       ),
@@ -102,7 +102,7 @@ class _OrdersList extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox_outlined, size: 64, color: AppColors.textMuted),
+            const Icon(Icons.assignment_late_outlined, size: 64, color: AppColors.textMuted),
             const SizedBox(height: 16),
             Text(emptyMessage, style: AppTextStyles.bodyLarge),
           ],
@@ -124,12 +124,85 @@ class _OrdersList extends ConsumerWidget {
     );
   }
 
-  // الدوال المساعدة لتعيين الفني وتحديث الحالة (نفس المنطق المظبوط الذي تم شرحه سابقاً)
   Future<void> _showAssignTechSheet(BuildContext context, WidgetRef ref, Order order) async {
-     // ... منطق تعيين الفني ...
+    final availableTechs = ref.read(availableTechsProvider(order.service));
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface2,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('تعيين فني لـ ${order.clientName}', style: AppTextStyles.headlineMed),
+            Text('الخدمة: ${order.service.label}', style: AppTextStyles.bodyMed.copyWith(color: AppColors.gold)),
+            const SizedBox(height: 24),
+            if (availableTechs.isEmpty)
+              const Center(child: Text('عذراً، لا يوجد فنيين متاحين حالياً لهذا التخصص'))
+            else
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: availableTechs.length,
+                  itemBuilder: (context, index) {
+                    final tech = availableTechs[index];
+                    return ListTile(
+                      leading: CircleAvatar(backgroundColor: AppColors.gold.withValues(alpha: 0.1), child: Text(tech.spec.icon)),
+                      title: Text(tech.name),
+                      subtitle: Text('التقييم: ${tech.rating} ⭐ • السعر: ${tech.visitPrice} ج.م'),
+                      trailing: const Icon(Icons.chevron_left, color: AppColors.gold),
+                      onTap: () async {
+                        final result = await ref.read(adminActionsProvider).assignTech(order, tech);
+                        if (context.mounted) {
+                          result.when(
+                            left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+                            right: (_) => Navigator.pop(context),
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showStatusSheet(BuildContext context, WidgetRef ref, Order order) async {
-     // ... منطق تحديث الحالة ...
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface2,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.local_shipping_outlined, color: Colors.amber),
+              title: const Text('الفني في الطريق'),
+              onTap: () {
+                ref.read(adminActionsProvider).updateOrderStatus(order, OrderStatus.onTheWay);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.cancel_outlined, color: AppColors.error),
+              title: const Text('إلغاء الطلب'),
+              onTap: () {
+                ref.read(adminActionsProvider).updateOrderStatus(order, OrderStatus.cancelled);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

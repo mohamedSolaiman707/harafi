@@ -48,7 +48,6 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
       return (data as List).map((e) => Technician.fromJson(e)).toList();
     } catch (e) {
       print('Error in TechniciansRepository.getAll: $e');
-      // العودة بقائمة فارغة بدلاً من التسبب في انهيار التطبيق
       return [];
     }
   }
@@ -65,10 +64,11 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
 
   @override
   Future<Technician> update(String id, Map<String, dynamic> data) async {
+    final Map<String, dynamic> updateData = Map<String, dynamic>.from(data);
+    updateData['id'] = id;
     final List response = await _client
         .from('technicians')
-        .update(data)
-        .eq('id', id)
+        .upsert(updateData)
         .select();
     if (response.isEmpty) throw Exception('الفني غير موجود');
     return Technician.fromJson(response.first);
@@ -81,7 +81,6 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
 
   @override
   Stream<List<Technician>> watchAll() {
-    // نظام البث المباشر المظبوط: التعامل مع الأخطاء وإعادة المحاولة
     return _client
         .from('technicians')
         .stream(primaryKey: ['id'])
@@ -161,12 +160,15 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     UpdateTechnicianDto dto,
   ) async {
     try {
+      final Map<String, dynamic> data = dto.toJson();
+      data['id'] = id; // إضافة المعرف لضمان التحديث الصحيح عبر upsert
+
       final List response = await _client
           .from('technicians')
-          .update(dto.toJson())
-          .eq('id', id)
+          .upsert(data)
           .select();
-      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود لتحديثه'));
+      
+      if (response.isEmpty) return Left(DatabaseFailure('تعذر تحديث بيانات الفني. تأكد من صلاحيات النظام.'));
       return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -181,10 +183,9 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     try {
       final List response = await _client
           .from('technicians')
-          .update({'status': status.label})
-          .eq('id', id)
+          .upsert({'id': id, 'status': status.label})
           .select();
-      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود لتحديث حالته'));
+      if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث حالة الفني'));
       return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -200,8 +201,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
         right: (tech) async {
           final List response = await _client
               .from('technicians')
-              .update({'total_jobs': tech.totalJobs + 1})
-              .eq('id', id)
+              .upsert({'id': id, 'total_jobs': tech.totalJobs + 1})
               .select();
           if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث عدد المهام'));
           return Right(Technician.fromJson(response.first));
@@ -221,8 +221,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
         right: (tech) async {
           final List response = await _client
               .from('technicians')
-              .update({'total_earnings': tech.totalEarnings + amount})
-              .eq('id', id)
+              .upsert({'id': id, 'total_earnings': tech.totalEarnings + amount})
               .select();
           if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث الأرباح'));
           return Right(Technician.fromJson(response.first));
@@ -241,8 +240,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     try {
       final List response = await _client
           .from('technicians')
-          .update({'rating': rating})
-          .eq('id', id)
+          .upsert({'id': id, 'rating': rating})
           .select();
       if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث التقييم'));
       return Right(Technician.fromJson(response.first));
