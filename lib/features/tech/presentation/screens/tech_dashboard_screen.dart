@@ -10,109 +10,239 @@ import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/domain/enums/order_status.dart';
 import '../../../admin/domain/enums/tech_status.dart';
+import '../../../admin/domain/models/technician.dart';
+import '../../../admin/domain/models/order.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TechDashboardScreen extends ConsumerWidget {
   const TechDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // For now, we'll assume a dummy tech ID or get it from auth
-    // In a real scenario, this would come from Supabase Auth
-    final techOrdersAsync = ref.watch(ordersStreamProvider); // We'll filter this later or use a specific provider
+    final currentTechAsync = ref.watch(currentTechnicianProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('لوحة تحكم الفني'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => context.push('/tech/profile'),
+    return currentTechAsync.when(
+      data: (tech) {
+        // حالة 1: الفني سجل دخول بالهاتف لكن لم يملأ بياناته بعد
+        if (tech == null) return const _NewTechOnboarding();
+        
+        // حالة 2: الفني ملأ بياناته وبانتظار موافقة الأدمن
+        if (tech.status == TechStatus.pending) {
+          return const _PendingApprovalScreen();
+        }
+
+        // حالة 3: الفني معتمد (متاح/مشغول/إجازة)
+        final ordersAsync = ref.watch(techOrdersStreamProvider(tech.id));
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('لوحة التحكم'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_outline),
+                onPressed: () => context.push('/tech/profile'),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(ordersStreamProvider),
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: _buildTechStatusCard(ref),
-              ),
+          body: RefreshIndicator(
+            onRefresh: () async => ref.invalidate(techOrdersStreamProvider(tech.id)),
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    child: _TechStatusCard(tech: tech),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                  sliver: SliverToBoxAdapter(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('المهام الحالية', style: AppTextStyles.headlineMed),
+                        _buildBadge(ref, tech.id),
+                      ],
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+                _ordersList(ordersAsync),
+              ],
             ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-              sliver: SliverToBoxAdapter(
-                child: Text('طلباتك القادمة', style: AppTextStyles.headlineMed),
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
-            ordersAsyncToSliver(techOrdersAsync),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
+      loading: () => const Scaffold(body: LoadingWidget()),
+      error: (err, stack) => Scaffold(body: AppErrorWidget(message: 'خطأ في تحميل البيانات', onRetry: () {})),
     );
   }
 
-  Widget ordersAsyncToSliver(AsyncValue techOrdersAsync) {
-    return techOrdersAsync.when(
+  Widget _buildBadge(WidgetRef ref, String techId) {
+    final orders = ref.watch(techOrdersStreamProvider(techId)).valueOrNull ?? [];
+    final activeCount = orders.where((o) => 
+      o.status != OrderStatus.completed && o.status != OrderStatus.cancelled
+    ).length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(12)),
+      child: Text('$activeCount نشط', style: AppTextStyles.labelLarge.copyWith(color: Colors.black, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _ordersList(AsyncValue<List<Order>> ordersAsync) {
+    return ordersAsync.when(
       data: (orders) {
-        // Filter orders for the current tech (placeholder logic)
-        final myOrders = orders.where((o) => o.status != OrderStatus.completed && o.status != OrderStatus.cancelled).toList();
+        final activeOrders = orders.where((o) => 
+          o.status != OrderStatus.completed && o.status != OrderStatus.cancelled
+        ).toList();
         
-        if (myOrders.isEmpty) {
+        if (activeOrders.isEmpty) {
           return const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: Text('لا توجد طلبات معينة لك حالياً')),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.task_alt, size: 64, color: AppColors.textMuted),
+                  SizedBox(height: 16),
+                  Text('لا توجد مهام حالية.. استمتع بوقتك!'),
+                ],
+              ),
+            ),
           );
         }
 
         return SliverList(
           delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final order = myOrders[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
-                child: _TechOrderCard(order: order),
-              );
-            },
-            childCount: myOrders.length,
+            (context, index) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
+              child: _TechOrderCard(order: activeOrders[index]),
+            ),
+            childCount: activeOrders.length,
           ),
         );
       },
-      loading: () => const SliverFillRemaining(child: LoadingWidget()),
-      error: (err, stack) => SliverFillRemaining(
-        child: AppErrorWidget(message: 'خطأ في تحميل البيانات', onRetry: () {}),
+      loading: () => const SliverToBoxAdapter(child: LoadingWidget()),
+      error: (e, s) => const SliverToBoxAdapter(child: SizedBox()),
+    );
+  }
+}
+
+class _NewTechOnboarding extends StatelessWidget {
+  const _NewTechOnboarding();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxxl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.person_add_outlined, size: 80, color: AppColors.gold),
+              const SizedBox(height: 24),
+              Text('أهلاً بك في حرافي', style: AppTextStyles.displayMedium),
+              const SizedBox(height: 16),
+              const Text(
+                'لقد تم تفعيل رقم هاتفك بنجاح. الخطوة الأخيرة هي إكمال ملفك الفني لنتمكن من إرسال العملاء إليك.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              AppButton(
+                label: 'إكمال بيانات الملف الفني',
+                onTap: () => context.push('/tech/register'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
 
-  Widget _buildTechStatusCard(WidgetRef ref) {
+class _PendingApprovalScreen extends StatelessWidget {
+  const _PendingApprovalScreen();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(onPressed: () => Supabase.instance.client.auth.signOut(), icon: const Icon(Icons.logout))
+        ],
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxxl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.verified_user_outlined, size: 80, color: AppColors.gold),
+              const SizedBox(height: 24),
+              Text('طلبك قيد المراجعة', style: AppTextStyles.displayMedium),
+              const SizedBox(height: 16),
+              const Text(
+                'بياناتك الآن لدى الإدارة. سنقوم بالتواصل معك قريباً لتفعيل حسابك على المنصة.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              AppButton(
+                label: 'العودة للرئيسية',
+                variant: ButtonVariant.ghost,
+                onTap: () => context.go('/'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TechStatusCard extends ConsumerWidget {
+  final Technician tech;
+  const _TechStatusCard({required this.tech});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAvailable = tech.status == TechStatus.available;
+
     return AppCard(
-      color: AppColors.surface2,
+      color: isAvailable ? AppColors.gold.withOpacity(0.05) : AppColors.surface2,
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.gold,
-            child: Icon(Icons.engineering, color: Colors.black),
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: isAvailable ? AppColors.success.withOpacity(0.1) : AppColors.textMuted.withOpacity(0.1),
+            child: Icon(
+              isAvailable ? Icons.check_circle : Icons.pause_circle_filled,
+              color: isAvailable ? AppColors.success : AppColors.textMuted,
+            ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('أهلاً بك يا بطل!', style: AppTextStyles.titleLarge),
-                Text('حالتك الآن: متاح', style: AppTextStyles.bodyMed.copyWith(color: AppColors.success)),
+                Text('يا بشمهندس ${tech.name}', style: AppTextStyles.titleLarge),
+                Text(
+                  isAvailable ? 'أنت متاح لاستقبال الطلبات' : 'أنت في وضع الاستراحة',
+                  style: AppTextStyles.bodyMed.copyWith(color: isAvailable ? AppColors.success : AppColors.textSecondary),
+                ),
               ],
             ),
           ),
           Switch(
-            value: true,
+            value: isAvailable,
             activeColor: AppColors.success,
-            onChanged: (val) {},
+            onChanged: (val) {
+              ref.read(techsRepositoryProvider).updateTechStatus(
+                tech.id,
+                val ? TechStatus.available : TechStatus.onLeave,
+              );
+            },
           ),
         ],
       ),
@@ -121,7 +251,7 @@ class TechDashboardScreen extends ConsumerWidget {
 }
 
 class _TechOrderCard extends StatelessWidget {
-  final dynamic order; // Use Order model
+  final Order order;
   const _TechOrderCard({required this.order});
 
   @override
@@ -134,20 +264,20 @@ class _TechOrderCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(order.trackingCode, style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
-              ),
+              Text(order.trackingCode, style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
               _StatusBadge(status: order.status),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
           Text(order.clientName, style: AppTextStyles.titleLarge),
-          Text(order.area ?? 'بدون منطقة', style: AppTextStyles.bodyMed),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyMed),
+            ],
+          ),
           const Divider(height: AppSpacing.xl),
           Row(
             children: [
@@ -155,25 +285,50 @@ class _TechOrderCard extends StatelessWidget {
                 child: AppButton(
                   label: 'عرض التفاصيل',
                   size: ButtonSize.sm,
-                  variant: ButtonVariant.ghost,
                   onTap: () => context.push('/tech/order/${order.id}'),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              IconButton(
-                icon: const Icon(Icons.phone, color: AppColors.success),
-                onPressed: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
+              _ActionButton(
+                icon: Icons.phone,
+                color: AppColors.success,
+                onTap: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
               ),
-              IconButton(
-                icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366)),
-                onPressed: () {
-                  final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم، أنا الفني من حرافي وبخصوص طلبك...');
+              const SizedBox(width: AppSpacing.sm),
+              _ActionButton(
+                icon: Icons.chat_bubble_outline,
+                color: const Color(0xFF25D366),
+                onTap: () {
+                  final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}، أنا الفني من حرافي وبخصوص طلبك...');
                   launchUrl(uri, mode: LaunchMode.externalApplication);
                 },
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionButton({required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: color, size: 20),
       ),
     );
   }

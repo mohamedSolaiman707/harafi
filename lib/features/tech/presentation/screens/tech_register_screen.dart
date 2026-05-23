@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -19,7 +20,6 @@ class TechRegisterScreen extends ConsumerStatefulWidget {
 class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _bioController = TextEditingController();
   ServiceType? _selectedSpec;
   bool _isLoading = false;
@@ -27,12 +27,17 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     _bioController.dispose();
     super.dispose();
   }
 
   Future<void> _submitRequest() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      context.go('/tech/login');
+      return;
+    }
+
     if (!_formKey.currentState!.validate() || _selectedSpec == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يرجى ملء جميع البيانات واختيار التخصص')),
@@ -42,12 +47,13 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
     setState(() => _isLoading = true);
 
+    // النظام المظبوط: نربط حساب الفني بالـ ID والرقم الموثقين من Auth
     final dto = CreateTechnicianDto(
+      id: user.id, 
       name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      phone: user.phone ?? '', // الهاتف موثق مسبقاً عبر OTP
       spec: _selectedSpec!,
       bio: _bioController.text.trim(),
-      visitPrice: 50, // سعر افتراضي
     );
 
     final result = await ref.read(techsRepositoryProvider).addTechnician(dto);
@@ -60,33 +66,17 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         );
       },
       right: (tech) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text('تم استلام طلبك'),
-            content: const Text(
-              'شكراً لاهتمامك بالانضمام لحرافي. طلبك الآن قيد المراجعة من قبل الإدارة، وسنتواصل معك قريباً بمجرد الموافقة عليه.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.go('/');
-                },
-                child: const Text('حسناً'),
-              ),
-            ],
-          ),
-        );
+        if (mounted) context.go('/tech/dashboard');
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('طلب انضمام فني')),
+      appBar: AppBar(title: const Text('إكمال ملف الفني')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -96,9 +86,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  const Icon(Icons.engineering_outlined, size: 64, color: AppColors.gold),
+                  const Icon(Icons.verified_user_outlined, size: 64, color: AppColors.gold),
                   const SizedBox(height: AppSpacing.lg),
-                  Text('كن جزءاً من فريق حرافي', style: AppTextStyles.headlineMed),
+                  Text('خطوة واحدة وتكون معنا', style: AppTextStyles.headlineMed),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'رقم الهاتف الموثق: ${user?.phone ?? ""}',
+                    style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   AppCard(
                     child: Column(
@@ -107,23 +102,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         AppTextField(
                           label: 'الاسم الكامل',
                           controller: _nameController,
-                          hint: 'أدخل اسمك كما في البطاقة',
+                          hint: 'اسمك كما في البطاقة',
                           prefixIcon: Icons.person_outline,
-                          validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        AppTextField(
-                          label: 'رقم الهاتف',
-                          controller: _phoneController,
-                          hint: '01xxxxxxxxx',
-                          keyboardType: TextInputType.phone,
-                          prefixIcon: Icons.phone_android,
                           validator: (v) => v!.isEmpty ? 'مطلوب' : null,
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         DropdownButtonFormField<ServiceType>(
                           decoration: const InputDecoration(
-                            labelText: 'التخصص',
+                            labelText: 'التخصص الأساسي',
                             prefixIcon: Icon(Icons.build_circle_outlined),
                           ),
                           dropdownColor: AppColors.surface2,
@@ -136,14 +122,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         AppTextField(
-                          label: 'نبذة عن خبرتك (اختياري)',
+                          label: 'نبذة عن خبرتك',
                           controller: _bioController,
-                          hint: 'مثال: خبرة 10 سنوات في صيانة السباكة المنزلية',
+                          hint: 'مثال: فني كهرباء متخصص في التمديدات المنزلية',
                           maxLines: 3,
                         ),
                         const SizedBox(height: AppSpacing.xxl),
                         AppButton(
-                          label: 'إرسال طلب الانضمام',
+                          label: 'حفظ وإرسال للمراجعة',
                           onTap: _submitRequest,
                           isLoading: _isLoading,
                         ),

@@ -64,11 +64,11 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       final order = Order(
         id: '',
         trackingCode: '',
-        clientName: _nameController.text,
-        clientPhone: _phoneController.text,
+        clientName: _nameController.text.trim(),
+        clientPhone: _phoneController.text.trim(),
         service: _selectedService!,
-        area: _areaController.text,
-        description: _descriptionController.text,
+        area: _areaController.text.trim(),
+        description: _descriptionController.text.trim(),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -76,96 +76,77 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       final result = await ref.read(ordersRepositoryProvider).create(order);
 
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            backgroundColor: AppColors.surface2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
-            title: const Text(
-              'تم تقديم الطلب بنجاح',
-              textAlign: TextAlign.center,
-            ),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'كود تتبع الطلب الخاص بك هو:',
-                    style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  InkWell(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: result.trackingCode));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم نسخ الكود')),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface1,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.copy, color: AppColors.gold, size: 20),
-                          const SizedBox(width: AppSpacing.md),
-                          Text(
-                            result.trackingCode,
-                            style: AppTextStyles.headlineLarge.copyWith(
-                              color: AppColors.gold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppButton(
-                    label: 'حفظ الكود في واتساب',
-                    onTap: () {
-                      final uri = WhatsAppUtils.buildUri(
-                        result.clientPhone,
-                        WhatsAppUtils.orderCreated(result.trackingCode),
-                      );
-                      launchUrl(uri, mode: LaunchMode.externalApplication);
-                    },
-                    variant: ButtonVariant.primary,
-                    icon: Icons.send,
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => context.go('/'),
-                child: const Text('العودة للرئيسية'),
-              ),
-              AppButton(
-                label: 'تتبع الآن',
-                onTap: () => context.go('/track/${result.trackingCode}'),
-                variant: ButtonVariant.ghost,
-                size: ButtonSize.md,
-              ),
-            ],
-          ),
-        );
+        _showSuccessDialog(result);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
+          SnackBar(content: Text('حدث خطأ أثناء إرسال الطلب: $e')),
         );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showSuccessDialog(Order result) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
+        title: const Icon(Icons.check_circle_outline, color: AppColors.success, size: 64),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('تم استلام طلبك بنجاح!', style: AppTextStyles.headlineMed),
+            const SizedBox(height: 16),
+            Text(
+              'كود التتبع الخاص بك:',
+              style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: result.trackingCode));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الكود')));
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface1,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(result.trackingCode, style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold, letterSpacing: 2)),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.copy, size: 20, color: AppColors.gold),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'سنقوم بالتواصل معك عبر الواتساب لتأكيد الموعد.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMed,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => context.go('/'), child: const Text('العودة للرئيسية')),
+          AppButton(
+            label: 'تتبع الطلب',
+            size: ButtonSize.sm,
+            onTap: () => context.go('/track/${result.trackingCode}'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -174,180 +155,108 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     final horizontalPadding = width > 800 ? (width - 800) / 2 : AppSpacing.xl;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('تسجيل طلب جديد'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: AppColors.surface2,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: AppSpacing.xl,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('خطوات سهلة وسريعة', style: AppTextStyles.headlineLarge),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'املأ تفاصيل الاتصال والموقع لخدمتك في أسرع وقت.',
-                  style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+      appBar: AppBar(title: const Text('طلب خدمة منزلية')),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: AppSpacing.xl),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildStepHeader('1', 'اختر نوع الخدمة'),
+              const SizedBox(height: AppSpacing.lg),
+              _buildServiceGrid(),
+              const SizedBox(height: AppSpacing.xxl),
+              _buildStepHeader('2', 'بيانات التواصل والعنوان'),
+              const SizedBox(height: AppSpacing.lg),
+              AppCard(
+                child: Column(
+                  children: [
+                    AppTextField(
+                      label: 'الاسم',
+                      controller: _nameController,
+                      prefixIcon: Icons.person_outline,
+                      validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'رقم الهاتف (واتساب)',
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      prefixIcon: Icons.phone_android,
+                      validator: (v) => v!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'العنوان بالتفصيل',
+                      controller: _areaController,
+                      prefixIcon: Icons.location_on_outlined,
+                      validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'وصف المشكلة',
+                      controller: _descriptionController,
+                      hint: 'اشرح لنا المشكلة باختصار لنرسل الفني المناسب',
+                      maxLines: 3,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.xxl),
-                
-                _buildServiceSelection(),
-                
-                const SizedBox(height: AppSpacing.xl),
-                
-                AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('بيانات التواصل والموقع', style: AppTextStyles.titleLarge),
-                      const SizedBox(height: AppSpacing.lg),
-                      AppTextField(
-                        label: 'الاسم بالكامل',
-                        controller: _nameController,
-                        validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال الاسم' : null,
-                        prefixIcon: Icons.person_outline,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      AppTextField(
-                        label: 'رقم واتساب',
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال الرقم' : null,
-                        prefixIcon: Icons.phone_outlined,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      AppTextField(
-                        label: 'المنطقة / العنوان بالتفصيل',
-                        controller: _areaController,
-                        validator: (val) => val == null || val.isEmpty ? 'يرجى إدخال العنوان' : null,
-                        prefixIcon: Icons.location_on_outlined,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      AppTextField(
-                        label: 'ملاحظات إضافية (اختياري)',
-                        hint: 'مثال: موعد الحضور المناسب أو تفاصيل العطل',
-                        controller: _descriptionController,
-                        maxLines: 3,
-                        prefixIcon: Icons.description_outlined,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxxl),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.xxxl),
+              AppButton(
+                label: 'تأكيد طلب الخدمة',
+                onTap: _submit,
+                isLoading: _isLoading,
+                icon: Icons.send_rounded,
+              ),
+            ],
           ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.fromLTRB(horizontalPadding, AppSpacing.md, horizontalPadding, AppSpacing.xl),
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          border: Border(top: BorderSide(color: AppColors.borderDefault)),
-        ),
-        child: AppButton(
-          label: 'تأكيد الطلب الآن',
-          onTap: _isLoading ? null : _submit,
-          isLoading: _isLoading,
-          icon: Icons.verified_outlined,
         ),
       ),
     );
   }
 
-  Widget _buildServiceSelection() {
-    if (_isPreSelected && _selectedService != null) {
-      return AppCard(
-        color: AppColors.gold.withValues(alpha: 0.05),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Text(_selectedService!.icon, style: const TextStyle(fontSize: 24)),
-            ),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('الخدمة المختارة', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
-                  Text(_selectedService!.label, style: AppTextStyles.headlineMed),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () => setState(() => _isPreSelected = false),
-              child: const Text('تغيير'),
-            ),
-          ],
+  Widget _buildStepHeader(String step, String title) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+          child: Center(child: Text(step, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold))),
         ),
-      );
-    }
+        const SizedBox(width: 12),
+        Text(title, style: AppTextStyles.headlineMed),
+      ],
+    );
+  }
 
-    return Column(
-      children: ServiceCategory.values.map((category) {
-        final services = ServiceType.values.where((s) => s.category == category).toList();
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-          child: AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildServiceGrid() {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: ServiceType.values.map((type) {
+        final isSelected = _selectedService == type;
+        return InkWell(
+          onTap: () => setState(() => _selectedService = type),
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.gold.withOpacity(0.1) : AppColors.surface2,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isSelected ? AppColors.gold : AppColors.borderDefault, width: 2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Text(category.icon, style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 8),
-                    Text(category.label, style: AppTextStyles.titleLarge.copyWith(color: AppColors.gold)),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Wrap(
-                  spacing: AppSpacing.md,
-                  runSpacing: AppSpacing.md,
-                  children: services.map((type) {
-                    final selected = _selectedService == type;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedService = type),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: selected ? AppColors.gold.withValues(alpha: 0.1) : AppColors.surface3,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: selected ? AppColors.gold : AppColors.borderDefault,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(type.icon, style: const TextStyle(fontSize: 18)),
-                            const SizedBox(width: 8),
-                            Text(
-                              type.label,
-                              style: AppTextStyles.titleMed.copyWith(
-                                color: selected ? AppColors.textPrimary : AppColors.textSecondary,
-                                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                Text(type.icon, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  type.label,
+                  style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary),
                 ),
               ],
             ),

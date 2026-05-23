@@ -15,7 +15,7 @@ final techniciansProvider = StreamProvider<List<Technician>>((ref) {
 
 final techsStreamProvider = techniciansProvider;
 
-// Provider للفني الحالي المسجل دخوله
+// الفني الحالي الموثق
 final currentTechnicianProvider = Provider<AsyncValue<Technician?>>((ref) {
   final user = Supabase.instance.client.auth.currentUser;
   if (user == null) return const AsyncValue.data(null);
@@ -26,13 +26,17 @@ final currentTechnicianProvider = Provider<AsyncValue<Technician?>>((ref) {
   );
 });
 
+// الفنيين المتاحين للتعيين (يجب أن يكون متاحاً ومعتمداً ومن نفس التخصص)
 final availableTechsProvider = Provider.family<List<Technician>, ServiceType>((
   ref,
   serviceType,
 ) {
   final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
   return techs
-      .where((t) => t.status == TechStatus.available && t.spec == serviceType)
+      .where((t) => 
+        t.status == TechStatus.available && // متاح للعمل
+        t.spec == serviceType // نفس التخصص المطلوبة
+      )
       .toList();
 });
 
@@ -42,6 +46,7 @@ final techStatsProvider = Provider<TechStats>((ref) {
     total: techs.length,
     available: techs.where((t) => t.status == TechStatus.available).length,
     busy: techs.where((t) => t.status == TechStatus.busy).length,
+    pending: techs.where((t) => t.status == TechStatus.pending).length,
   );
 });
 
@@ -49,5 +54,11 @@ class TechStats {
   final int total;
   final int available;
   final int busy;
-  TechStats({required this.total, required this.available, required this.busy});
+  final int pending;
+  TechStats({
+    required this.total, 
+    required this.available, 
+    required this.busy, 
+    required this.pending,
+  });
 }

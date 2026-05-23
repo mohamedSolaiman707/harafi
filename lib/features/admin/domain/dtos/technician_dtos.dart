@@ -2,6 +2,7 @@ import '../enums/service_type.dart';
 import '../enums/tech_status.dart';
 
 class CreateTechnicianDto {
+  final String? id; // الربط مع Supabase Auth
   final String name;
   final String phone;
   final ServiceType spec;
@@ -12,6 +13,7 @@ class CreateTechnicianDto {
   final String? bio;
 
   CreateTechnicianDto({
+    this.id,
     required this.name,
     required this.phone,
     required this.spec,
@@ -24,6 +26,7 @@ class CreateTechnicianDto {
 
   Map<String, dynamic> toJson() {
     return {
+      if (id != null) 'id': id,
       'name': name,
       'phone': phone,
       'spec': spec.label,
@@ -36,6 +39,7 @@ class CreateTechnicianDto {
       'total_earnings': 0,
       'total_jobs': 0,
       'rating': 0.0,
+      'created_at': DateTime.now().toIso8601String(),
     };
   }
 }

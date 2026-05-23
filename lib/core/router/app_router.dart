@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
@@ -15,6 +14,7 @@ import '../../../features/tech/presentation/screens/tech_login_screen.dart';
 import '../../../features/tech/presentation/screens/tech_dashboard_screen.dart';
 import '../../../features/tech/presentation/screens/tech_order_detail_screen.dart';
 import '../../../features/tech/presentation/screens/tech_register_screen.dart';
+import '../../../features/tech/presentation/screens/tech_profile_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -23,7 +23,9 @@ final appRouter = GoRouter(
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final location = state.matchedLocation;
     
+    // حماية مسارات الإدارة
     final isAdminRoute = location.startsWith('/admin');
+    // حماية مسارات الفنيين (ماعدا صفحات الدخول والتسجيل)
     final isTechRoute = location.startsWith('/tech') && 
                        location != '/tech/login' && 
                        location != '/tech/register';
@@ -32,9 +34,9 @@ final appRouter = GoRouter(
       return isAdminRoute ? '/login' : '/tech/login';
     }
 
-    if (location == '/login' && isLoggedIn) {
-      return '/admin';
-    }
+    // منع المسجلين دخول من العودة لصفحات الدخول
+    if (location == '/login' && isLoggedIn) return '/admin';
+    if (location == '/tech/login' && isLoggedIn) return '/tech/dashboard';
 
     return null;
   },
@@ -66,7 +68,7 @@ final appRouter = GoRouter(
           AppAnimations.fadeSlide(child: const LoginScreen()),
     ),
     
-    // Technician Routes
+    // Technician System
     GoRoute(
       path: '/tech/login',
       pageBuilder: (context, state) =>
@@ -91,9 +93,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/tech/profile',
       pageBuilder: (context, state) =>
-          AppAnimations.fadeSlide(child: TechProfilePlaceholder()),
+          AppAnimations.fadeSlide(child: const TechProfileScreen()),
     ),
 
+    // Admin System (ShellRoute for BottomNav/Sidebar)
     ShellRoute(
       builder: (context, state, child) => AdminShell(child: child),
       routes: [
@@ -116,32 +119,3 @@ final appRouter = GoRouter(
     ),
   ],
 );
-
-// مؤقت حتى إنشاء شاشة الملف الشخصي
-class TechProfilePlaceholder extends StatelessWidget {
-  const TechProfilePlaceholder({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('الملف الشخصي')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.person, size: 80, color: AppColors.textSecondary),
-            const SizedBox(height: 20),
-            const Text('قريباً: إدارة الملف الشخصي والتقييمات'),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                await Supabase.instance.client.auth.signOut();
-                context.go('/');
-              },
-              child: const Text('تسجيل الخروج'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

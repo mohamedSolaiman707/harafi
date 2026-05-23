@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
@@ -7,166 +8,69 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
+import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/enums/order_status.dart';
-import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/presentation/providers/admin_actions_provider.dart';
 
-class TechOrderDetailScreen extends ConsumerStatefulWidget {
+class TechOrderDetailScreen extends ConsumerWidget {
   final String orderId;
   const TechOrderDetailScreen({super.key, required this.orderId});
 
   @override
-  ConsumerState<TechOrderDetailScreen> createState() =>
-      _TechOrderDetailScreenState();
-}
-
-class _TechOrderDetailScreenState extends ConsumerState<TechOrderDetailScreen> {
-  bool _isUpdating = false;
-
-  Future<void> _updateStatus(Order order, OrderStatus nextStatus) async {
-    int? finalPrice;
-    if (nextStatus == OrderStatus.completed) {
-      finalPrice = await _showPriceDialog();
-      if (finalPrice == null) return;
-    }
-
-    setState(() => _isUpdating = true);
-    final result = await ref
-        .read(adminActionsProvider)
-        .updateOrderStatus(order, nextStatus, finalPrice: finalPrice);
-
-    if (mounted) {
-      result.when(
-        left: (failure) => ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(failure.message))),
-        right: (_) {
-          ref.invalidate(ordersStreamProvider);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم تحديث حالة الطلب بنجاح')),
-          );
-        },
-      );
-      setState(() => _isUpdating = false);
-    }
-  }
-
-  Future<int?> _showPriceDialog() async {
-    final controller = TextEditingController();
-    return showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('إنهاء الطلب'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'السعر النهائي المتفق عليه (ج.م)',
-            hintText: 'مثال: 150',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          AppButton(
-            label: 'تأكيد الإنجاز',
-            size: ButtonSize.sm,
-            onTap: () => Navigator.pop(context, int.tryParse(controller.text)),
-          ),
-        ],
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final orderAsync = ref.watch(ordersStreamProvider).whenData(
+      (orders) => orders.where((o) => o.id == orderId).firstOrNull,
     );
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final orderAsync = ref.watch(ordersStreamProvider);
+    return orderAsync.when(
+      data: (order) {
+        if (order == null) return const Scaffold(body: Center(child: Text('الطلب غير موجود')));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('تفاصيل الشغلة')),
-      body: orderAsync.when(
-        data: (orders) {
-          final order = orders.where((o) => o.id == widget.orderId).firstOrNull;
-          if (order == null)
-            return const Center(child: Text('الطلب غير موجود'));
-          return _buildBody(order);
-        },
-        loading: () => const LoadingWidget(),
-        error: (err, _) => AppErrorWidget(message: 'حدث خطأ', onRetry: () {}),
-      ),
-    );
-  }
-
-  Widget _buildBody(Order order) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildClientSection(order),
-          const SizedBox(height: AppSpacing.xl),
-          _buildActionSection(order),
-          const SizedBox(height: AppSpacing.xl),
-          AppCard(
+        return Scaffold(
+          appBar: AppBar(title: Text('طلب #${order.trackingCode}')),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('تفاصيل الخدمة', style: AppTextStyles.titleLarge),
-                const SizedBox(height: AppSpacing.md),
-                _DetailItem(
-                  label: 'الخدمة',
-                  value: '${order.service.icon} ${order.service.label}',
-                ),
-                _DetailItem(label: 'كود التتبع', value: order.trackingCode),
-                _DetailItem(
-                  label: 'تاريخ الطلب',
-                  value: order.createdAt.toString().split(' ')[0],
-                ),
-                if (order.description != null)
-                  _DetailItem(label: 'وصف المشكلة', value: order.description!),
+                _buildClientInfo(order),
+                const SizedBox(height: AppSpacing.xl),
+                _buildOrderDescription(order),
+                const SizedBox(height: AppSpacing.xl),
+                _buildActionButtons(context, ref, order),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
+      loading: () => const Scaffold(body: LoadingWidget()),
+      error: (e, s) => Scaffold(body: AppErrorWidget(message: 'خطأ في تحميل البيانات', onRetry: () {})),
     );
   }
 
-  Widget _buildClientSection(Order order) {
+  Widget _buildClientInfo(Order order) {
     return AppCard(
-      color: AppColors.surface2,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('بيانات العميل', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
+          const SizedBox(height: AppSpacing.md),
+          Text(order.clientName, style: AppTextStyles.displayMedium),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              const CircleAvatar(
-                backgroundColor: AppColors.surface3,
-                child: Icon(Icons.person, color: AppColors.textSecondary),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(order.clientName, style: AppTextStyles.headlineMed),
-                    Text(
-                      order.area ?? 'بدون منطقة',
-                      style: AppTextStyles.bodyMed,
-                    ),
-                  ],
-                ),
-              ),
+              const Icon(Icons.location_on_outlined, color: AppColors.textSecondary, size: 18),
+              const SizedBox(width: 8),
+              Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyLarge),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const Divider(height: AppSpacing.xl),
           Row(
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'اتصال هاتفـي',
+                  label: 'اتصال',
                   icon: Icons.phone,
                   variant: ButtonVariant.ghost,
                   onTap: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
@@ -175,14 +79,11 @@ class _TechOrderDetailScreenState extends ConsumerState<TechOrderDetailScreen> {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: AppButton(
-                  label: 'واتسـاب',
-                  icon: Icons.chat_bubble_outline,
-                  variant: ButtonVariant.whatsapp,
+                  label: 'واتساب',
+                  icon: Icons.chat,
+                  variant: ButtonVariant.whatsapp, // استخدام التنوع المخصص للواتساب
                   onTap: () {
-                    final uri = WhatsAppUtils.buildUri(
-                      order.clientPhone,
-                      'السلام عليكم أ/ ${order.clientName}، أنا الفني بخصوص طلبك في حرافي...',
-                    );
+                    final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}');
                     launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
                 ),
@@ -194,19 +95,42 @@ class _TechOrderDetailScreenState extends ConsumerState<TechOrderDetailScreen> {
     );
   }
 
-  Widget _buildActionSection(Order order) {
-    if (order.status == OrderStatus.completed) {
-      return AppCard(
-        color: AppColors.success.withValues(alpha: 0.1),
-        child: const Center(
-          child: Text(
-            'هذا الطلب مكتمل ✅',
-            style: TextStyle(
-              color: AppColors.success,
-              fontWeight: FontWeight.bold,
+  Widget _buildOrderDescription(Order order) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('تفاصيل المشكلة', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            order.description ?? 'لا يوجد وصف مضاف',
+            style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface1,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.build_circle_outlined, color: AppColors.gold),
+                const SizedBox(width: 12),
+                Text(order.service.label, style: AppTextStyles.titleMed),
+              ],
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref, Order order) {
+    if (order.status == OrderStatus.completed) {
+      return const AppCard(
+        color: AppColors.success,
+        child: Center(child: Text('تم إنجاز هذا الطلب بنجاح', style: TextStyle(fontWeight: FontWeight.bold))),
       );
     }
 
@@ -214,47 +138,61 @@ class _TechOrderDetailScreenState extends ConsumerState<TechOrderDetailScreen> {
       children: [
         if (order.status == OrderStatus.assigned)
           AppButton(
-            label: 'أنا في الطريق للعميل 🚀',
-            isLoading: _isUpdating,
-            onTap: () => _updateStatus(order, OrderStatus.onTheWay),
-          ),
-        if (order.status == OrderStatus.onTheWay)
-          AppButton(
-            label: 'بدأت العمل الآن 🛠️',
-            isLoading: _isUpdating,
-            onTap: () => _updateStatus(order, OrderStatus.started),
+            label: 'بدء العمل الآن',
+            icon: Icons.play_arrow,
+            onTap: () => ref.read(adminActionsProvider).updateOrderStatus(order, OrderStatus.started),
           ),
         if (order.status == OrderStatus.started)
           AppButton(
-            label: 'تم إنهاء العمل بنجاح ✅',
-            isLoading: _isUpdating,
-            variant: ButtonVariant.success,
-            onTap: () => _updateStatus(order, OrderStatus.completed),
+            label: 'تم الإنجاز (إنهاء الطلب)',
+            icon: Icons.check_circle,
+            variant: ButtonVariant.success, // استخدام التنوع المخصص للنجاح
+            onTap: () => _showCompletionDialog(context, ref, order),
           ),
       ],
     );
   }
-}
 
-class _DetailItem extends StatelessWidget {
-  final String label;
-  final String value;
-  const _DetailItem({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: AppTextStyles.bodyMed.copyWith(
-              color: AppColors.textSecondary,
+  void _showCompletionDialog(BuildContext context, WidgetRef ref, Order order) {
+    final priceController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('إنهاء المهمة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('ما هو السعر النهائي الذي تم الاتفاق عليه مع العميل؟'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: priceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'السعر النهائي (ج.م)',
+                hintText: 'أدخل المبلغ الإجمالي',
+              ),
             ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () async {
+              final price = int.tryParse(priceController.text);
+              if (price == null) return;
+              
+              await ref.read(adminActionsProvider).updateOrderStatus(
+                order, 
+                OrderStatus.completed,
+                finalPrice: price,
+              );
+              if (context.mounted) {
+                Navigator.pop(context);
+                context.pop(); // العودة للداشبورد
+              }
+            },
+            child: const Text('تأكيد وإغلاق الطلب'),
           ),
-          Text(value, style: AppTextStyles.bodyLarge),
         ],
       ),
     );

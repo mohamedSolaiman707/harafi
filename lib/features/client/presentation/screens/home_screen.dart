@@ -51,7 +51,18 @@ class _HomeScreenState extends State<HomeScreen> {
             actions: [
               Padding(
                 padding: EdgeInsetsDirectional.only(end: horizontalPadding),
-                child: _buildAdminAction(),
+                child: Row(
+                  children: [
+                    // زر بوابة الفنيين الجديد
+                    TextButton.icon(
+                      onPressed: () => context.push('/tech/login'),
+                      icon: const Icon(Icons.engineering_outlined, size: 18, color: AppColors.gold),
+                      label: const Text('بوابة الفنيين', style: TextStyle(color: AppColors.gold)),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildAdminAction(),
+                  ],
+                ),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
@@ -145,6 +156,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         variant: ButtonVariant.primary,
                         icon: Icons.add_task_rounded,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  // رابط انضمام الفنيين في أسفل الصفحة أيضاً
+                  TextButton(
+                    onPressed: () => context.push('/tech/register'),
+                    child: const Text(
+                      'هل أنت فني محترف؟ انضم إلينا الآن',
+                      style: TextStyle(color: AppColors.textSecondary, decoration: TextDecoration.underline),
                     ),
                   ),
                 ],

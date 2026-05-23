@@ -52,33 +52,16 @@ class AdminActions {
       );
     }
 
-    debugPrint('جاري تعيين الفني ${tech.name} للطلب ${order.id}');
-
     final assignment = await _ref
         .read(ordersRepositoryProvider)
         .assignTechnician(order.id, tech.id);
         
     return await assignment.when(
-      left: (failure) {
-        debugPrint('فشل في تحديث الطلب: ${failure.message}');
-        return Left(failure);
-      },
+      left: (failure) => Left(failure),
       right: (updatedOrder) async {
-        debugPrint('تم تحديث الطلب بنجاح، جاري تحديث حالة الفني...');
-        final techUpdate = await _ref
-            .read(techsRepositoryProvider)
-            .updateTechStatus(tech.id, TechStatus.busy);
-            
-        return techUpdate.when(
-          left: (failure) {
-            debugPrint('فشل في تحديث حالة الفني: ${failure.message}');
-            return Left(failure);
-          },
-          right: (_) {
-            debugPrint('تمت العملية بنجاح كامل');
-            return Right(updatedOrder);
-          },
-        );
+        // تحديث حالة الفني لـ "مشغول" فور تعيينه
+        await _ref.read(techsRepositoryProvider).updateTechStatus(tech.id, TechStatus.busy);
+        return Right(updatedOrder);
       },
     );
   }
@@ -87,6 +70,7 @@ class AdminActions {
     Order order, {
     int? finalPrice,
   }) async {
+    // 1. تحديث حالة الطلب والسعر النهائي
     final statusResult = await _ref
         .read(ordersRepositoryProvider)
         .updateOrderStatus(
@@ -94,28 +78,21 @@ class AdminActions {
           OrderStatus.completed,
           finalPrice: finalPrice,
         );
+
     return await statusResult.when(
       left: (failure) => Left(failure),
       right: (updatedOrder) async {
         if (order.techId != null) {
-          final freeTech = await _ref
-              .read(techsRepositoryProvider)
-              .updateTechStatus(order.techId!, TechStatus.available);
-          if (freeTech.isLeft) {
-            return Left(
-              freeTech.when(
-                left: (f) => f,
-                right: (_) => throw StateError('unexpected'),
-              ),
-            );
+          // 2. تحرير الفني ليصبح متاحاً مرة أخرى
+          await _ref.read(techsRepositoryProvider).updateTechStatus(order.techId!, TechStatus.available);
+          
+          // 3. زيادة عدد العمليات الناجحة للفني
+          await _ref.read(techsRepositoryProvider).incrementJobCount(order.techId!);
+          
+          // 4. تحديث إجمالي الأرباح للفني إذا وجد سعر نهائي
+          if (finalPrice != null) {
+            await _ref.read(techsRepositoryProvider).incrementEarnings(order.techId!, finalPrice);
           }
-          final incrementResult = await _ref
-              .read(techsRepositoryProvider)
-              .incrementJobCount(order.techId!);
-          return incrementResult.when(
-            left: (failure) => Left(failure),
-            right: (_) => Right(updatedOrder),
-          );
         }
         return Right(updatedOrder);
       },
@@ -130,13 +107,7 @@ class AdminActions {
       left: (failure) => Left(failure),
       right: (updatedOrder) async {
         if (order.techId != null) {
-          final freeTech = await _ref
-              .read(techsRepositoryProvider)
-              .updateTechStatus(order.techId!, TechStatus.available);
-          return freeTech.when(
-            left: (failure) => Left(failure),
-            right: (_) => Right(updatedOrder),
-          );
+          await _ref.read(techsRepositoryProvider).updateTechStatus(order.techId!, TechStatus.available);
         }
         return Right(updatedOrder);
       },
@@ -159,13 +130,9 @@ class AdminActions {
         .updateOrderStatus(order.id, status);
   }
 
-  Future<Either<Failure, Order>> addOrderNotes(
-    String orderId,
-    String notes,
-  ) async {
-    return await _ref
-        .read(ordersRepositoryProvider)
-        .addAdminNotes(orderId, notes);
+  // ... باقي الدوال (addOrderNotes, rateOrder, deleteOrder)
+  Future<Either<Failure, Order>> addOrderNotes(String orderId, String notes) async {
+    return await _ref.read(ordersRepositoryProvider).addAdminNotes(orderId, notes);
   }
 
   Future<Either<Failure, Order>> rateOrder(String orderId, int rating) async {
@@ -173,19 +140,8 @@ class AdminActions {
   }
 
   Future<Either<Failure, void>> deleteOrder(Order order) async {
-    if (AdminBusinessRules.shouldFreeTechOnDelete(order) &&
-        order.techId != null) {
-      final freeTech = await _ref
-          .read(techsRepositoryProvider)
-          .updateTechStatus(order.techId!, TechStatus.available);
-      if (freeTech.isLeft) {
-        return Left(
-          freeTech.when(
-            left: (f) => f,
-            right: (_) => throw StateError('unexpected'),
-          ),
-        );
-      }
+    if (AdminBusinessRules.shouldFreeTechOnDelete(order) && order.techId != null) {
+      await _ref.read(techsRepositoryProvider).updateTechStatus(order.techId!, TechStatus.available);
     }
     return await _ref.read(ordersRepositoryProvider).deleteOrder(order.id);
   }

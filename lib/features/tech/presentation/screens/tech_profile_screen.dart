@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
-import '../../../../shared/widgets/error_widget.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
+import '../../../admin/domain/models/technician.dart';
+import '../../../admin/domain/dtos/technician_dtos.dart';
 
 class TechProfileScreen extends ConsumerWidget {
   const TechProfileScreen({super.key});
@@ -31,113 +32,143 @@ class TechProfileScreen extends ConsumerWidget {
       ),
       body: techAsync.when(
         data: (tech) {
-          if (tech == null) return const Center(child: Text('لم يتم العثور على بيانات الفني'));
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              children: [
-                _buildHeader(tech),
-                const SizedBox(height: AppSpacing.xl),
-                _buildStatsGrid(tech),
-                const SizedBox(height: AppSpacing.xl),
-                _buildInfoSection(tech),
-                const SizedBox(height: AppSpacing.xxl),
-                AppButton(
-                  label: 'تسجيل الخروج',
-                  variant: ButtonVariant.ghost,
-                  onTap: () async {
-                    await Supabase.instance.client.auth.signOut();
-                    if (context.mounted) context.go('/');
-                  },
-                ),
-              ],
-            ),
-          );
+          if (tech == null) return const _NoProfileError();
+          return _ProfileContent(tech: tech);
         },
         loading: () => const LoadingWidget(),
-        error: (err, _) => AppErrorWidget(message: 'حدث خطأ في تحميل البيانات', onRetry: () {}),
+        error: (e, s) => Center(child: Text('خطأ في تحميل البيانات: $e')),
+      ),
+    );
+  }
+}
+
+class _ProfileContent extends ConsumerStatefulWidget {
+  final Technician tech;
+  const _ProfileContent({required this.tech});
+
+  @override
+  ConsumerState<_ProfileContent> createState() => _ProfileContentState();
+}
+
+class _ProfileContentState extends ConsumerState<_ProfileContent> {
+  late TextEditingController _nameController;
+  late TextEditingController _bioController;
+  bool _isEditing = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.tech.name);
+    _bioController = TextEditingController(text: widget.tech.bio);
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() => _isLoading = true);
+    final dto = UpdateTechnicianDto(
+      name: _nameController.text.trim(),
+      bio: _bioController.text.trim(),
+    );
+    
+    final result = await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
+    
+    result.when(
+      left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+      right: (_) {
+        setState(() {
+          _isEditing = false;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث البيانات بنجاح')));
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        children: [
+          _buildAvatar(),
+          const SizedBox(height: AppSpacing.xl),
+          _buildQuickStats(),
+          const SizedBox(height: AppSpacing.xxl),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('البيانات الأساسية', style: AppTextStyles.titleLarge),
+                    IconButton(
+                      icon: Icon(_isEditing ? Icons.close : Icons.edit, size: 20),
+                      onPressed: () => setState(() => _isEditing = !_isEditing),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                _buildField('الاسم', _nameController, Icons.person_outline),
+                const SizedBox(height: AppSpacing.md),
+                _buildField('رقم الهاتف (موثق)', TextEditingController(text: widget.tech.phone), Icons.phone_android, enabled: false),
+                const SizedBox(height: AppSpacing.md),
+                _buildField('نبذة عنك', _bioController, Icons.description_outlined, maxLines: 3),
+                if (_isEditing) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  AppButton(label: 'حفظ التغييرات', onTap: _saveChanges, isLoading: _isLoading),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader(dynamic tech) {
-    return Column(
+  Widget _buildAvatar() {
+    return Stack(
       children: [
         CircleAvatar(
           radius: 50,
-          backgroundColor: AppColors.gold.withValues(alpha: 0.1),
-          backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-          child: tech.photoUrl == null 
-            ? Text(tech.spec.icon, style: const TextStyle(fontSize: 40))
-            : null,
+          backgroundColor: AppColors.gold.withOpacity(0.1),
+          child: Text(widget.tech.spec.icon, style: const TextStyle(fontSize: 40)),
         ),
-        const SizedBox(height: AppSpacing.md),
-        Text(tech.name, style: AppTextStyles.displayMedium),
-        Text(tech.spec.label, style: AppTextStyles.titleLarge.copyWith(color: AppColors.gold)),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.star, color: AppColors.gold, size: 20),
-            const SizedBox(width: 4),
-            Text('${tech.rating}', style: AppTextStyles.headlineMed),
-          ],
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+            child: const Icon(Icons.camera_alt, size: 16, color: Colors.black),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildStatsGrid(dynamic tech) {
+  Widget _buildQuickStats() {
     return Row(
       children: [
-        Expanded(
-          child: _StatCard(
-            label: 'إجمالي الأرباح',
-            value: '${tech.totalEarnings} ج.م',
-            icon: Icons.payments_outlined,
-            color: AppColors.success,
-          ),
-        ),
+        Expanded(child: _StatCard(label: 'الأرباح', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success)),
         const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: _StatCard(
-            label: 'عدد المهام',
-            value: '${tech.totalJobs}',
-            icon: Icons.task_alt,
-            color: AppColors.info,
-          ),
-        ),
+        Expanded(child: _StatCard(label: 'العمليات', value: '${widget.tech.totalJobs}', icon: Icons.task_alt, color: AppColors.info)),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(child: _StatCard(label: 'التقييم', value: '${widget.tech.rating}', icon: Icons.star, color: Colors.amber)),
       ],
     );
   }
 
-  Widget _buildInfoSection(dynamic tech) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _InfoTile(label: 'رقم الهاتف', value: tech.phone, icon: Icons.phone_android),
-          const Divider(height: AppSpacing.xl),
-          _InfoTile(label: 'المنطقة', value: tech.area ?? 'الكل', icon: Icons.location_on_outlined),
-          const Divider(height: AppSpacing.xl),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 18, color: AppColors.textSecondary),
-                  const SizedBox(width: 8),
-                  Text('نبذة تعريفية', style: AppTextStyles.bodyMed),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                tech.bio ?? 'لا يوجد وصف حالياً',
-                style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
-              ),
-            ],
-          ),
-        ],
+  Widget _buildField(String label, TextEditingController controller, IconData icon, {bool enabled = true, int maxLines = 1}) {
+    return TextFormField(
+      controller: controller,
+      enabled: _isEditing && enabled,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: _isEditing && enabled ? null : InputBorder.none,
+        filled: _isEditing && enabled,
       ),
     );
   }
@@ -148,47 +179,37 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-
   const _StatCard({required this.label, required this.value, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      color: color.withValues(alpha: 0.05),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: AppSpacing.sm),
-          Text(label, style: AppTextStyles.labelLarge),
-          Text(value, style: AppTextStyles.headlineMed.copyWith(color: color)),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(value, style: AppTextStyles.titleLarge),
+          Text(label, style: AppTextStyles.labelSmall),
         ],
       ),
     );
   }
 }
 
-class _InfoTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _InfoTile({required this.label, required this.value, required this.icon});
-
+class _NoProfileError extends StatelessWidget {
+  const _NoProfileError();
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
-        const SizedBox(width: AppSpacing.md),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: AppTextStyles.bodyMed),
-            Text(value, style: AppTextStyles.titleLarge),
-          ],
-        ),
-      ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('لم يتم العثور على بيانات فني لهذا الحساب'),
+          const SizedBox(height: 16),
+          AppButton(label: 'إكمال التسجيل', onTap: () => context.go('/tech/register')),
+        ],
+      ),
     );
   }
 }
