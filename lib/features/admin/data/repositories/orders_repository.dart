@@ -33,6 +33,8 @@ abstract class OrdersRepository {
     String orderId,
     OrderStatus status, {
     int? finalPrice,
+    String? techNotes,
+    DateTime? completedAt,
     String? logMessage,
   });
   
@@ -86,8 +88,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
     orderData.remove('updated_at');
     orderData.remove('final_price');
     orderData.remove('admin_notes');
+    orderData.remove('tech_notes');
     orderData.remove('rating');
     orderData.remove('order_logs');
+    orderData.remove('completed_at');
 
     if (orderData['tech_id'] == null ||
         orderData['tech_id'].toString().isEmpty) {
@@ -120,8 +124,6 @@ class SupabaseOrdersRepository implements OrdersRepository {
       final status = updateData['status'];
       if (status is OrderStatus) {
         updateData['status'] = status.label;
-      } else {
-        updateData['status'] = status.toString();
       }
     }
 
@@ -131,7 +133,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .eq('id', id)
         .select(_orderSelect);
         
-    if (response.isEmpty) throw Exception('لا توجد صلاحية لتحديث هذا الطلب أو أنه غير موجود');
+    if (response.isEmpty) throw Exception('الطلب غير موجود');
     return Order.fromJson(response.first);
   }
 
@@ -198,9 +200,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
   Future<Either<Failure, Order>> getOrderById(String id) async {
     try {
       final List data = await _client.from('orders').select(_orderSelect).eq('id', id);
-      if (data.isEmpty) {
-        return Left(DatabaseFailure('الطلب غير موجود.'));
-      }
+      if (data.isEmpty) return Left(DatabaseFailure('الطلب غير موجود'));
       return Right(Order.fromJson(data.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -218,9 +218,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, List<Order>>> getOrdersByStatus(
-    OrderStatus status,
-  ) async {
+  Future<Either<Failure, List<Order>>> getOrdersByStatus(OrderStatus status) async {
     try {
       final response = await _client
           .from('orders')
@@ -273,9 +271,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .eq('id', orderId)
           .select(_orderSelect);
 
-      if (response.isEmpty) {
-        return Left(DatabaseFailure('لم يتم تحديث الطلب.'));
-      }
+      if (response.isEmpty) return Left(DatabaseFailure('لم يتم تحديث الطلب'));
 
       await _client.from('order_logs').insert({
         'order_id': orderId,
@@ -294,13 +290,16 @@ class SupabaseOrdersRepository implements OrdersRepository {
     String orderId,
     OrderStatus status, {
     int? finalPrice,
+    String? techNotes,
+    DateTime? completedAt,
     String? logMessage,
   }) async {
     try {
-      final String statusText = status.label;
-      final Map<String, dynamic> data = {'status': statusText};
+      final Map<String, dynamic> data = {'status': status.label};
       
       if (finalPrice != null) data['final_price'] = finalPrice;
+      if (techNotes != null) data['tech_notes'] = techNotes;
+      if (completedAt != null) data['completed_at'] = completedAt.toIso8601String();
       
       final List response = await _client
           .from('orders')
@@ -323,17 +322,14 @@ class SupabaseOrdersRepository implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, Order>> addAdminNotes(
-    String orderId,
-    String notes,
-  ) async {
+  Future<Either<Failure, Order>> addAdminNotes(String orderId, String notes) async {
     try {
       final List response = await _client
           .from('orders')
           .update({'admin_notes': notes})
           .eq('id', orderId)
           .select(_orderSelect);
-      if (response.isEmpty) return Left(DatabaseFailure('الطلب غير موجود لإضافة الملاحظات.'));
+      if (response.isEmpty) return Left(DatabaseFailure('الطلب غير موجود'));
       return Right(Order.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -351,7 +347,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .update(data)
           .eq('id', orderId)
           .select(_orderSelect);
-      if (response.isEmpty) return Left(DatabaseFailure('الطلب غير موجود لتقييمه.'));
+      if (response.isEmpty) return Left(DatabaseFailure('الطلب غير موجود'));
       return Right(Order.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));

@@ -25,15 +25,12 @@ class TechDashboardScreen extends ConsumerWidget {
 
     return currentTechAsync.when(
       data: (tech) {
-        // حالة 1: الفني سجل دخول بالهاتف لكن لم يملأ بياناته بعد
         if (tech == null) return const _NewTechOnboarding();
         
-        // حالة 2: الفني ملأ بياناته وبانتظار موافقة الأدمن
         if (tech.status == TechStatus.pending) {
-          return const _PendingApprovalScreen();
+          return _PendingApprovalScreen(tech: tech);
         }
 
-        // حالة 3: الفني معتمد (متاح/مشغول/إجازة)
         final ordersAsync = ref.watch(techOrdersStreamProvider(tech.id));
 
         return Scaffold(
@@ -164,7 +161,9 @@ class _NewTechOnboarding extends StatelessWidget {
 }
 
 class _PendingApprovalScreen extends StatelessWidget {
-  const _PendingApprovalScreen();
+  final Technician tech;
+  const _PendingApprovalScreen({required this.tech});
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,15 +178,26 @@ class _PendingApprovalScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.verified_user_outlined, size: 80, color: AppColors.gold),
+              const Icon(Icons.hourglass_empty_rounded, size: 80, color: AppColors.gold),
               const SizedBox(height: 24),
-              Text('طلبك قيد المراجعة', style: AppTextStyles.displayMedium),
+              Text('حسابك قيد المراجعة', style: AppTextStyles.displayMedium),
               const SizedBox(height: 16),
               const Text(
-                'بياناتك الآن لدى الإدارة. سنقوم بالتواصل معك قريباً لتفعيل حسابك على المنصة.',
+                'شكراً لانضمامك. يقوم فريق حرافي حالياً بمراجعة بياناتك لضمان الجودة. يمكنك الضغط على الزر أدناه لتأكيد هويتك عبر واتساب وتسريع العملية.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+              AppButton(
+                label: 'تفعيل الحساب عبر واتساب',
+                variant: ButtonVariant.whatsapp,
+                icon: Icons.chat,
+                onTap: () {
+                  final message = 'السلام عليكم، أنا الفني ${tech.name} (تخصص ${tech.spec.label}) أريد تفعيل حسابي على منصة حرافي برقم ${tech.phone}';
+                  final uri = WhatsAppUtils.buildUri('201014250577', message); // ضع رقم الأدمن هنا
+                  launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+              ),
+              const SizedBox(height: 16),
               AppButton(
                 label: 'العودة للرئيسية',
                 variant: ButtonVariant.ghost,

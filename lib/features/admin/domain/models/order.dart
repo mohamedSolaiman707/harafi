@@ -14,9 +14,11 @@ class Order {
   final OrderStatus status;
   final int? finalPrice;
   final String? adminNotes;
+  final String? techNotes; // تقرير الفني عن العمل
   final int? rating;
   final String? ratingComment;
   final DateTime? estimatedArrival;
+  final DateTime? completedAt; // وقت الإنجاز الفعلي
   final List<OrderLog> logs;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -33,29 +35,26 @@ class Order {
     this.status = OrderStatus.pending,
     this.finalPrice,
     this.adminNotes,
+    this.techNotes,
     this.rating,
     this.ratingComment,
     this.estimatedArrival,
+    this.completedAt,
     this.logs = const [],
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    // التحقق من نوع الخدمة ودعم العربي والإنجليزي
     final serviceValue = json['service']?.toString() ?? '';
     final service = ServiceType.values.firstWhere(
       (e) => e.name == serviceValue || e.label == serviceValue,
       orElse: () => ServiceType.plumbing,
     );
 
-    // منطق ذكي لقراءة الحالة من قاعدة البيانات (يدعم كل القيم في صورتك)
     final statusValue = json['status']?.toString() ?? '';
     final status = OrderStatus.values.firstWhere(
-      (e) => e.name == statusValue || 
-             e.label == statusValue || 
-             (statusValue == 'جاري' && e == OrderStatus.pending) ||
-             (statusValue == 'on_the_way' && e == OrderStatus.onTheWay),
+      (e) => e.name == statusValue || e.label == statusValue,
       orElse: () => OrderStatus.pending,
     );
 
@@ -71,10 +70,14 @@ class Order {
       status: status,
       finalPrice: json['final_price'] as int?,
       adminNotes: json['admin_notes'],
+      techNotes: json['tech_notes'],
       rating: json['rating'] as int?,
       ratingComment: json['rating_comment'],
       estimatedArrival: json['estimated_arrival'] != null 
           ? DateTime.parse(json['estimated_arrival']) 
+          : null,
+      completedAt: json['completed_at'] != null 
+          ? DateTime.parse(json['completed_at']) 
           : null,
       logs: (json['order_logs'] as List?)
               ?.map((e) => OrderLog.fromJson(e))
@@ -88,16 +91,18 @@ class Order {
   Map<String, dynamic> toJson() => {
     'client_name': clientName,
     'client_phone': clientPhone,
-    'service': service.label, // تخزين الخدمة بالعربي كما في DB
+    'service': service.label,
     'area': area,
     'description': description,
     'tech_id': techId,
-    'status': status.label, // تخزين الحالة بالعربي ليتوافق مع Enum في Supabase
+    'status': status.label,
     'final_price': finalPrice,
     'admin_notes': adminNotes,
+    'tech_notes': techNotes,
     'rating': rating,
     'rating_comment': ratingComment,
     'estimated_arrival': estimatedArrival?.toIso8601String(),
+    'completed_at': completedAt?.toIso8601String(),
   };
 
   Order copyWith({
@@ -112,9 +117,11 @@ class Order {
     OrderStatus? status,
     int? finalPrice,
     String? adminNotes,
+    String? techNotes,
     int? rating,
     String? ratingComment,
     DateTime? estimatedArrival,
+    DateTime? completedAt,
     List<OrderLog>? logs,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -131,9 +138,11 @@ class Order {
       status: status ?? this.status,
       finalPrice: finalPrice ?? this.finalPrice,
       adminNotes: adminNotes ?? this.adminNotes,
+      techNotes: techNotes ?? this.techNotes,
       rating: rating ?? this.rating,
       ratingComment: ratingComment ?? this.ratingComment,
       estimatedArrival: estimatedArrival ?? this.estimatedArrival,
+      completedAt: completedAt ?? this.completedAt,
       logs: logs ?? this.logs,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

@@ -20,6 +20,8 @@ class TechRegisterScreen extends ConsumerStatefulWidget {
 class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _bioController = TextEditingController();
   ServiceType? _selectedSpec;
   bool _isLoading = false;
@@ -27,17 +29,13 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
     _bioController.dispose();
     super.dispose();
   }
 
-  Future<void> _submitRequest() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      context.go('/tech/login');
-      return;
-    }
-
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _selectedSpec == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يرجى ملء جميع البيانات واختيار التخصص')),
@@ -46,37 +44,61 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     }
 
     setState(() => _isLoading = true);
+    try {
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      String userId;
 
-    // النظام المظبوط: نربط حساب الفني بالـ ID والرقم الموثقين من Auth
-    final dto = CreateTechnicianDto(
-      id: user.id, 
-      name: _nameController.text.trim(),
-      phone: user.phone ?? '', // الهاتف موثق مسبقاً عبر OTP
-      spec: _selectedSpec!,
-      bio: _bioController.text.trim(),
-    );
-
-    final result = await ref.read(techsRepositoryProvider).addTechnician(dto);
-
-    result.when(
-      left: (failure) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: ${failure.message}')),
+      if (currentUser == null) {
+        // حالة فني جديد تماماً: إنشاء حساب Auth أولاً
+        final phone = _phoneController.text.trim();
+        final dummyEmail = '$phone@harafi.com';
+        final authResponse = await Supabase.instance.client.auth.signUp(
+          email: dummyEmail,
+          password: _passwordController.text.trim(),
         );
-      },
-      right: (tech) {
-        if (mounted) context.go('/tech/dashboard');
-      },
-    );
+        if (authResponse.user == null) throw 'فشل إنشاء الحساب';
+        userId = authResponse.user!.id;
+      } else {
+        // حالة فني مسجل دخول بالهاتف لكنه يكمل بياناته
+        userId = currentUser.id;
+      }
+
+      // إنشاء ملف الفني في قاعدة البيانات
+      final dto = CreateTechnicianDto(
+        id: userId,
+        name: _nameController.text.trim(),
+        phone: currentUser?.phone ?? _phoneController.text.trim(),
+        spec: _selectedSpec!,
+        bio: _bioController.text.trim(),
+      );
+
+      final result = await ref.read(techsRepositoryProvider).addTechnician(dto);
+      
+      result.when(
+        left: (failure) => throw failure.message,
+        right: (tech) {
+          if (mounted) {
+            ref.invalidate(currentTechnicianProvider);
+            context.go('/tech/dashboard');
+          }
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خطأ: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
+    final isAlreadyLoggedIn = user != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('إكمال ملف الفني')),
+      appBar: AppBar(title: Text(isAlreadyLoggedIn ? 'إكمال الملف المهني' : 'تسجيل فني جديد')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -86,13 +108,16 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  const Icon(Icons.verified_user_outlined, size: 64, color: AppColors.gold),
+                  Icon(
+                    isAlreadyLoggedIn ? Icons.badge_outlined : Icons.person_add_alt_1_outlined,
+                    size: 64, 
+                    color: AppColors.gold
+                  ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text('خطوة واحدة وتكون معنا', style: AppTextStyles.headlineMed),
-                  const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'رقم الهاتف الموثق: ${user?.phone ?? ""}',
-                    style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+                    isAlreadyLoggedIn ? 'خطوة واحدة وتكون معنا' : 'انضم لشبكة حرفي المحترفة',
+                    style: AppTextStyles.headlineMed,
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   AppCard(
@@ -102,14 +127,32 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         AppTextField(
                           label: 'الاسم الكامل',
                           controller: _nameController,
-                          hint: 'اسمك كما في البطاقة',
+                          hint: 'أدخل اسمك الثلاثي',
                           prefixIcon: Icons.person_outline,
                           validator: (v) => v!.isEmpty ? 'مطلوب' : null,
                         ),
-                        const SizedBox(height: AppSpacing.lg),
+                        if (!isAlreadyLoggedIn) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          AppTextField(
+                            label: 'رقم الهاتف',
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            prefixIcon: Icons.phone_android,
+                            validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          AppTextField(
+                            label: 'كلمة المرور',
+                            controller: _passwordController,
+                            isPassword: true,
+                            prefixIcon: Icons.lock_outline,
+                            validator: (v) => v!.length < 6 ? 'كلمة المرور ضعيفة' : null,
+                          ),
+                        ],
+                        const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<ServiceType>(
                           decoration: const InputDecoration(
-                            labelText: 'التخصص الأساسي',
+                            labelText: 'التخصص',
                             prefixIcon: Icon(Icons.build_circle_outlined),
                           ),
                           dropdownColor: AppColors.surface2,
@@ -120,17 +163,17 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           onChanged: (val) => setState(() => _selectedSpec = val),
                           validator: (v) => v == null ? 'يرجى اختيار التخصص' : null,
                         ),
-                        const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.md),
                         AppTextField(
                           label: 'نبذة عن خبرتك',
                           controller: _bioController,
-                          hint: 'مثال: فني كهرباء متخصص في التمديدات المنزلية',
+                          hint: 'مثال: متخصص في صيانة التكييفات المركزية',
                           maxLines: 3,
                         ),
                         const SizedBox(height: AppSpacing.xxl),
                         AppButton(
-                          label: 'حفظ وإرسال للمراجعة',
-                          onTap: _submitRequest,
+                          label: isAlreadyLoggedIn ? 'حفظ وإرسال للمراجعة' : 'إنشاء الحساب وانضمام',
+                          onTap: _submit,
                           isLoading: _isLoading,
                         ),
                       ],

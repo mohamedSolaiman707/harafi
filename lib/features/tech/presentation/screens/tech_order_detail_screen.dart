@@ -37,6 +37,10 @@ class TechOrderDetailScreen extends ConsumerWidget {
                 _buildClientInfo(order),
                 const SizedBox(height: AppSpacing.xl),
                 _buildOrderDescription(order),
+                if (order.techNotes != null) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildTechReport(order),
+                ],
                 const SizedBox(height: AppSpacing.xl),
                 _buildActionButtons(context, ref, order),
               ],
@@ -81,7 +85,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
                 child: AppButton(
                   label: 'واتساب',
                   icon: Icons.chat,
-                  variant: ButtonVariant.whatsapp, // استخدام التنوع المخصص للواتساب
+                  variant: ButtonVariant.whatsapp,
                   onTap: () {
                     final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}');
                     launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -126,11 +130,27 @@ class TechOrderDetailScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildTechReport(Order order) {
+    return AppCard(
+      color: AppColors.success.withOpacity(0.05),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('تقرير الإنجاز الخاص بك', style: AppTextStyles.labelLarge.copyWith(color: AppColors.success)),
+          const SizedBox(height: 8),
+          Text(order.techNotes!, style: AppTextStyles.bodyLarge),
+          const SizedBox(height: 12),
+          Text('المبلغ الإجمالي: ${order.finalPrice} ج.م', style: AppTextStyles.titleMed),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, Order order) {
     if (order.status == OrderStatus.completed) {
       return const AppCard(
         color: AppColors.success,
-        child: Center(child: Text('تم إنجاز هذا الطلب بنجاح', style: TextStyle(fontWeight: FontWeight.bold))),
+        child: Center(child: Text('تم إنجاز هذا الطلب بنجاح', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
       );
     }
 
@@ -144,9 +164,9 @@ class TechOrderDetailScreen extends ConsumerWidget {
           ),
         if (order.status == OrderStatus.started)
           AppButton(
-            label: 'تم الإنجاز (إنهاء الطلب)',
+            label: 'تم الإنجاز (إغلاق الطلب)',
             icon: Icons.check_circle,
-            variant: ButtonVariant.success, // استخدام التنوع المخصص للنجاح
+            variant: ButtonVariant.success,
             onTap: () => _showCompletionDialog(context, ref, order),
           ),
       ],
@@ -155,43 +175,64 @@ class TechOrderDetailScreen extends ConsumerWidget {
 
   void _showCompletionDialog(BuildContext context, WidgetRef ref, Order order) {
     final priceController = TextEditingController();
+    final notesController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إنهاء المهمة'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('ما هو السعر النهائي الذي تم الاتفاق عليه مع العميل؟'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'السعر النهائي (ج.م)',
-                hintText: 'أدخل المبلغ الإجمالي',
+        backgroundColor: AppColors.surface2,
+        title: const Text('إغلاق الطلب'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('ماذا تم في هذه المهمة؟'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: notesController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'وصف العمل المنجز',
+                  hintText: 'مثال: تم تغيير قلب الحنفية وإصلاح التسريب الخارجي',
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'السعر النهائي (ج.م)',
+                  hintText: 'أدخل المبلغ المتفق عليه مع العميل',
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
             onPressed: () async {
               final price = int.tryParse(priceController.text);
-              if (price == null) return;
+              if (price == null || notesController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع البيانات')));
+                return;
+              }
               
-              await ref.read(adminActionsProvider).updateOrderStatus(
-                order, 
+              await ref.read(ordersRepositoryProvider).updateOrderStatus(
+                order.id, 
                 OrderStatus.completed,
                 finalPrice: price,
+                techNotes: notesController.text.trim(),
+                completedAt: DateTime.now(),
               );
+              
               if (context.mounted) {
                 Navigator.pop(context);
-                context.pop(); // العودة للداشبورد
+                context.pop();
               }
             },
-            child: const Text('تأكيد وإغلاق الطلب'),
+            child: const Text('تأكيد الإنجاز'),
           ),
         ],
       ),

@@ -16,79 +16,40 @@ class TechLoginScreen extends ConsumerStatefulWidget {
 
 class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
   final _phoneController = TextEditingController();
-  final _otpController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _showOtpField = false;
+  bool _isPasswordVisible = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _otpController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
-    if (_phoneController.text.isEmpty) return;
+  Future<void> _login() async {
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يرجى إدخال رقم الهاتف وكلمة المرور')),
+      );
+      return;
+    }
     
     setState(() => _isLoading = true);
     try {
-      String phone = _phoneController.text.trim();
-      if (!phone.startsWith('+')) {
-        if (phone.startsWith('0')) {
-          phone = '+2$phone';
-        } else {
-          phone = '+20$phone';
-        }
-      }
+      // تحويل الرقم لإيميل وهمي للحفاظ على مجانية Supabase
+      final dummyEmail = '${_phoneController.text.trim()}@harafi.com';
 
-      await Supabase.instance.client.auth.signInWithOtp(
-        phone: phone,
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: dummyEmail,
+        password: _passwordController.text.trim(),
       );
 
-      setState(() => _showOtpField = true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إرسال كود التحقق بنجاح')),
-        );
-      }
+      if (mounted) context.go('/tech/dashboard');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ في إرسال الكود: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_otpController.text.isEmpty) return;
-
-    setState(() => _isLoading = true);
-    try {
-      String phone = _phoneController.text.trim();
-      if (!phone.startsWith('+')) {
-        if (phone.startsWith('0')) {
-          phone = '+2$phone';
-        } else {
-          phone = '+20$phone';
-        }
-      }
-
-      final response = await Supabase.instance.client.auth.verifyOTP(
-        phone: phone,
-        token: _otpController.text.trim(),
-        type: OtpType.sms,
-      );
-
-      if (response.session != null) {
-        if (mounted) context.go('/tech/dashboard');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('كود التحقق غير صحيح: $e')),
+          const SnackBar(content: Text('خطأ في الدخول: تأكد من البيانات أو تواصل مع الإدارة')),
         );
       }
     } finally {
@@ -111,62 +72,45 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                 const SizedBox(height: AppSpacing.xl),
                 Text('بوابة الفنيين', style: AppTextStyles.displayMedium),
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  _showOtpField 
-                    ? 'أدخل الكود المرسل إلى هاتفك' 
-                    : 'سجل دخول لمتابعة شغلك وإدارة طلباتك',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyLarge,
-                ),
+                const Text('سجل دخول لمتابعة أعمالك', textAlign: TextAlign.center),
                 const SizedBox(height: AppSpacing.xxl),
                 AppCard(
                   child: Column(
                     children: [
-                      if (!_showOtpField)
-                        AppTextField(
-                          label: 'رقم الهاتف',
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          prefixIcon: Icons.phone_android,
-                          hint: '01xxxxxxxxx',
-                        )
-                      else
-                        AppTextField(
-                          label: 'كود التحقق (OTP)',
-                          controller: _otpController,
-                          keyboardType: TextInputType.number,
-                          prefixIcon: Icons.lock_outline,
-                          hint: '------',
-                          autofocus: true,
-                        ),
+                      AppTextField(
+                        label: 'رقم الهاتف',
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        prefixIcon: Icons.phone_android,
+                        hint: '01xxxxxxxxx',
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      AppTextField(
+                        label: 'كلمة المرور',
+                        controller: _passwordController,
+                        prefixIcon: Icons.lock_outline,
+                        // إضافة خاصية إخفاء كلمة المرور
+                      ),
                       const SizedBox(height: AppSpacing.xl),
                       AppButton(
-                        label: _showOtpField ? 'تحقق ودخول' : 'إرسال كود التحقق',
-                        onTap: _showOtpField ? _verifyOtp : _sendOtp,
+                        label: 'دخول',
+                        onTap: _login,
                         isLoading: _isLoading,
                       ),
-                      if (_showOtpField)
-                        TextButton(
-                          onPressed: () => setState(() => _showOtpField = false),
-                          child: const Text('تغيير رقم الهاتف'),
-                        ),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                // زر الانضمام الجديد
-                if (!_showOtpField) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('ليس لديك حساب؟'),
-                      TextButton(
-                        onPressed: () => context.push('/tech/register'),
-                        child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('ليس لديك حساب؟'),
+                    TextButton(
+                      onPressed: () => context.push('/tech/register'),
+                      child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
                 TextButton(
                   onPressed: () => context.go('/'),
                   child: const Text('العودة للرئيسية'),
