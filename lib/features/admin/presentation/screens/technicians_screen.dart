@@ -124,12 +124,12 @@ class TechniciansScreen extends ConsumerWidget {
                   controller: phoneController,
                   decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone)),
                   keyboardType: TextInputType.phone,
-                  enabled: technician == null, // لا نغير الرقم الموثق إلا من الـ Auth
+                  enabled: technician == null, // لا نغير الرقم الموثق إلا من خلال نظام الدخول
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<ServiceType>(
                   value: selectedSpec,
-                  decoration: const InputDecoration(labelText: 'التخصص', prefixIcon: Icon(Icons.build)),
+                  decoration: const InputDecoration(labelText: 'التخصص المهني', prefixIcon: Icon(Icons.build)),
                   items: ServiceType.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
                   onChanged: (v) => selectedSpec = v!,
                 ),
@@ -147,7 +147,7 @@ class TechniciansScreen extends ConsumerWidget {
                     Expanded(
                       child: DropdownButtonFormField<TechStatus>(
                         value: selectedStatus,
-                        decoration: const InputDecoration(labelText: 'الحالة'),
+                        decoration: const InputDecoration(labelText: 'الحالة الآن'),
                         items: TechStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
                         onChanged: (v) => selectedStatus = v!,
                       ),
@@ -156,11 +156,16 @@ class TechniciansScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
+                  controller: areaController,
+                  decoration: const InputDecoration(labelText: 'منطقة العمل (اختياري)', prefixIcon: Icon(Icons.location_on)),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
                   controller: bioController,
                   decoration: const InputDecoration(labelText: 'نبذة عن الخبرة'),
-                  maxLines: 2,
+                  maxLines: 3,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: () async {
                     if (!formKey.currentState!.validate()) return;
@@ -171,21 +176,31 @@ class TechniciansScreen extends ConsumerWidget {
                       visitPrice: int.tryParse(visitPriceController.text),
                       area: areaController.text.trim(),
                       bio: bioController.text.trim(),
-                      status: selectedStatus,
+                      status: selectedStatus == TechStatus.pending ? TechStatus.available : selectedStatus,
                     );
 
-                    final result = await ref.read(adminActionsProvider).updateTechnician(technician!.id, dto);
+                    final result = technician == null 
+                      ? await ref.read(adminActionsProvider).addTechnician(CreateTechnicianDto(
+                          name: nameController.text.trim(),
+                          phone: phoneController.text.trim(),
+                          spec: selectedSpec,
+                          bio: bioController.text.trim(),
+                          visitPrice: int.tryParse(visitPriceController.text) ?? 50,
+                          area: areaController.text.trim(),
+                        ))
+                      : await ref.read(adminActionsProvider).updateTechnician(technician.id, dto);
+
                     if (context.mounted) {
                       result.when(
                         left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
                         right: (_) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث البيانات بنجاح')));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت العملية بنجاح')));
                         },
                       );
                     }
                   },
-                  child: Text(technician?.status == TechStatus.pending ? 'اعتماد وتفعيل الحساب' : 'حفظ التغييرات'),
+                  child: Text(technician?.status == TechStatus.pending ? 'اعتماد الفني وتفعيل حسابه' : 'حفظ التغييرات'),
                 ),
                 const SizedBox(height: 16),
               ],

@@ -40,18 +40,24 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
 
   @override
   Future<List<Technician>> getAll() async {
-    final data = await _client
-        .from('technicians')
-        .select()
-        .order('name', ascending: true);
-    return (data as List).map((e) => Technician.fromJson(e)).toList();
+    try {
+      final data = await _client
+          .from('technicians')
+          .select()
+          .order('name', ascending: true);
+      return (data as List).map((e) => Technician.fromJson(e)).toList();
+    } catch (e) {
+      print('Error in TechniciansRepository.getAll: $e');
+      // العودة بقائمة فارغة بدلاً من التسبب في انهيار التطبيق
+      return [];
+    }
   }
 
   @override
   Future<Technician> create(Technician tech) async {
     final List data = await _client
         .from('technicians')
-        .upsert(tech.toJson()) // تغيير insert إلى upsert
+        .upsert(tech.toJson())
         .select();
     if (data.isEmpty) throw Exception('فشل إنشاء الفني');
     return Technician.fromJson(data.first);
@@ -75,11 +81,15 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
 
   @override
   Stream<List<Technician>> watchAll() {
+    // نظام البث المباشر المظبوط: التعامل مع الأخطاء وإعادة المحاولة
     return _client
         .from('technicians')
         .stream(primaryKey: ['id'])
-        .order('name', ascending: true)
-        .map((data) => data.map((e) => Technician.fromJson(e)).toList());
+        .asyncMap((_) => getAll())
+        .handleError((error) {
+          print('Realtime Stream Error (Technicians): $error');
+          return <Technician>[];
+        });
   }
 
   @override
@@ -87,7 +97,6 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
     CreateTechnicianDto dto,
   ) async {
     try {
-      // استخدام upsert لضمان عدم حدوث خطأ Duplicate Key
       final List data = await _client
           .from('technicians')
           .upsert(dto.toJson())

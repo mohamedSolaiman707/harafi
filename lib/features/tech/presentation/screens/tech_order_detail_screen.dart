@@ -85,7 +85,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
                 child: AppButton(
                   label: 'واتساب',
                   icon: Icons.chat,
-                  variant: ButtonVariant.whatsapp,
+                  variant: ButtonVariant.whatsapp, // تم التغيير هنا من color إلى variant
                   onTap: () {
                     final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}');
                     launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -132,7 +132,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
 
   Widget _buildTechReport(Order order) {
     return AppCard(
-      color: AppColors.success.withOpacity(0.05),
+      color: AppColors.success.withValues(alpha: 0.05),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -166,7 +166,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
           AppButton(
             label: 'تم الإنجاز (إغلاق الطلب)',
             icon: Icons.check_circle,
-            variant: ButtonVariant.success,
+            variant: ButtonVariant.success, // تم التغيير هنا من color إلى variant
             onTap: () => _showCompletionDialog(context, ref, order),
           ),
       ],

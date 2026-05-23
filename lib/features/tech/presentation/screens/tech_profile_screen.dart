@@ -93,7 +93,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   Future<void> _updateProfile() async {
     setState(() => _isLoading = true);
     
-    // تحديث البيانات الأساسية
     final dto = UpdateTechnicianDto(
       name: _nameController.text.trim(),
       bio: _bioController.text.trim(),
@@ -104,7 +103,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
       dto,
     );
 
-    // تحديث كلمة المرور إذا تم إدخالها
     if (_passwordController.text.isNotEmpty) {
       await Supabase.instance.client.auth.updateUser(
         UserAttributes(password: _passwordController.text.trim()),
@@ -153,7 +151,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
                   label: 'الاسم الكامل',
                   controller: _nameController,
                   prefixIcon: Icons.person_outline,
-                  autofocus: false, // منع الفوكس التلقائي
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppTextField(
@@ -229,9 +226,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.info.withOpacity(0.05),
+        color: AppColors.info.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.info.withOpacity(0.2)),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -262,7 +259,7 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       child: Column(
         children: [
-          Icon(icon, color: color.withOpacity(0.8), size: 24),
+          Icon(icon, color: color.withValues(alpha: 0.8), size: 24),
           const SizedBox(height: 8),
           Text(value, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),

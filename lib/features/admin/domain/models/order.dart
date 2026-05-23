@@ -14,11 +14,11 @@ class Order {
   final OrderStatus status;
   final int? finalPrice;
   final String? adminNotes;
-  final String? techNotes; // تقرير الفني عن العمل
+  final String? techNotes;
   final int? rating;
   final String? ratingComment;
   final DateTime? estimatedArrival;
-  final DateTime? completedAt; // وقت الإنجاز الفعلي
+  final DateTime? completedAt;
   final List<OrderLog> logs;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -46,45 +46,44 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
+    // معالجة نوع الخدمة (يدعم العربي والإنجليزي)
     final serviceValue = json['service']?.toString() ?? '';
     final service = ServiceType.values.firstWhere(
-      (e) => e.name == serviceValue || e.label == serviceValue,
+      (e) => e.label == serviceValue || e.name == serviceValue,
       orElse: () => ServiceType.plumbing,
     );
 
+    // معالجة الحالة (يدعم كل الصيغ الممكنة)
     final statusValue = json['status']?.toString() ?? '';
     final status = OrderStatus.values.firstWhere(
-      (e) => e.name == statusValue || e.label == statusValue,
+      (e) => e.label == statusValue || 
+             e.name == statusValue || 
+             (statusValue == 'pending' && e == OrderStatus.pending),
       orElse: () => OrderStatus.pending,
     );
 
     return Order(
       id: json['id']?.toString() ?? '',
       trackingCode: json['tracking_code']?.toString() ?? '',
-      clientName: json['client_name']?.toString() ?? '',
+      clientName: json['client_name']?.toString() ?? 'عميل غير معروف',
       clientPhone: json['client_phone']?.toString() ?? '',
       service: service,
-      area: json['area'],
-      description: json['description'],
+      area: json['area']?.toString(),
+      description: json['description']?.toString(),
       techId: json['tech_id']?.toString(),
       status: status,
-      finalPrice: json['final_price'] as int?,
-      adminNotes: json['admin_notes'],
-      techNotes: json['tech_notes'],
-      rating: json['rating'] as int?,
-      ratingComment: json['rating_comment'],
-      estimatedArrival: json['estimated_arrival'] != null 
-          ? DateTime.parse(json['estimated_arrival']) 
-          : null,
-      completedAt: json['completed_at'] != null 
-          ? DateTime.parse(json['completed_at']) 
-          : null,
+      finalPrice: (json['final_price'] as num?)?.toInt(),
+      adminNotes: json['admin_notes']?.toString(),
+      techNotes: json['tech_notes']?.toString(),
+      rating: (json['rating'] as num?)?.toInt(),
+      ratingComment: json['rating_comment']?.toString(),
+      estimatedArrival: json['estimated_arrival'] != null ? DateTime.tryParse(json['estimated_arrival'].toString()) : null,
+      completedAt: json['completed_at'] != null ? DateTime.tryParse(json['completed_at'].toString()) : null,
       logs: (json['order_logs'] as List?)
               ?.map((e) => OrderLog.fromJson(e))
-              .toList() ?? 
-          [],
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updated_at'] ?? DateTime.now().toIso8601String()),
+              .toList() ?? [],
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 

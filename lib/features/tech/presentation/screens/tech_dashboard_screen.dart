@@ -44,13 +44,22 @@ class TechDashboardScreen extends ConsumerWidget {
             ],
           ),
           body: RefreshIndicator(
-            onRefresh: () async => ref.invalidate(techOrdersStreamProvider(tech.id)),
+            onRefresh: () async {
+              ref.invalidate(currentTechnicianProvider);
+              ref.invalidate(techOrdersStreamProvider(tech.id));
+            },
             child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: _TechStatusCard(tech: tech),
+                    child: Column(
+                      children: [
+                        _TechStatusCard(tech: tech),
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildFinancialSummary(tech),
+                      ],
+                    ),
                   ),
                 ),
                 SliverPadding(
@@ -59,7 +68,7 @@ class TechDashboardScreen extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('المهام الحالية', style: AppTextStyles.headlineMed),
+                        Text('المهام المطلوبة', style: AppTextStyles.headlineMed),
                         _buildBadge(ref, tech.id),
                       ],
                     ),
@@ -74,6 +83,40 @@ class TechDashboardScreen extends ConsumerWidget {
       },
       loading: () => const Scaffold(body: LoadingWidget()),
       error: (err, stack) => Scaffold(body: AppErrorWidget(message: 'خطأ في تحميل البيانات', onRetry: () {})),
+    );
+  }
+
+  Widget _buildFinancialSummary(Technician tech) {
+    return Row(
+      children: [
+        Expanded(
+          child: AppCard(
+            color: AppColors.success.withValues(alpha: 0.05),
+            child: Column(
+              children: [
+                const Icon(Icons.account_balance_wallet_outlined, color: AppColors.success, size: 24),
+                const SizedBox(height: 8),
+                Text('${tech.totalEarnings} ج.م', style: AppTextStyles.headlineMed.copyWith(color: AppColors.success)),
+                 Text('إجمالي الأرباح', style: AppTextStyles.labelMed),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: AppCard(
+            color: AppColors.info.withValues(alpha: 0.05),
+            child: Column(
+              children: [
+                const Icon(Icons.assignment_turned_in_outlined, color: AppColors.info, size: 24),
+                const SizedBox(height: 8),
+                Text('${tech.totalJobs}', style: AppTextStyles.headlineMed.copyWith(color: AppColors.info)),
+                 Text('مهام مكتملة', style: AppTextStyles.labelMed),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -193,7 +236,7 @@ class _PendingApprovalScreen extends StatelessWidget {
                 icon: Icons.chat,
                 onTap: () {
                   final message = 'السلام عليكم، أنا الفني ${tech.name} (تخصص ${tech.spec.label}) أريد تفعيل حسابي على منصة حرافي برقم ${tech.phone}';
-                  final uri = WhatsAppUtils.buildUri('201014250577', message); // ضع رقم الأدمن هنا
+                  final uri = WhatsAppUtils.buildUri('201014250577', message); 
                   launchUrl(uri, mode: LaunchMode.externalApplication);
                 },
               ),
@@ -220,12 +263,12 @@ class _TechStatusCard extends ConsumerWidget {
     final isAvailable = tech.status == TechStatus.available;
 
     return AppCard(
-      color: isAvailable ? AppColors.gold.withOpacity(0.05) : AppColors.surface2,
+      color: isAvailable ? AppColors.gold.withValues(alpha: 0.05) : AppColors.surface2,
       child: Row(
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: isAvailable ? AppColors.success.withOpacity(0.1) : AppColors.textMuted.withOpacity(0.1),
+            backgroundColor: isAvailable ? AppColors.success.withValues(alpha: 0.1) : AppColors.textMuted.withValues(alpha: 0.1),
             child: Icon(
               isAvailable ? Icons.check_circle : Icons.pause_circle_filled,
               color: isAvailable ? AppColors.success : AppColors.textMuted,
@@ -335,7 +378,7 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color, size: 20),

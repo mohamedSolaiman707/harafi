@@ -11,39 +11,29 @@ final ordersRepositoryProvider = Provider<OrdersRepository>((ref) {
   return SupabaseOrdersRepository(Supabase.instance.client);
 });
 
-final ordersProvider = FutureProvider<List<Order>>((ref) {
-  return ref.watch(ordersRepositoryProvider).getAll();
-});
-
 final ordersStreamProvider = StreamProvider<List<Order>>((ref) {
   return ref.watch(ordersRepositoryProvider).watchOrders();
 });
 
-// Provider خاص بطلبات الفني الحالي
+// المزود المفقود الذي يراقب طلبات فني محدد فقط
 final techOrdersStreamProvider = StreamProvider.family<List<Order>, String>((ref, techId) {
   return ref.watch(ordersRepositoryProvider).watchTechOrders(techId);
 });
 
-final ordersByStatusProvider = Provider.family<List<Order>, OrderStatus>((
-  ref,
-  status,
-) {
-  final orders = ref.watch(ordersProvider).valueOrNull ?? [];
-  return orders.where((o) => o.status == status).toList();
+// لضمان التوافق مع الكود القديم
+final ordersProvider = FutureProvider<List<Order>>((ref) {
+  return ref.watch(ordersRepositoryProvider).getAll();
 });
 
 final dashboardStatsProvider = Provider<DashboardStats>((ref) {
-  final orders = ref.watch(ordersProvider).valueOrNull ?? [];
-  final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
+  final orders = ref.watch(ordersStreamProvider).valueOrNull ?? [];
+  final techs = ref.watch(techsStreamProvider).valueOrNull ?? [];
+  
   return DashboardStats(
     totalOrders: orders.length,
     pendingOrders: orders.where((o) => o.status == OrderStatus.pending).length,
-    completedOrders: orders
-        .where((o) => o.status == OrderStatus.completed)
-        .length,
-    cancelledOrders: orders
-        .where((o) => o.status == OrderStatus.cancelled)
-        .length,
+    completedOrders: orders.where((o) => o.status == OrderStatus.completed).length,
+    cancelledOrders: orders.where((o) => o.status == OrderStatus.cancelled).length,
     totalTechs: techs.length,
     availableTechs: techs.where((t) => t.status == TechStatus.available).length,
     busyTechs: techs.where((t) => t.status == TechStatus.busy).length,
