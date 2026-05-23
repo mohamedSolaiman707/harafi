@@ -190,7 +190,7 @@ class _StatCard extends StatelessWidget {
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 8),
           Text(value, style: AppTextStyles.titleLarge),
-          Text(label, style: AppTextStyles.labelSmall),
+          Text(label, style: AppTextStyles.labelMed),
         ],
       ),
     );
