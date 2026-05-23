@@ -47,7 +47,6 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .order('name', ascending: true);
       return (data as List).map((e) => Technician.fromJson(e)).toList();
     } catch (e) {
-      print('Error in TechniciansRepository.getAll: $e');
       return [];
     }
   }
@@ -64,12 +63,23 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
 
   @override
   Future<Technician> update(String id, Map<String, dynamic> data) async {
-    final Map<String, dynamic> updateData = Map<String, dynamic>.from(data);
-    updateData['id'] = id;
+    // محاولة التحديث بالـ ID، وإذا فشل نحاول برقم الهاتف (لأن الـ ID قد يتغير أثناء التسجيل)
     final List response = await _client
         .from('technicians')
-        .upsert(updateData)
+        .update(data)
+        .eq('id', id)
         .select();
+    
+    if (response.isEmpty && data.containsKey('phone')) {
+       final List retryResponse = await _client
+          .from('technicians')
+          .update(data)
+          .eq('phone', data['phone'])
+          .select();
+       if (retryResponse.isEmpty) throw Exception('الفني غير موجود');
+       return Technician.fromJson(retryResponse.first);
+    }
+    
     if (response.isEmpty) throw Exception('الفني غير موجود');
     return Technician.fromJson(response.first);
   }
@@ -85,10 +95,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
         .from('technicians')
         .stream(primaryKey: ['id'])
         .asyncMap((_) => getAll())
-        .handleError((error) {
-          print('Realtime Stream Error (Technicians): $error');
-          return <Technician>[];
-        });
+        .handleError((_) => <Technician>[]);
   }
 
   @override
@@ -120,10 +127,7 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   @override
   Future<Either<Failure, Technician>> getTechnicianById(String id) async {
     try {
-      final List response = await _client
-          .from('technicians')
-          .select()
-          .eq('id', id);
+      final List response = await _client.from('technicians').select().eq('id', id);
       if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود'));
       return Right(Technician.fromJson(response.first));
     } catch (error) {
@@ -132,27 +136,17 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   }
 
   @override
-  Future<Either<Failure, List<Technician>>> getTechniciansBySpec(
-    ServiceType spec,
-  ) async {
+  Future<Either<Failure, List<Technician>>> getTechniciansBySpec(ServiceType spec) async {
     try {
-      final response = await _client
-          .from('technicians')
-          .select()
-          .eq('spec', spec.label)
-          .order('name', ascending: true);
-      return Right(
-        (response as List).map((e) => Technician.fromJson(e)).toList(),
-      );
+      final response = await _client.from('technicians').select().eq('spec', spec.label);
+      return Right((response as List).map((e) => Technician.fromJson(e)).toList());
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
     }
   }
 
   @override
-  Stream<List<Technician>> watchTechnicians() {
-    return watchAll();
-  }
+  Stream<List<Technician>> watchTechnicians() => watchAll();
 
   @override
   Future<Either<Failure, Technician>> updateTechnician(
@@ -161,14 +155,24 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   ) async {
     try {
       final Map<String, dynamic> data = dto.toJson();
-      data['id'] = id; // إضافة المعرف لضمان التحديث الصحيح عبر upsert
-
-      final List response = await _client
+      
+      // محاولة التحديث بالـ ID
+      List response = await _client
           .from('technicians')
-          .upsert(data)
+          .update(data)
+          .eq('id', id)
           .select();
       
-      if (response.isEmpty) return Left(DatabaseFailure('تعذر تحديث بيانات الفني. تأكد من صلاحيات النظام.'));
+      // إذا فشل (بسبب تغيير الـ ID أثناء التسجيل)، نحاول بالهاتف
+      if (response.isEmpty && dto.phone != null) {
+        response = await _client
+            .from('technicians')
+            .update(data)
+            .eq('phone', dto.phone!)
+            .select();
+      }
+
+      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود لتحديثه'));
       return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -176,16 +180,10 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   }
 
   @override
-  Future<Either<Failure, Technician>> updateTechStatus(
-    String id,
-    TechStatus status,
-  ) async {
+  Future<Either<Failure, Technician>> updateTechStatus(String id, TechStatus status) async {
     try {
-      final List response = await _client
-          .from('technicians')
-          .upsert({'id': id, 'status': status.label})
-          .select();
-      if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث حالة الفني'));
+      final List response = await _client.from('technicians').update({'status': status.label}).eq('id', id).select();
+      if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث الحالة'));
       return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -195,16 +193,12 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   @override
   Future<Either<Failure, Technician>> incrementJobCount(String id) async {
     try {
-      final currentResult = await getTechnicianById(id);
-      return await currentResult.when(
-        left: (failure) => Left(failure),
+      final current = await getTechnicianById(id);
+      return await current.when(
+        left: (f) => Left(f),
         right: (tech) async {
-          final List response = await _client
-              .from('technicians')
-              .upsert({'id': id, 'total_jobs': tech.totalJobs + 1})
-              .select();
-          if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث عدد المهام'));
-          return Right(Technician.fromJson(response.first));
+          final List res = await _client.from('technicians').update({'total_jobs': tech.totalJobs + 1}).eq('id', id).select();
+          return Right(Technician.fromJson(res.first));
         },
       );
     } catch (error) {
@@ -215,16 +209,12 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   @override
   Future<Either<Failure, Technician>> incrementEarnings(String id, int amount) async {
     try {
-      final currentResult = await getTechnicianById(id);
-      return await currentResult.when(
-        left: (failure) => Left(failure),
+      final current = await getTechnicianById(id);
+      return await current.when(
+        left: (f) => Left(f),
         right: (tech) async {
-          final List response = await _client
-              .from('technicians')
-              .upsert({'id': id, 'total_earnings': tech.totalEarnings + amount})
-              .select();
-          if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث الأرباح'));
-          return Right(Technician.fromJson(response.first));
+          final List res = await _client.from('technicians').update({'total_earnings': tech.totalEarnings + amount}).eq('id', id).select();
+          return Right(Technician.fromJson(res.first));
         },
       );
     } catch (error) {
@@ -233,16 +223,9 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   }
 
   @override
-  Future<Either<Failure, Technician>> updateRating(
-    String id,
-    double rating,
-  ) async {
+  Future<Either<Failure, Technician>> updateRating(String id, double rating) async {
     try {
-      final List response = await _client
-          .from('technicians')
-          .upsert({'id': id, 'rating': rating})
-          .select();
-      if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث التقييم'));
+      final List response = await _client.from('technicians').update({'rating': rating}).eq('id', id).select();
       return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));

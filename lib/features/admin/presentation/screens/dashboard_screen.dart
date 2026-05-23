@@ -91,7 +91,7 @@ class DashboardScreen extends ConsumerWidget {
               
               const SizedBox(height: AppSpacing.xxxl),
 
-              // 3. أحدث الطلبات (Activity Log)
+              // 3. أحدث الطلبات (Recent Activity)
               _buildSectionHeader('أحدث الطلبات', AppColors.textPrimary, Icons.history),
               const SizedBox(height: AppSpacing.md),
               ordersAsync.when(
@@ -159,17 +159,20 @@ class _PendingTechAlert extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      color: AppColors.gold.withValues(alpha: 0.05),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.gold.withValues(alpha: 0.1),
-          child: Text(tech.spec.icon),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: AppCard(
+        color: AppColors.gold.withValues(alpha: 0.05),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: AppColors.gold.withValues(alpha: 0.1),
+            child: Text(tech.spec.icon),
+          ),
+          title: Text(tech.name, style: AppTextStyles.titleLarge),
+          subtitle: Text('تخصص ${tech.spec.label} • ${tech.phone}'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.gold),
+          onTap: () => context.push('/admin/techs'),
         ),
-        title: Text(tech.name, style: AppTextStyles.titleLarge),
-        subtitle: Text('تخصص ${tech.spec.label} • ${tech.phone}'),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.gold),
-        onTap: () => context.push('/admin/techs'),
       ),
     );
   }

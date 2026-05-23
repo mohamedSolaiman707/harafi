@@ -18,7 +18,6 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _isPasswordVisible = false;
 
   @override
   void dispose() {
@@ -37,7 +36,6 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
     
     setState(() => _isLoading = true);
     try {
-      // تحويل الرقم لإيميل وهمي للحفاظ على مجانية Supabase
       final dummyEmail = '${_phoneController.text.trim()}@harafi.com';
 
       await Supabase.instance.client.auth.signInWithPassword(
@@ -49,7 +47,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('خطأ في الدخول: تأكد من البيانات أو تواصل مع الإدارة')),
+          const SnackBar(content: Text('خطأ في الدخول: تأكد من البيانات أو اضغط على انضم كفني إذا لم يكن لديك حساب')),
         );
       }
     } finally {
@@ -88,8 +86,8 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                       AppTextField(
                         label: 'كلمة المرور',
                         controller: _passwordController,
+                        isPassword: true,
                         prefixIcon: Icons.lock_outline,
-                        // إضافة خاصية إخفاء كلمة المرور
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       AppButton(
@@ -106,7 +104,10 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                   children: [
                     const Text('ليس لديك حساب؟'),
                     TextButton(
-                      onPressed: () => context.push('/tech/register'),
+                      onPressed: () {
+                        // تمرير رقم الهاتف لصفحة التسجيل لكي لا يكتبه مرة أخرى
+                        context.push('/tech/register', extra: _phoneController.text);
+                      },
                       child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
                     ),
                   ],

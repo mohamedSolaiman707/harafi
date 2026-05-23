@@ -11,7 +11,8 @@ import '../../../admin/domain/enums/service_type.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 
 class TechRegisterScreen extends ConsumerStatefulWidget {
-  const TechRegisterScreen({super.key});
+  final String? initialPhone; // استلام الرقم من صفحة الدخول
+  const TechRegisterScreen({super.key, this.initialPhone});
 
   @override
   ConsumerState<TechRegisterScreen> createState() => _TechRegisterScreenState();
@@ -19,12 +20,19 @@ class TechRegisterScreen extends ConsumerStatefulWidget {
 
 class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
   final _passwordController = TextEditingController();
   final _bioController = TextEditingController();
   ServiceType? _selectedSpec;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _phoneController = TextEditingController(text: widget.initialPhone);
+  }
 
   @override
   void dispose() {
@@ -45,44 +53,53 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final currentUser = Supabase.instance.client.auth.currentUser;
-      String userId;
+      final phone = _phoneController.text.trim();
+      final dummyEmail = '$phone@harafi.com';
 
-      if (currentUser == null) {
-        // حالة فني جديد تماماً: إنشاء حساب Auth أولاً
-        final phone = _phoneController.text.trim();
-        final dummyEmail = '$phone@harafi.com';
-        final authResponse = await Supabase.instance.client.auth.signUp(
-          email: dummyEmail,
-          password: _passwordController.text.trim(),
-        );
-        if (authResponse.user == null) throw 'فشل إنشاء الحساب';
-        userId = authResponse.user!.id;
+      // 1. فحص هل الفني مضاف مسبقاً من الأدمن؟
+      final existingTechs = await Supabase.instance.client
+          .from('technicians')
+          .select()
+          .eq('phone', phone);
+
+      // 2. إنشاء حساب Auth
+      final authResponse = await Supabase.instance.client.auth.signUp(
+        email: dummyEmail,
+        password: _passwordController.text.trim(),
+      );
+
+      if (authResponse.user == null) throw 'فشل إنشاء الحساب';
+
+      String userId = authResponse.user!.id;
+
+      // 3. الربط الذكي: إذا وجدنا سجل قديم بنفس الرقم، نقوم بتحديثه وربطه بالـ Auth ID
+      if (existingTechs.isNotEmpty) {
+        final existingId = existingTechs.first['id'];
+        await Supabase.instance.client
+            .from('technicians')
+            .update({
+          'id': userId, // تحديث المعرف ليتوافق مع Auth
+          'name': _nameController.text.trim(),
+          'spec': _selectedSpec!.label,
+          'bio': _bioController.text.trim(),
+        })
+            .eq('id', existingId);
       } else {
-        // حالة فني مسجل دخول بالهاتف لكنه يكمل بياناته
-        userId = currentUser.id;
+        // إذا كان فني جديد تماماً
+        final dto = CreateTechnicianDto(
+          id: userId,
+          name: _nameController.text.trim(),
+          phone: phone,
+          spec: _selectedSpec!,
+          bio: _bioController.text.trim(),
+        );
+        await ref.read(techsRepositoryProvider).addTechnician(dto);
       }
 
-      // إنشاء ملف الفني في قاعدة البيانات
-      final dto = CreateTechnicianDto(
-        id: userId,
-        name: _nameController.text.trim(),
-        phone: currentUser?.phone ?? _phoneController.text.trim(),
-        spec: _selectedSpec!,
-        bio: _bioController.text.trim(),
-      );
-
-      final result = await ref.read(techsRepositoryProvider).addTechnician(dto);
-      
-      result.when(
-        left: (failure) => throw failure.message,
-        right: (tech) {
-          if (mounted) {
-            ref.invalidate(currentTechnicianProvider);
-            context.go('/tech/dashboard');
-          }
-        },
-      );
+      if (mounted) {
+        ref.invalidate(currentTechnicianProvider);
+        context.go('/tech/dashboard');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('خطأ: $e')),
@@ -94,11 +111,8 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Supabase.instance.client.auth.currentUser;
-    final isAlreadyLoggedIn = user != null;
-
     return Scaffold(
-      appBar: AppBar(title: Text(isAlreadyLoggedIn ? 'إكمال الملف المهني' : 'تسجيل فني جديد')),
+      appBar: AppBar(title: const Text('انضم لفريق المحترفين')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -108,17 +122,9 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  Icon(
-                    isAlreadyLoggedIn ? Icons.badge_outlined : Icons.person_add_alt_1_outlined,
-                    size: 64, 
-                    color: AppColors.gold
-                  ),
+                  const Icon(Icons.handyman_rounded, size: 64, color: AppColors.gold),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    isAlreadyLoggedIn ? 'خطوة واحدة وتكون معنا' : 'انضم لشبكة حرفي المحترفة',
-                    style: AppTextStyles.headlineMed,
-                    textAlign: TextAlign.center,
-                  ),
+                  Text('سجل بياناتك مرة واحدة فقط', style: AppTextStyles.headlineMed),
                   const SizedBox(height: AppSpacing.xl),
                   AppCard(
                     child: Column(
@@ -131,28 +137,29 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           prefixIcon: Icons.person_outline,
                           validator: (v) => v!.isEmpty ? 'مطلوب' : null,
                         ),
-                        if (!isAlreadyLoggedIn) ...[
-                          const SizedBox(height: AppSpacing.md),
-                          AppTextField(
-                            label: 'رقم الهاتف',
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            prefixIcon: Icons.phone_android,
-                            validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          AppTextField(
-                            label: 'كلمة المرور',
-                            controller: _passwordController,
-                            isPassword: true,
-                            prefixIcon: Icons.lock_outline,
-                            validator: (v) => v!.length < 6 ? 'كلمة المرور ضعيفة' : null,
-                          ),
-                        ],
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(
+                          label: 'رقم الهاتف',
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          prefixIcon: Icons.phone_android,
+                          // قفل الحقل إذا جاء الرقم من صفحة الدخول لضمان "المظبوطية"
+                          hint: '01xxxxxxxxx',
+                          validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(
+                          label: 'كلمة المرور',
+                          controller: _passwordController,
+                          isPassword: true,
+                          prefixIcon: Icons.lock_outline,
+                          hint: 'ستستخدمها للدخول لاحقاً',
+                          validator: (v) => v!.length < 6 ? 'كلمة المرور ضعيفة' : null,
+                        ),
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<ServiceType>(
                           decoration: const InputDecoration(
-                            labelText: 'التخصص',
+                            labelText: 'التخصص المهني',
                             prefixIcon: Icon(Icons.build_circle_outlined),
                           ),
                           dropdownColor: AppColors.surface2,
@@ -165,14 +172,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         AppTextField(
-                          label: 'نبذة عن خبرتك',
+                          label: 'نبذة قصيرة عن خبرتك',
                           controller: _bioController,
-                          hint: 'مثال: متخصص في صيانة التكييفات المركزية',
+                          hint: 'مثال: خبرة 10 سنوات في صيانة التكييفات',
                           maxLines: 3,
                         ),
                         const SizedBox(height: AppSpacing.xxl),
                         AppButton(
-                          label: isAlreadyLoggedIn ? 'حفظ وإرسال للمراجعة' : 'إنشاء الحساب وانضمام',
+                          label: 'إنشاء الحساب والبدء',
                           onTap: _submit,
                           isLoading: _isLoading,
                         ),
