@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/presentation/screens/login_screen.dart';
+import '../../../features/auth/presentation/screens/role_selection_screen.dart';
 import '../../../features/client/presentation/screens/home_screen.dart';
 import '../../../features/client/presentation/screens/request_screen.dart';
 import '../../../features/client/presentation/screens/track_screen.dart';
@@ -19,32 +21,48 @@ import '../../../features/tech/presentation/screens/tech_register_screen.dart';
 import '../../../features/tech/presentation/screens/tech_profile_screen.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/welcome',
   overridePlatformDefaultLocation: true,
-  redirect: (context, state) {
+  redirect: (context, state) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userRole = prefs.getString('user_role');
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final location = state.matchedLocation;
-    
+
+    // القائمة البيضاء للمسارات التي لا تحتاج لاختيار دور أو تسجيل دخول
+    final isAuthRoute = location == '/login' || location == '/tech/login' || location == '/tech/register';
+    final isWelcomeRoute = location == '/welcome';
+
+    // 1. إذا لم يتم اختيار دور بعد، ولم يكن في صفحة دخول، اذهب للترحيب
+    if (userRole == null && !isWelcomeRoute && !isAuthRoute) {
+      return '/welcome';
+    }
+
+    // 2. إذا كان مسجلاً لدور معين ويحاول فتح شاشة الترحيب، وجهه لمكانه الصحيح
+    if (userRole != null && isWelcomeRoute) {
+      return userRole == 'client' ? '/' : '/tech/dashboard';
+    }
+
+    // 3. حماية مسارات الإدارة والفنيين (تطلب تسجيل دخول)
     final isAdminRoute = location.startsWith('/admin');
-    final isTechRoute = location.startsWith('/tech') && 
-                       location != '/tech/login' && 
-                       location != '/tech/register';
+    final isTechRoute = location.startsWith('/tech') && !isAuthRoute;
 
     if ((isAdminRoute || isTechRoute) && !isLoggedIn) {
       return isAdminRoute ? '/login' : '/tech/login';
     }
 
-    if (location == '/login' && isLoggedIn) {
-      return '/admin';
-    }
-
-    if (location == '/tech/login' && isLoggedIn) {
-      return '/tech/dashboard';
-    }
+    // 4. توجيه تلقائي بعد تسجيل الدخول الناجح
+    if (location == '/login' && isLoggedIn) return '/admin';
+    if (location == '/tech/login' && isLoggedIn) return '/tech/dashboard';
 
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/welcome',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const RoleSelectionScreen()),
+    ),
     GoRoute(
       path: '/',
       pageBuilder: (context, state) =>

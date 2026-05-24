@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -22,6 +23,16 @@ class TechProfileScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('الملف الشخصي'),
         actions: [
+          // زر تبديل الحساب
+          IconButton(
+            icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
+            tooltip: 'تبديل نوع الحساب',
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('user_role');
+              if (context.mounted) context.go('/welcome');
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
             onPressed: () => _showLogoutDialog(context),

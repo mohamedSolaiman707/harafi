@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -38,6 +39,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      
+      // حفظ دور المسؤول لضمان التوجيه الصحيح في المرات القادمة
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'admin');
+
       if (mounted) context.go('/admin');
     } catch (e) {
       if (mounted) {
@@ -53,7 +59,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('دخول الإدارة')),
+      appBar: AppBar(
+        title: const Text('دخول الإدارة'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/welcome'),
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
@@ -85,7 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       prefixIcon: Icons.email_outlined,
-                      autofocus: true, // تفعيل التركيز التلقائي هنا
+                      autofocus: true,
                       validator: (value) =>
                           value == null || value.isEmpty ? 'يرجى إدخال البريد الإلكتروني' : null,
                     ),

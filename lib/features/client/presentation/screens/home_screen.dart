@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -21,6 +22,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _trackingController.dispose();
     super.dispose();
+  }
+
+  Future<void> _switchRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_role');
+    if (mounted) context.go('/welcome');
   }
 
   @override
@@ -53,7 +60,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: EdgeInsetsDirectional.only(end: horizontalPadding),
                 child: Row(
                   children: [
-                    // زر بوابة الفنيين الجديد
+                    // زر تبديل الحساب
+                    IconButton(
+                      onPressed: _switchRole,
+                      icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
+                      tooltip: 'تبديل نوع الحساب',
+                    ),
+                    const SizedBox(width: 8),
+                    // زر بوابة الفنيين
                     TextButton.icon(
                       onPressed: () => context.push('/tech/login'),
                       icon: const Icon(Icons.engineering_outlined, size: 18, color: AppColors.gold),
@@ -97,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // عرض الخدمات مقسمة حسب الفئات
           ...ServiceCategory.values.map((category) {
             final services = ServiceType.values.where((s) => s.category == category).toList();
             return SliverPadding(
@@ -159,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  // رابط انضمام الفنيين في أسفل الصفحة أيضاً
                   TextButton(
                     onPressed: () => context.push('/tech/register'),
                     child: const Text(
