@@ -117,34 +117,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     super.dispose();
   }
 
-  Future<void> _updateAvatar() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 50,
-      maxWidth: 500,
-    );
-
-    if (image == null) return;
-
-    setState(() => _isUploadingAvatar = true);
-
-    // استخدام الميثود المحدثة في StorageService
-    final url = await _storageService.uploadImage(
-      image: image, 
-      path: 'avatars', 
-      fileName: widget.tech.id,
-    );
-
-    if (url != null) {
-      await ref.read(techsRepositoryProvider).update(widget.tech.id, {
-        'photo_url': url,
-      });
-      ref.invalidate(techniciansProvider);
-    }
-
-    setState(() => _isUploadingAvatar = false);
-  }
-
   Future<void> _updateProfile() async {
     setState(() => _isLoading = true);
     
@@ -164,28 +136,75 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     });
   }
 
-  Future<void> _pickAndUploadPortfolio() async {
+  Future<void> _pickImage(ImageSource source, bool isAvatar) async {
     final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-      maxWidth: 1200,
+      source: source,
+      imageQuality: 50,
+      maxWidth: isAvatar ? 500 : 1200,
     );
 
     if (image == null) return;
 
-    final url = await _storageService.uploadImage(
-      image: image, 
-      path: 'portfolios', 
-      fileName: '${widget.tech.id}_${DateTime.now().millisecondsSinceEpoch}',
-    );
-
-    if (url != null) {
-      final newImages = [...widget.tech.portfolioImages, url];
-      await ref.read(techsRepositoryProvider).update(widget.tech.id, {
-        'portfolio_images': newImages,
-      });
-      ref.invalidate(techniciansProvider);
+    if (isAvatar) {
+      setState(() => _isUploadingAvatar = true);
+      final url = await _storageService.uploadImage(
+        image: image, 
+        path: 'avatars', 
+        fileName: widget.tech.id,
+      );
+      if (url != null) {
+        await ref.read(techsRepositoryProvider).update(widget.tech.id, {'photo_url': url});
+        ref.invalidate(techniciansProvider);
+      }
+      setState(() => _isUploadingAvatar = false);
+    } else {
+      final url = await _storageService.uploadImage(
+        image: image, 
+        path: 'portfolios', 
+        fileName: '${widget.tech.id}_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (url != null) {
+        final newImages = [...widget.tech.portfolioImages, url];
+        await ref.read(techsRepositoryProvider).update(widget.tech.id, {'portfolio_images': newImages});
+        ref.invalidate(techniciansProvider);
+      }
     }
+  }
+
+  void _showImageSourceSheet(bool isAvatar) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface1,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('اختر مصدر الصورة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.gold),
+              title: const Text('التقاط صورة بالكاميرا'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera, isAvatar);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.gold),
+              title: const Text('اختيار من معرض الصور'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery, isAvatar);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -202,9 +221,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
               const SizedBox(height: AppSpacing.xxl),
               _buildQuickStats(),
               const SizedBox(height: AppSpacing.xxl),
-              
               _buildGallerySection(),
-              
               const SizedBox(height: AppSpacing.xxl),
               _buildInfoForm(),
               const SizedBox(height: AppSpacing.xxl),
@@ -240,7 +257,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
               const Positioned.fill(child: CircularProgressIndicator(color: AppColors.gold))
             else
               GestureDetector(
-                onTap: _updateAvatar,
+                onTap: () => _showImageSourceSheet(true),
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
@@ -274,7 +291,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
           children: [
             Text('معرض سابقة أعمالك', style: AppTextStyles.titleLarge),
             IconButton(
-              onPressed: _pickAndUploadPortfolio,
+              onPressed: () => _showImageSourceSheet(false),
               icon: const Icon(Icons.add_a_photo_outlined, color: AppColors.gold),
             ),
           ],

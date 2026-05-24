@@ -32,6 +32,8 @@ mixin _$Technician {
   int get totalJobs => throw _privateConstructorUsedError;
   @JsonKey(name: 'photo_url')
   String? get photoUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'identity_proof_url')
+  String? get identityProofUrl => throw _privateConstructorUsedError; // جديد: صورة إثبات الهوية
   String? get bio => throw _privateConstructorUsedError;
   @JsonKey(name: 'total_earnings')
   int get totalEarnings => throw _privateConstructorUsedError;
@@ -68,6 +70,7 @@ abstract class $TechnicianCopyWith<$Res> {
     double rating,
     @JsonKey(name: 'total_jobs') int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,
+    @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') int totalEarnings,
     @JsonKey(name: 'portfolio_images') List<String> portfolioImages,
@@ -102,6 +105,7 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
     Object? rating = null,
     Object? totalJobs = null,
     Object? photoUrl = freezed,
+    Object? identityProofUrl = freezed,
     Object? bio = freezed,
     Object? totalEarnings = null,
     Object? portfolioImages = null,
@@ -154,6 +158,10 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
                 ? _value.photoUrl
                 : photoUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            identityProofUrl: freezed == identityProofUrl
+                ? _value.identityProofUrl
+                : identityProofUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
             bio: freezed == bio
                 ? _value.bio
                 : bio // ignore: cast_nullable_to_non_nullable
@@ -201,6 +209,7 @@ abstract class _$$TechnicianImplCopyWith<$Res>
     double rating,
     @JsonKey(name: 'total_jobs') int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,
+    @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') int totalEarnings,
     @JsonKey(name: 'portfolio_images') List<String> portfolioImages,
@@ -234,6 +243,7 @@ class __$$TechnicianImplCopyWithImpl<$Res>
     Object? rating = null,
     Object? totalJobs = null,
     Object? photoUrl = freezed,
+    Object? identityProofUrl = freezed,
     Object? bio = freezed,
     Object? totalEarnings = null,
     Object? portfolioImages = null,
@@ -286,6 +296,10 @@ class __$$TechnicianImplCopyWithImpl<$Res>
             ? _value.photoUrl
             : photoUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        identityProofUrl: freezed == identityProofUrl
+            ? _value.identityProofUrl
+            : identityProofUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
         bio: freezed == bio
             ? _value.bio
             : bio // ignore: cast_nullable_to_non_nullable
@@ -326,6 +340,7 @@ class _$TechnicianImpl extends _Technician {
     this.rating = 0.0,
     @JsonKey(name: 'total_jobs') this.totalJobs = 0,
     @JsonKey(name: 'photo_url') this.photoUrl,
+    @JsonKey(name: 'identity_proof_url') this.identityProofUrl,
     this.bio,
     @JsonKey(name: 'total_earnings') this.totalEarnings = 0,
     @JsonKey(name: 'portfolio_images')
@@ -364,6 +379,10 @@ class _$TechnicianImpl extends _Technician {
   @JsonKey(name: 'photo_url')
   final String? photoUrl;
   @override
+  @JsonKey(name: 'identity_proof_url')
+  final String? identityProofUrl;
+  // جديد: صورة إثبات الهوية
+  @override
   final String? bio;
   @override
   @JsonKey(name: 'total_earnings')
@@ -386,7 +405,7 @@ class _$TechnicianImpl extends _Technician {
 
   @override
   String toString() {
-    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, bio: $bio, totalEarnings: $totalEarnings, portfolioImages: $portfolioImages, isVerified: $isVerified, createdAt: $createdAt)';
+    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, identityProofUrl: $identityProofUrl, bio: $bio, totalEarnings: $totalEarnings, portfolioImages: $portfolioImages, isVerified: $isVerified, createdAt: $createdAt)';
   }
 
   @override
@@ -409,6 +428,8 @@ class _$TechnicianImpl extends _Technician {
                 other.totalJobs == totalJobs) &&
             (identical(other.photoUrl, photoUrl) ||
                 other.photoUrl == photoUrl) &&
+            (identical(other.identityProofUrl, identityProofUrl) ||
+                other.identityProofUrl == identityProofUrl) &&
             (identical(other.bio, bio) || other.bio == bio) &&
             (identical(other.totalEarnings, totalEarnings) ||
                 other.totalEarnings == totalEarnings) &&
@@ -436,6 +457,7 @@ class _$TechnicianImpl extends _Technician {
     rating,
     totalJobs,
     photoUrl,
+    identityProofUrl,
     bio,
     totalEarnings,
     const DeepCollectionEquality().hash(_portfolioImages),
@@ -465,6 +487,7 @@ abstract class _Technician extends Technician {
     final double rating,
     @JsonKey(name: 'total_jobs') final int totalJobs,
     @JsonKey(name: 'photo_url') final String? photoUrl,
+    @JsonKey(name: 'identity_proof_url') final String? identityProofUrl,
     final String? bio,
     @JsonKey(name: 'total_earnings') final int totalEarnings,
     @JsonKey(name: 'portfolio_images') final List<String> portfolioImages,
@@ -499,6 +522,9 @@ abstract class _Technician extends Technician {
   @override
   @JsonKey(name: 'photo_url')
   String? get photoUrl;
+  @override
+  @JsonKey(name: 'identity_proof_url')
+  String? get identityProofUrl; // جديد: صورة إثبات الهوية
   @override
   String? get bio;
   @override

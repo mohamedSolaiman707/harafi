@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -27,8 +29,12 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   final _bioController = TextEditingController();
   final _visitPriceController = TextEditingController(text: '50');
   final _areaController = TextEditingController();
+  
   ServiceType? _selectedSpec;
+  XFile? _idProofImage;
   bool _isLoading = false;
+  final _picker = ImagePicker();
+  final _storageService = StorageService();
 
   @override
   void initState() {
@@ -48,11 +54,50 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _pickIdImage(ImageSource source) async {
+    final XFile? image = await _picker.pickImage(source: source, imageQuality: 50);
+    if (image != null) {
+      setState(() => _idProofImage = image);
+    }
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface1,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('صورة إثبات الهوية (بطاقة/كارنيه)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.gold),
+              title: const Text('التقاط صورة بالكاميرا'),
+              onTap: () { Navigator.pop(context); _pickIdImage(ImageSource.camera); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.gold),
+              title: const Text('اختيار من المعرض'),
+              onTap: () { Navigator.pop(context); _pickIdImage(ImageSource.gallery); },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _selectedSpec == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى ملء جميع البيانات واختيار التخصص')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع البيانات')));
+      return;
+    }
+    if (_idProofImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى رفع صورة إثبات الهوية للتوثيق')));
       return;
     }
 
@@ -70,12 +115,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
       if (authResponse.user == null) throw 'فشل إنشاء الحساب';
       String userId = authResponse.user!.id;
 
-      // 2. فحص هل الفني مضاف مسبقاً من الأدمن؟
-      final existingTechs = await Supabase.instance.client
-          .from('technicians')
-          .select()
-          .eq('phone', phone);
+      // 2. رفع صورة إثبات الهوية
+      final idProofUrl = await _storageService.uploadImage(
+        image: _idProofImage!,
+        path: 'identity_proofs',
+        fileName: userId,
+      );
 
+      // 3. حفظ بيانات الفني
       final technicianData = {
         'id': userId,
         'name': _nameController.text.trim(),
@@ -84,22 +131,12 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'bio': _bioController.text.trim(),
         'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
         'area': _areaController.text.trim(),
+        'identity_proof_url': idProofUrl,
+        'status': 'بانتظار المراجعة',
       };
 
-      if (existingTechs.isNotEmpty) {
-        // تحديث السجل الموجود وربطه بالـ Auth ID
-        await Supabase.instance.client
-            .from('technicians')
-            .update(technicianData)
-            .eq('phone', phone);
-      } else {
-        // إنشاء سجل جديد تماماً
-        await Supabase.instance.client
-            .from('technicians')
-            .insert(technicianData);
-      }
+      await Supabase.instance.client.from('technicians').upsert(technicianData);
 
-      // 3. حفظ "الدور" محلياً لضمان التوجيه الصحيح مستقبلاً
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', 'tech');
 
@@ -108,9 +145,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         context.go('/tech/dashboard');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ في التسجيل: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ في التسجيل: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -140,7 +175,6 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         AppTextField(
                           label: 'الاسم الكامل',
                           controller: _nameController,
-                          hint: 'أدخل اسمك الثلاثي',
                           prefixIcon: Icons.person_outline,
                           validator: (v) => v!.isEmpty ? 'مطلوب' : null,
                         ),
@@ -150,69 +184,50 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
                           prefixIcon: Icons.phone_android,
-                          hint: '01xxxxxxxxx',
                           validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          label: 'كلمة المرور',
-                          controller: _passwordController,
-                          isPassword: true,
-                          prefixIcon: Icons.lock_outline,
-                          hint: 'ستستخدمها للدخول لاحقاً',
-                          validator: (v) => v!.length < 6 ? 'كلمة المرور ضعيفة' : null,
+                        
+                        // قسم رفع الهوية
+                        InkWell(
+                          onTap: _showImageSourceSheet,
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface1,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: _idProofImage != null ? AppColors.success : AppColors.borderDefault),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(_idProofImage != null ? Icons.check_circle : Icons.badge_outlined, 
+                                     color: _idProofImage != null ? AppColors.success : AppColors.gold),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(_idProofImage != null ? 'تم اختيار صورة الهوية' : 'ارفع صورة البطاقة أو كارنيه المهنة')),
+                                const Icon(Icons.upload_file, size: 18),
+                              ],
+                            ),
+                          ),
                         ),
+                        
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<ServiceType>(
-                          decoration: const InputDecoration(
-                            labelText: 'التخصص المهني',
-                            prefixIcon: Icon(Icons.build_circle_outlined),
-                          ),
+                          decoration: const InputDecoration(labelText: 'التخصص المهني', prefixIcon: Icon(Icons.build_circle_outlined)),
                           dropdownColor: AppColors.surface2,
-                          items: ServiceType.values.map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(s.label),
-                          )).toList(),
+                          items: ServiceType.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
                           onChanged: (val) => setState(() => _selectedSpec = val),
                           validator: (v) => v == null ? 'يرجى اختيار التخصص' : null,
                         ),
                         const SizedBox(height: AppSpacing.md),
                         Row(
                           children: [
-                            Expanded(
-                              child: AppTextField(
-                                label: 'سعر الزيارة (ج.م)',
-                                controller: _visitPriceController,
-                                keyboardType: TextInputType.number,
-                                prefixIcon: Icons.payments_outlined,
-                                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                              ),
-                            ),
+                            Expanded(child: AppTextField(label: 'سعر الزيارة', controller: _visitPriceController, keyboardType: TextInputType.number)),
                             const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: AppTextField(
-                                label: 'منطقة العمل',
-                                controller: _areaController,
-                                hint: 'مثال: حي الزهور',
-                                prefixIcon: Icons.location_on_outlined,
-                                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                              ),
-                            ),
+                            Expanded(child: AppTextField(label: 'منطقة العمل', controller: _areaController)),
                           ],
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        AppTextField(
-                          label: 'نبذة قصيرة عن خبرتك',
-                          controller: _bioController,
-                          hint: 'مثال: خبرة 10 سنوات في صيانة التكييفات والتبريد المركزي',
-                          maxLines: 3,
-                        ),
                         const SizedBox(height: AppSpacing.xxl),
-                        AppButton(
-                          label: 'إنشاء الحساب والبدء',
-                          onTap: _submit,
-                          isLoading: _isLoading,
-                        ),
+                        AppButton(label: 'إنشاء الحساب والبدء', onTap: _submit, isLoading: _isLoading),
                       ],
                     ),
                   ),
