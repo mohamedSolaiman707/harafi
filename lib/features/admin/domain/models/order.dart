@@ -46,14 +46,12 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) {
-    // معالجة نوع الخدمة (يدعم العربي والإنجليزي)
     final serviceValue = json['service']?.toString() ?? '';
     final service = ServiceType.values.firstWhere(
       (e) => e.label == serviceValue || e.name == serviceValue,
       orElse: () => ServiceType.plumbing,
     );
 
-    // معالجة الحالة (يدعم كل الصيغ الممكنة)
     final statusValue = json['status']?.toString() ?? '';
     final status = OrderStatus.values.firstWhere(
       (e) => e.label == statusValue || 
@@ -87,22 +85,27 @@ class Order {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'client_name': clientName,
-    'client_phone': clientPhone,
-    'service': service.label,
-    'area': area,
-    'description': description,
-    'tech_id': techId,
-    'status': status.label,
-    'final_price': finalPrice,
-    'admin_notes': adminNotes,
-    'tech_notes': techNotes,
-    'rating': rating,
-    'rating_comment': ratingComment,
-    'estimated_arrival': estimatedArrival?.toIso8601String(),
-    'completed_at': completedAt?.toIso8601String(),
-  };
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {
+      'client_name': clientName,
+      'client_phone': clientPhone,
+      'service': service.label,
+      'status': status.label,
+    };
+
+    if (area != null) data['area'] = area;
+    if (description != null) data['description'] = description;
+    if (techId != null && techId!.isNotEmpty) data['tech_id'] = techId;
+    if (finalPrice != null) data['final_price'] = finalPrice;
+    if (adminNotes != null) data['admin_notes'] = adminNotes;
+    if (techNotes != null) data['tech_notes'] = techNotes;
+    if (rating != null) data['rating'] = rating;
+    if (ratingComment != null) data['rating_comment'] = ratingComment;
+    if (estimatedArrival != null) data['estimated_arrival'] = estimatedArrival?.toIso8601String();
+    if (completedAt != null) data['completed_at'] = completedAt?.toIso8601String();
+
+    return data;
+  }
 
   Order copyWith({
     String? id,

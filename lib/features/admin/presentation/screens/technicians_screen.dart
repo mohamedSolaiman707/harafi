@@ -61,7 +61,8 @@ class TechniciansScreen extends ConsumerWidget {
         loading: () => const LoadingWidget(),
         error: (err, stack) => AppErrorWidget(
           message: 'حدث خطأ في تحميل البيانات',
-          onRetry: () => ref.refresh(techsStreamProvider),
+          error: err,
+          onRetry: () => ref.invalidate(techsStreamProvider),
         ),
       ),
     );

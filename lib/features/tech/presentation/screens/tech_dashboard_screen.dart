@@ -75,14 +75,20 @@ class TechDashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
-                _ordersList(ordersAsync),
+                _ordersList(ordersAsync, ref, tech.id),
               ],
             ),
           ),
         );
       },
       loading: () => const Scaffold(body: LoadingWidget()),
-      error: (err, stack) => Scaffold(body: AppErrorWidget(message: 'خطأ في تحميل البيانات', onRetry: () {})),
+      error: (err, stack) => Scaffold(
+        body: AppErrorWidget(
+          message: 'خطأ في تحميل البيانات',
+          error: err,
+          onRetry: () => ref.invalidate(currentTechnicianProvider),
+        ),
+      ),
     );
   }
 
@@ -132,7 +138,7 @@ class TechDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _ordersList(AsyncValue<List<Order>> ordersAsync) {
+  Widget _ordersList(AsyncValue<List<Order>> ordersAsync, WidgetRef ref, String techId) {
     return ordersAsync.when(
       data: (orders) {
         final activeOrders = orders.where((o) => 
@@ -166,7 +172,14 @@ class TechDashboardScreen extends ConsumerWidget {
         );
       },
       loading: () => const SliverToBoxAdapter(child: LoadingWidget()),
-      error: (e, s) => const SliverToBoxAdapter(child: SizedBox()),
+      error: (err, stack) => SliverFillRemaining(
+        hasScrollBody: false,
+        child: AppErrorWidget(
+          message: 'فشل تحميل الطلبات',
+          error: err,
+          onRetry: () => ref.invalidate(techOrdersStreamProvider(techId)),
+        ),
+      ),
     );
   }
 }

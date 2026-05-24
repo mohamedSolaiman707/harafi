@@ -29,27 +29,37 @@ class TechOrderDetailScreen extends ConsumerWidget {
 
         return Scaffold(
           appBar: AppBar(title: Text('طلب #${order.trackingCode}')),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildClientInfo(order),
-                const SizedBox(height: AppSpacing.xl),
-                _buildOrderDescription(order),
-                if (order.techNotes != null) ...[
+          body: RefreshIndicator(
+            onRefresh: () async => ref.invalidate(ordersStreamProvider),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildClientInfo(order),
                   const SizedBox(height: AppSpacing.xl),
-                  _buildTechReport(order),
+                  _buildOrderDescription(order),
+                  if (order.techNotes != null) ...[
+                    const SizedBox(height: AppSpacing.xl),
+                    _buildTechReport(order),
+                  ],
+                  const SizedBox(height: AppSpacing.xl),
+                  _buildActionButtons(context, ref, order),
                 ],
-                const SizedBox(height: AppSpacing.xl),
-                _buildActionButtons(context, ref, order),
-              ],
+              ),
             ),
           ),
         );
       },
       loading: () => const Scaffold(body: LoadingWidget()),
-      error: (e, s) => Scaffold(body: AppErrorWidget(message: 'خطأ في تحميل البيانات', onRetry: () {})),
+      error: (e, s) => Scaffold(
+        body: AppErrorWidget(
+          message: 'خطأ في تحميل البيانات',
+          error: e,
+          onRetry: () => ref.invalidate(ordersStreamProvider),
+        ),
+      ),
     );
   }
 
@@ -85,7 +95,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
                 child: AppButton(
                   label: 'واتساب',
                   icon: Icons.chat,
-                  variant: ButtonVariant.whatsapp, // تم التغيير هنا من color إلى variant
+                  variant: ButtonVariant.whatsapp,
                   onTap: () {
                     final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}');
                     launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -166,7 +176,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
           AppButton(
             label: 'تم الإنجاز (إغلاق الطلب)',
             icon: Icons.check_circle,
-            variant: ButtonVariant.success, // تم التغيير هنا من color إلى variant
+            variant: ButtonVariant.success,
             onTap: () => _showCompletionDialog(context, ref, order),
           ),
       ],

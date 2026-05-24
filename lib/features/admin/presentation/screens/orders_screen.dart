@@ -82,6 +82,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
         loading: () => const LoadingWidget(),
         error: (err, stack) => AppErrorWidget(
           message: 'فشل الاتصال بقاعدة البيانات',
+          error: err,
           onRetry: () => ref.invalidate(ordersStreamProvider),
         ),
       ),

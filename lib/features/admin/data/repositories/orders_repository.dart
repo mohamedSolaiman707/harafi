@@ -82,6 +82,8 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Order> create(Order order) async {
     final orderData = order.toJson();
+    
+    // إزالة الحقول التي يتم إنشاؤها تلقائياً أو التي قد لا تكون موجودة في الجدول
     orderData.remove('id');
     orderData.remove('tracking_code');
     orderData.remove('created_at');
@@ -92,6 +94,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
     orderData.remove('rating');
     orderData.remove('order_logs');
     orderData.remove('completed_at');
+    orderData.remove('estimated_arrival'); // شيله مؤقتاً لو مش موجود في الداتابيز
 
     if (orderData['tech_id'] == null ||
         orderData['tech_id'].toString().isEmpty) {
@@ -261,6 +264,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
         'tech_id': techId,
         'status': OrderStatus.assigned.label, 
       };
+      // هنا برضه ممكن تضرب لو العمود مش موجود، يفضل تظيفه في الداتابيز
       if (estimatedArrival != null) {
         data['estimated_arrival'] = estimatedArrival.toIso8601String();
       }

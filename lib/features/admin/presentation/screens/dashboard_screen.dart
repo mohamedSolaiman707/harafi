@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
+import '../../../../shared/widgets/error_widget.dart';
 import '../widgets/stats_widget.dart';
 import '../providers/techs_provider.dart';
 import '../providers/orders_provider.dart';
@@ -20,6 +21,20 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final techsAsync = ref.watch(techsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
+
+    // إذا فشل تحميل البيانات الأساسية (الفنيين أو الطلبات) بسبب النت
+    if (techsAsync.hasError || ordersAsync.hasError) {
+      return Scaffold(
+        body: AppErrorWidget(
+          message: 'فشل تحميل بيانات لوحة التحكم',
+          error: techsAsync.error ?? ordersAsync.error,
+          onRetry: () {
+            ref.invalidate(techsStreamProvider);
+            ref.invalidate(ordersStreamProvider);
+          },
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -45,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
               const StatsWidget(),
               const SizedBox(height: AppSpacing.xxxl),
               
-              // 1. التنبيهات العاجلة (الفنيين الجدد بانتظار المراجعة)
+              // 1. التنبيهات العاجلة
               techsAsync.when(
                 data: (techs) {
                   final pending = techs.where((t) => t.status == TechStatus.pending).toList();
@@ -91,13 +106,13 @@ class DashboardScreen extends ConsumerWidget {
               
               const SizedBox(height: AppSpacing.xxxl),
 
-              // 3. أحدث الطلبات (Recent Activity)
+              // 3. أحدث الطلبات
               _buildSectionHeader('أحدث الطلبات', AppColors.textPrimary, Icons.history),
               const SizedBox(height: AppSpacing.md),
               ordersAsync.when(
                 data: (orders) => _RecentOrdersSection(orders: orders),
                 loading: () => const LoadingWidget(),
-                error: (e, s) => Text('خطأ في تحميل النشاط: $e'),
+                error: (e, s) => const SizedBox.shrink(),
               ),
 
               const SizedBox(height: AppSpacing.xxxl),
@@ -108,7 +123,7 @@ class DashboardScreen extends ConsumerWidget {
               techsAsync.when(
                 data: (techs) => TechnicianSummarySection(techs: techs),
                 loading: () => const LoadingWidget(),
-                error: (e, s) => Text('خطأ في تحميل ملخص الفنيين: $e'),
+                error: (e, s) => const SizedBox.shrink(),
               ),
             ],
           ),

@@ -31,7 +31,11 @@ class TrackScreen extends ConsumerWidget {
           return _buildOrderTrackingBody(context, ref, order);
         },
         loading: () => const LoadingWidget(),
-        error: (e, s) => AppErrorWidget(message: 'خطأ في التتبع', onRetry: () {}),
+        error: (e, s) => AppErrorWidget(
+          message: 'خطأ في التتبع',
+          error: e,
+          onRetry: () => ref.invalidate(ordersStreamProvider),
+        ),
       ),
     );
   }
@@ -64,7 +68,12 @@ class TrackScreen extends ConsumerWidget {
           const Icon(Icons.search_off, size: 64, color: AppColors.textMuted),
           const SizedBox(height: 16),
           const Text('عذراً، لم نجد طلباً بهذا الكود'),
-          TextButton(onPressed: () => context.go('/'), child: const Text('العودة للرئيسية')),
+          const SizedBox(height: 16),
+          AppButton(
+            label: 'العودة للرئيسية',
+            onTap: () => context.go('/'),
+            variant: ButtonVariant.ghost,
+          ),
         ],
       ),
     );
