@@ -9,7 +9,9 @@ class NotificationIcon extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unreadCount = ref.watch(notificationProvider.notifier).unreadCount;
+    // نراقب الحالة (State) مباشرة بدلاً من الـ Notifier لضمان التحديث التلقائي وتجنب الأخطاء
+    final notifications = ref.watch(notificationProvider);
+    final unreadCount = notifications.where((n) => !n.isRead).length;
 
     return Stack(
       alignment: Alignment.center,

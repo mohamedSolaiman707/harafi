@@ -22,6 +22,8 @@ class ServiceTechsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final techsAsync = ref.watch(techniciansProvider);
     final selectedArea = ref.watch(selectedAreaProvider);
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width > 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -30,7 +32,7 @@ class ServiceTechsScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          _buildAreaFilter(ref, selectedArea),
+          _buildAreaFilter(ref, selectedArea, isDesktop),
           
           Expanded(
             child: techsAsync.when(
@@ -46,10 +48,21 @@ class ServiceTechsScreen extends ConsumerWidget {
                   return _buildEmptyState(context, selectedArea);
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  itemCount: filteredTechs.length,
-                  itemBuilder: (context, index) => _TechListItem(tech: filteredTechs[index]),
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: width > 1200 ? 3 : (width > 800 ? 2 : 1),
+                        crossAxisSpacing: AppSpacing.lg,
+                        mainAxisSpacing: AppSpacing.lg,
+                        mainAxisExtent: 140, // ارتفاع ثابت للكارت لضمان التناسق
+                      ),
+                      itemCount: filteredTechs.length,
+                      itemBuilder: (context, index) => _TechListItem(tech: filteredTechs[index]),
+                    ),
+                  ),
                 );
               },
               loading: () => const LoadingWidget(),
@@ -65,37 +78,40 @@ class ServiceTechsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAreaFilter(WidgetRef ref, String currentArea) {
+  Widget _buildAreaFilter(WidgetRef ref, String currentArea, bool isDesktop) {
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      height: 70,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface2,
         border: const Border(bottom: BorderSide(color: AppColors.borderDefault)),
       ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        itemCount: AppConstants.areas.length,
-        itemBuilder: (context, index) {
-          final area = AppConstants.areas[index];
-          final isSelected = currentArea == area;
-          return Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: ChoiceChip(
-              label: Text(area),
-              selected: isSelected,
-              onSelected: (val) {
-                if (val) ref.read(selectedAreaProvider.notifier).state = area;
-              },
-              selectedColor: AppColors.gold.withValues(alpha: 0.2),
-              labelStyle: TextStyle(
-                color: isSelected ? AppColors.gold : AppColors.textSecondary,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      child: Center(
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 12),
+          itemCount: AppConstants.areas.length,
+          itemBuilder: (context, index) {
+            final area = AppConstants.areas[index];
+            final isSelected = currentArea == area;
+            return Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: ChoiceChip(
+                label: Text(area),
+                selected: isSelected,
+                onSelected: (val) {
+                  if (val) ref.read(selectedAreaProvider.notifier).state = area;
+                },
+                selectedColor: AppColors.gold.withValues(alpha: 0.2),
+                labelStyle: TextStyle(
+                  color: isSelected ? AppColors.gold : AppColors.textSecondary,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -114,9 +130,10 @@ class ServiceTechsScreen extends ConsumerWidget {
             style: AppTextStyles.bodyLarge,
           ),
           const SizedBox(height: 16),
-          TextButton(
+          ElevatedButton.icon(
             onPressed: () => context.push('/request', extra: service),
-            child: const Text('يمكنك تسجيل طلب عام وسنقوم بتوفير فني لك'),
+            icon: const Icon(Icons.add_task),
+            label: const Text('سجل طلب عام وسنوفر لك فني'),
           ),
         ],
       ),
@@ -135,23 +152,23 @@ class _TechListItem extends ConsumerWidget {
 
     return AppCard(
       onTap: () => context.push('/tech/portfolio/${tech.id}'),
-      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
           Stack(
             children: [
               CircleAvatar(
-                radius: 35,
+                radius: 30,
                 backgroundColor: AppColors.surface1,
                 backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-                child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 28)) : null,
+                child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
                 child: Container(
-                  width: 15,
-                  height: 15,
+                  width: 14,
+                  height: 14,
                   decoration: BoxDecoration(
                     color: isAvailable ? AppColors.success : AppColors.textMuted,
                     shape: BoxShape.circle,
@@ -161,60 +178,53 @@ class _TechListItem extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(width: AppSpacing.lg),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              tech.name, 
-                              style: AppTextStyles.titleLarge,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (tech.isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(Icons.verified, color: AppColors.info, size: 16),
-                          ],
-                        ],
+                    Flexible(
+                      child: Text(
+                        tech.name, 
+                        style: AppTextStyles.titleMed,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => ref.read(favoritesProvider.notifier).toggleFavorite(tech.id),
-                      icon: Icon(
-                        isFav ? Icons.favorite : Icons.favorite_border,
-                        color: isFav ? Colors.red : AppColors.textMuted,
-                        size: 20,
-                      ),
-                    ),
+                    if (tech.isVerified) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.verified, color: AppColors.info, size: 14),
+                    ],
                   ],
                 ),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    const Icon(Icons.star, color: Colors.amber, size: 14),
                     const SizedBox(width: 4),
-                    Text(tech.rating.toStringAsFixed(1), style: AppTextStyles.labelLarge),
-                    const SizedBox(width: 12),
-                    Text('📍 ${tech.area ?? "كفر الزيات"}', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
+                    Text(tech.rating.toStringAsFixed(1), style: AppTextStyles.labelMed),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text('📍 ${tech.area ?? "كفر الزيات"}', 
+                        style: AppTextStyles.labelMed.copyWith(color: AppColors.gold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isAvailable ? 'متاح الآن' : 'مشغول حالياً',
-                  style: AppTextStyles.labelMed.copyWith(
-                    color: isAvailable ? AppColors.success : AppColors.textMuted,
-                  ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.gold),
+          IconButton(
+            onPressed: () => ref.read(favoritesProvider.notifier).toggleFavorite(tech.id),
+            icon: Icon(
+              isFav ? Icons.favorite : Icons.favorite_border,
+              color: isFav ? Colors.red : AppColors.textMuted,
+              size: 20,
+            ),
+          ),
         ],
       ),
     );

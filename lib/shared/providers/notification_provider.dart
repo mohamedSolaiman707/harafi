@@ -35,71 +35,93 @@ class NotificationNotifier extends StateNotifier<List<AppNotification>> {
   List<Order> _previousOrders = [];
   AppNotification? _latestIncoming;
   final _audioPlayer = AudioPlayer();
+  bool _isInitialized = false;
 
   NotificationNotifier(this._ref) : super([]) {
-    _listenToOrders();
+    _init();
   }
 
   AppNotification? get latestIncoming => _latestIncoming;
+  
+  int get unreadCount => state.where((n) => !n.isRead).length;
 
-  void _listenToOrders() {
-    _ref.listen(ordersStreamProvider, (previous, next) async {
+  Future<void> _init() async {
+    if (_isInitialized) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final userRole = prefs.getString('user_role') ?? 'client';
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final lastTrackedCode = prefs.getString('last_tracked_code');
+
+    // تحديد الـ Stream المناسب بناءً على الدور لضمان وصول التنبيهات
+    final providerToListen = _getRelevantProvider(userRole, userId);
+    
+    if (providerToListen == null) return;
+
+    _ref.listen(providerToListen, (previous, next) {
       final newOrders = next.valueOrNull ?? [];
-      final prefs = await SharedPreferences.getInstance();
-      final userRole = prefs.getString('user_role');
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      final lastTrackedCode = prefs.getString('last_tracked_code');
       
-      if (_previousOrders.isEmpty) {
+      // تجنب التنبيهات عند أول تحميل للتطبيق
+      if (_previousOrders.isEmpty && newOrders.isNotEmpty) {
         _previousOrders = newOrders;
         return;
       }
 
       for (var order in newOrders) {
-        // 1. تنبيه للأدمن
-        if (userRole == 'admin' && !_previousOrders.any((o) => o.id == order.id)) {
-          _addNotification(
-            'طلب جديد: ${order.service.label}',
-            'العميل ${order.clientName} سجل طلباً جديداً الآن.',
-            NotificationType.urgent,
-          );
-          _playSound('new_order.mp3');
+        final oldOrder = _previousOrders.where((o) => o.id == order.id).firstOrNull;
+
+        // 1. منطق الأدمن
+        if (userRole == 'admin' && oldOrder == null) {
+          _notify('طلب جديد: ${order.service.label}', 'العميل ${order.clientName} سجل طلباً جديداً.', NotificationType.urgent, 'new_order.mp3');
         }
 
-        // 2. تنبيه للفني
+        // 2. منطق الفني
         if (userRole == 'tech' && order.techId == userId) {
-          final oldOrder = _previousOrders.where((o) => o.id == order.id).firstOrNull;
-          if (oldOrder != null && oldOrder.status != order.status) {
-            _addNotification(
-              'تحديث في الطلب 🔧',
-              'تغيرت حالة طلب العميل ${order.clientName} إلى ${order.status.label}',
-              NotificationType.success,
-            );
-            _playSound('update.mp3');
-          } else if (oldOrder == null) {
-            _addNotification(
-              'مهمة جديدة مسندة إليك! 🛠️',
-              'لديك طلب ${order.service.label} جديد للعميل ${order.clientName}.',
-              NotificationType.success,
-            );
-            _playSound('new_order.mp3');
+          if (oldOrder == null) {
+            _notify('مهمة جديدة! 🛠️', 'تم إسناد طلب ${order.service.label} إليك.', NotificationType.success, 'new_order.mp3');
+          } else if (oldOrder.status != order.status) {
+            _notify('تحديث الطلب', 'تغيرت حالة طلب ${order.clientName} إلى ${order.status.label}', NotificationType.info, 'update.mp3');
           }
         }
 
-        // 3. جديد: تنبيه للعميل (إذا كان يراقب طلباً معيناً)
+        // 3. منطق العميل
         if (userRole == 'client' && order.trackingCode == lastTrackedCode) {
-          final oldOrder = _previousOrders.where((o) => o.id == order.id).firstOrNull;
           if (oldOrder != null && oldOrder.status != order.status) {
-            _addNotification(
-              'تحديث في طلبك ✅',
-              'حالة طلبك الآن: ${order.status.label}',
-              _getBadgeType(order.status),
-            );
-            _playSound('update.mp3');
+            _notify('تحديث في طلبك ✅', 'حالة طلبك الآن أصبحت: ${order.status.label}', _getBadgeType(order.status), 'update.mp3');
           }
         }
       }
       _previousOrders = newOrders;
+    });
+
+    _isInitialized = true;
+  }
+
+  ProviderListenable<AsyncValue<List<Order>>>? _getRelevantProvider(String role, String? userId) {
+    if (role == 'admin') return ordersStreamProvider;
+    if (role == 'tech' && userId != null) return techOrdersStreamProvider(userId);
+    return ordersStreamProvider;
+  }
+
+  void _notify(String title, String body, NotificationType type, String sound) {
+    final notification = AppNotification(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      body: body,
+      timestamp: DateTime.now(),
+      type: type,
+    );
+    
+    state = [notification, ...state];
+    _latestIncoming = notification;
+    _playSound(sound);
+    
+    // إخفاء الـ Overlay بعد 5 ثوانٍ
+    Future.delayed(const Duration(seconds: 5), () {
+      if (_latestIncoming?.id == notification.id) {
+        _latestIncoming = null;
+        state = [...state]; 
+      }
     });
   }
 
@@ -109,45 +131,23 @@ class NotificationNotifier extends StateNotifier<List<AppNotification>> {
     return NotificationType.info;
   }
 
-  void _addNotification(String title, String body, NotificationType type) {
-    final notification = AppNotification(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      body: body,
-      timestamp: DateTime.now(),
-      type: type,
-    );
-    state = [notification, ...state];
-    _latestIncoming = notification;
-    
-    Future.delayed(const Duration(seconds: 5), () {
-      if (_latestIncoming?.id == notification.id) {
-        _latestIncoming = null;
-        state = [...state]; 
-      }
-    });
-  }
-
   Future<void> _playSound(String fileName) async {
     try {
       await _audioPlayer.play(AssetSource('sounds/$fileName'));
-    } catch (e) {
-      // Ignore audio errors on web
-    }
+    } catch (_) {}
   }
 
   void markAsRead(String id) {
-    state = [
-      for (final n in state)
-        if (n.id == id) AppNotification(id: n.id, title: n.title, body: n.body, timestamp: n.timestamp, type: n.type, isRead: true)
-        else n,
-    ];
+    state = [for (final n in state) if (n.id == id) AppNotification(id: n.id, title: n.title, body: n.body, timestamp: n.timestamp, type: n.type, isRead: true) else n];
+  }
+
+  void clearLatest() {
+    _latestIncoming = null;
+    state = [...state];
   }
 
   void clearAll() {
     state = [];
     _latestIncoming = null;
   }
-
-  int get unreadCount => state.where((n) => !n.isRead).length;
 }

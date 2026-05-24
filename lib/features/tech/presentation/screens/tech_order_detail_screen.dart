@@ -37,27 +37,33 @@ class TechOrderDetailScreen extends ConsumerWidget {
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _StatusBanner(status: order.status),
-                  const SizedBox(height: AppSpacing.lg),
-                  _buildClientInfo(order),
-                  const SizedBox(height: AppSpacing.xl),
-                  _buildOrderDescription(order),
-                  
-                  if (order.completionImages.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.xl),
-                    _buildCompletionImages(context, order.completionImages),
-                  ],
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _StatusBanner(status: order.status),
+                      const SizedBox(height: AppSpacing.lg),
+                      _buildClientInfo(order),
+                      const SizedBox(height: AppSpacing.xl),
+                      _buildOrderDescription(order),
+                      
+                      if (order.completionImages.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        _buildCompletionImages(context, order.completionImages),
+                      ],
 
-                  if (order.techNotes != null) ...[
-                    const SizedBox(height: AppSpacing.xl),
-                    _buildTechReport(order),
-                  ],
-                  const SizedBox(height: AppSpacing.xl),
-                  _buildActionButtons(context, ref, order),
-                ],
+                      if (order.techNotes != null) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        _buildTechReport(order),
+                      ],
+                      const SizedBox(height: AppSpacing.xxxl),
+                      _buildActionButtons(context, ref, order),
+                      const SizedBox(height: AppSpacing.xxxl),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -78,23 +84,34 @@ class TechOrderDetailScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('صور إثبات العمل', style: AppTextStyles.labelLarge.copyWith(color: AppColors.success)),
+        Row(
+          children: [
+            const Icon(Icons.verified_outlined, color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+            Text('صور إثبات العمل', style: AppTextStyles.labelLarge.copyWith(color: AppColors.success)),
+          ],
+        ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: images.length,
-            itemBuilder: (context, index) => GestureDetector(
-              onTap: () => _showFullScreenImage(context, images[index]),
-              child: Container(
-                width: 120,
-                margin: const EdgeInsets.only(left: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
-                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 200,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1,
+          ),
+          itemCount: images.length,
+          itemBuilder: (context, index) => GestureDetector(
+            onTap: () => _showFullScreenImage(context, images[index]),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                ],
               ),
             ),
           ),
@@ -108,7 +125,16 @@ class TechOrderDetailScreen extends ConsumerWidget {
       context: context, 
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent, 
-        child: InteractiveViewer(child: Image.network(url)),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(child: Image.network(url)),
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -118,7 +144,18 @@ class TechOrderDetailScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('بيانات العميل', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('بيانات العميل', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
+              IconButton(
+                icon: const Icon(Icons.copy, size: 16, color: AppColors.textMuted),
+                onPressed: () {
+                  // Clipboard logic here if needed
+                },
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.md),
           Text(order.clientName, style: AppTextStyles.displayMedium),
           const SizedBox(height: AppSpacing.sm),
@@ -126,7 +163,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.location_on_outlined, color: AppColors.textSecondary, size: 18),
               const SizedBox(width: 8),
-              Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyLarge),
+              Expanded(child: Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyLarge)),
             ],
           ),
           const Divider(height: AppSpacing.xl),
@@ -147,7 +184,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
                   icon: Icons.chat,
                   variant: ButtonVariant.whatsapp,
                   onTap: () {
-                    final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}');
+                    final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}، أنا الفني من حرفي وبخصوص طلبك...');
                     launchUrl(uri, mode: LaunchMode.externalApplication);
                   },
                 ),
@@ -166,24 +203,27 @@ class TechOrderDetailScreen extends ConsumerWidget {
         children: [
           Text('تفاصيل المشكلة', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
           const SizedBox(height: AppSpacing.md),
-          Text(
-            order.description ?? 'لا يوجد وصف مضاف',
-            style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: AppSpacing.lg),
           Container(
-            padding: const EdgeInsets.all(12),
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.surface1,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.borderDefault),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.build_circle_outlined, color: AppColors.gold),
-                const SizedBox(width: 12),
-                Text(order.service.label, style: AppTextStyles.titleMed),
-              ],
+            child: Text(
+              order.description ?? 'لا يوجد وصف مضاف',
+              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, height: 1.5),
             ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: [
+              const Icon(Icons.build_circle_outlined, color: AppColors.gold, size: 20),
+              const SizedBox(width: 12),
+              Text('نوع الخدمة: ', style: AppTextStyles.labelLarge),
+              Text(order.service.label, style: AppTextStyles.titleMed.copyWith(color: AppColors.gold)),
+            ],
           ),
         ],
       ),
@@ -196,11 +236,23 @@ class TechOrderDetailScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('تقرير الإنجاز الخاص بك', style: AppTextStyles.labelLarge.copyWith(color: AppColors.success)),
-          const SizedBox(height: 8),
-          Text(order.techNotes!, style: AppTextStyles.bodyLarge),
+          Row(
+            children: [
+              const Icon(Icons.assignment_turned_in_outlined, color: AppColors.success, size: 20),
+              const SizedBox(width: 12),
+              Text('تقرير الإنجاز المالي', style: AppTextStyles.labelLarge.copyWith(color: AppColors.success)),
+            ],
+          ),
           const SizedBox(height: 12),
-          Text('المبلغ الإجمالي: ${order.finalPrice} ج.م', style: AppTextStyles.titleMed),
+          Text(order.techNotes!, style: AppTextStyles.bodyLarge.copyWith(height: 1.5)),
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('المبلغ الإجمالي المحصل:', style: AppTextStyles.bodyLarge),
+              Text('${order.finalPrice} ج.م', style: AppTextStyles.headlineLarge.copyWith(color: AppColors.success)),
+            ],
+          ),
         ],
       ),
     );
@@ -208,16 +260,34 @@ class TechOrderDetailScreen extends ConsumerWidget {
 
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, Order order) {
     if (order.status == OrderStatus.completed) {
-      return const AppCard(
-        color: AppColors.success,
-        child: Center(child: Text('تم إنجاز هذا الطلب بنجاح', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: const Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, color: AppColors.success),
+              SizedBox(width: 12),
+              Text('تم إنجاز هذا الطلب وإغلاقه بنجاح', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.success)),
+            ],
+          ),
+        ),
       );
     }
 
     if (order.status == OrderStatus.cancelled) {
-      return const AppCard(
-        color: AppColors.error,
-        child: Center(child: Text('هذا الطلب ملغي', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(child: Text('هذا الطلب ملغي من قبل الإدارة أو العميل', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.error))),
       );
     }
 
@@ -225,12 +295,12 @@ class TechOrderDetailScreen extends ConsumerWidget {
       children: [
         if (order.status == OrderStatus.assigned)
           AppButton(
-            label: 'أنا في الطريق للعميل',
+            label: 'أنا في الطريق للعميل الآن',
             icon: Icons.directions_bike,
             onTap: () => ref.read(adminActionsProvider).updateOrderStatus(
               order, 
               OrderStatus.onTheWay,
-              logMessage: 'الفني تحرك الآن وفي طريقه إليك',
+              logMessage: 'الفني تحرك الآن وهو في طريقه إليك',
             ),
           ),
 
@@ -247,7 +317,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
 
         if (order.status == OrderStatus.started)
           AppButton(
-            label: 'تم الإنجاز (إغلاق الطلب)',
+            label: 'تم الإنجاز (إغلاق المهمة)',
             icon: Icons.check_circle,
             variant: ButtonVariant.success,
             onTap: () => _showCompletionSheet(context, ref, order),
@@ -257,10 +327,12 @@ class TechOrderDetailScreen extends ConsumerWidget {
   }
 
   void _showCompletionSheet(BuildContext context, WidgetRef ref, Order order) {
+    final width = MediaQuery.of(context).size.width;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface2,
+      constraints: BoxConstraints(maxWidth: width > 900 ? 600 : width),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
       builder: (context) => _CompletionSheet(order: order),
     );
@@ -292,7 +364,7 @@ class _CompletionSheetState extends ConsumerState<_CompletionSheet> {
   Future<void> _submit() async {
     final price = int.tryParse(_priceController.text);
     if (price == null || _notesController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء السعر ووصف العمل')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى تحديد السعر ووصف العمل المنجز')));
       return;
     }
 
@@ -302,7 +374,6 @@ class _CompletionSheetState extends ConsumerState<_CompletionSheet> {
       final storage = StorageService();
       final List<String> imageUrls = [];
 
-      // رفع الصور باستخدام الميثود المحدثة uploadImage
       for (var image in _selectedImages) {
         final url = await storage.uploadImage(
           image: image, 
@@ -316,10 +387,9 @@ class _CompletionSheetState extends ConsumerState<_CompletionSheet> {
         widget.order,
         finalPrice: price,
         techNotes: _notesController.text.trim(),
-        logMessage: 'تم إنجاز المهمة بنجاح، شكراً لتعاملكم مع حرافي',
+        logMessage: 'تم إنجاز المهمة بنجاح، نتمنى أن نكون عند حسن ظنكم',
       );
 
-      // تحديث إضافي للصور في جدول الطلبات
       await ref.read(ordersRepositoryProvider).update(widget.order.id, {
         'completion_images': imageUrls,
       });
@@ -346,50 +416,79 @@ class _CompletionSheetState extends ConsumerState<_CompletionSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('إغلاق الطلب وإثبات العمل', style: AppTextStyles.headlineMed),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('إغلاق الطلب وإثبات العمل', style: AppTextStyles.headlineMed),
+                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+              ],
+            ),
             const SizedBox(height: 24),
             TextField(
               controller: _notesController,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: 'ماذا تم في هذه المهمة؟', hintText: 'تم إصلاح العطل وتغيير قطع الغيار...'),
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'تقرير العمل المنجز', 
+                hintText: 'اشرح للعميل ما قمت به (مثلاً: تم تغيير صنبور الحمام بقطعة غيار أصلية)...',
+                alignLabelWithHint: true,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _priceController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'السعر النهائي المحصل (ج.م)'),
+              decoration: const InputDecoration(
+                labelText: 'إجمالي المبلغ المحصل (ج.م)',
+                prefixIcon: Icon(Icons.payments_outlined),
+              ),
             ),
             const SizedBox(height: 24),
             
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('صور إثبات العمل (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
-                TextButton.icon(onPressed: _pickImages, icon: const Icon(Icons.add_a_photo), label: const Text('إضافة صور')),
+                const Text('إرفاق صور العمل (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
+                TextButton.icon(onPressed: _pickImages, icon: const Icon(Icons.add_a_photo_outlined), label: const Text('إضافة صور')),
               ],
             ),
             if (_selectedImages.isNotEmpty)
               SizedBox(
-                height: 80,
+                height: 100,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _selectedImages.length, // تم التعديل هنا من .size إلى .length
-                  itemBuilder: (context, index) => Container(
-                    width: 80,
-                    margin: const EdgeInsets.only(left: 8),
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: FileImage(File(_selectedImages[index].path)), fit: BoxFit.cover)),
+                  itemCount: _selectedImages.length,
+                  itemBuilder: (context, index) => Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Container(
+                        width: 100,
+                        margin: const EdgeInsets.only(left: 8, top: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12), 
+                          image: DecorationImage(image: FileImage(File(_selectedImages[index].path)), fit: BoxFit.cover),
+                          border: Border.all(color: AppColors.borderDefault),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => _selectedImages.removeAt(index)),
+                        icon: const CircleAvatar(radius: 10, backgroundColor: AppColors.error, child: Icon(Icons.close, size: 12, color: Colors.white)),
+                      ),
+                    ],
                   ),
                 ),
               ),
               
             const SizedBox(height: 32),
-            AppButton(
-              label: 'تأكيد الإنجاز النهائي',
-              onTap: _submit,
-              isLoading: _isLoading,
-              icon: Icons.done_all,
+            SizedBox(
+              height: 50,
+              child: AppButton(
+                label: 'تأكيد إنجاز المهمة نهائياً',
+                onTap: _submit,
+                isLoading: _isLoading,
+                icon: Icons.done_all_rounded,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -408,19 +507,28 @@ class _StatusBanner extends StatelessWidget {
     if (status == OrderStatus.cancelled) color = AppColors.error;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: color, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            'الحالة الحالية: ${status.label}',
-            style: AppTextStyles.titleMed.copyWith(color: color),
+          Icon(Icons.info_outline, color: color, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'حالة الطلب: ${status.label}',
+                  style: AppTextStyles.titleLarge.copyWith(color: color, fontWeight: FontWeight.bold),
+                ),
+                if (status == OrderStatus.assigned)
+                  Text('العميل بانتظار تحركك الآن', style: AppTextStyles.labelMed.copyWith(color: color.withValues(alpha: 0.8))),
+              ],
+            ),
           ),
         ],
       ),

@@ -85,7 +85,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: AppColors.background,
       drawer: const ClientDrawer(),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => launchUrl(WhatsAppUtils.buildUri('201014250577', 'السلام عليكم، أحتاج مساعدة في تطبيق حرافي')),
+        onPressed: () => launchUrl(WhatsAppUtils.buildUri('201014250577', 'السلام عليكم، أحتاج مساعدة في منصة حرفي')),
         backgroundColor: const Color(0xFF25D366),
         child: const Icon(Icons.support_agent, color: Colors.white),
       ),

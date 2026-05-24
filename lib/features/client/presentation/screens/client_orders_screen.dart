@@ -39,9 +39,13 @@ class _ClientOrdersScreenState extends ConsumerState<ClientOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width > 900;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('سجل طلباتي'),
+        centerTitle: !isDesktop,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/'),
@@ -51,35 +55,44 @@ class _ClientOrdersScreenState extends ConsumerState<ClientOrdersScreen> {
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: const BoxConstraints(maxWidth: 1100),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppCard(
-                  child: Column(
-                    children: [
-                      const Text(
-                        'أدخل رقم هاتفك المسجل لعرض جميع طلباتك السابقة والحالية',
-                        textAlign: TextAlign.center,
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: AppCard(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.history_rounded, color: AppColors.gold, size: 40),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'أدخل رقم هاتفك لعرض جميع طلباتك السابقة والحالية وتتبعها',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(height: 1.5),
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                          AppTextField(
+                            label: 'رقم الهاتف',
+                            hint: '01xxxxxxxxx',
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            prefixIcon: Icons.phone_android,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          AppButton(
+                            label: 'عرض سجل الطلبات',
+                            onTap: _search,
+                            icon: Icons.search_rounded,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      AppTextField(
-                        label: 'رقم الهاتف',
-                        hint: '01xxxxxxxxx',
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        prefixIcon: Icons.phone_android,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      AppButton(
-                        label: 'عرض الطلبات',
-                        onTap: _search,
-                        icon: Icons.history,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xxl),
+                const SizedBox(height: AppSpacing.xxxl),
                 if (_submittedPhone != null)
                   ref.watch(clientOrdersProvider(_submittedPhone!)).when(
                         data: (orders) => _OrdersList(orders: orders),
@@ -112,24 +125,35 @@ class _OrdersList extends StatelessWidget {
             const SizedBox(height: 40),
             Icon(Icons.assignment_late_outlined, size: 64, color: AppColors.textMuted.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
-            const Text('لم نجد أي طلبات مسجلة لهذا الرقم'),
+            const Text('لم نجد أي طلبات مسجلة لهذا الرقم حتى الآن'),
           ],
         ),
       );
     }
 
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width > 900 ? 2 : 1;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('وجدت ${orders.length} طلبات', style: AppTextStyles.headlineMed),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text('قائمة الطلبات (${orders.length})', style: AppTextStyles.headlineMed),
+        ),
         const SizedBox(height: AppSpacing.lg),
-        ListView.builder(
+        GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: AppSpacing.lg,
+            mainAxisSpacing: AppSpacing.lg,
+            mainAxisExtent: 220,
+          ),
           itemCount: orders.length,
           itemBuilder: (context, index) {
-            final order = orders[index];
-            return _OrderCard(order: order);
+            return _OrderCard(order: orders[index]);
           },
         ),
       ],
@@ -146,7 +170,6 @@ class _OrderCard extends StatelessWidget {
     final bool isCompleted = order.status == OrderStatus.completed;
 
     return AppCard(
-      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -158,55 +181,60 @@ class _OrderCard extends StatelessWidget {
                   Clipboard.setData(ClipboardData(text: order.trackingCode));
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ كود التتبع')));
                 },
-                child: Row(
-                  children: [
-                    Text(
-                      order.trackingCode,
-                      style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold, letterSpacing: 1),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.copy, size: 12, color: AppColors.gold),
-                  ],
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(6)),
+                  child: Row(
+                    children: [
+                      Text(
+                        order.trackingCode,
+                        style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold, letterSpacing: 1, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.copy, size: 12, color: AppColors.gold),
+                    ],
+                  ),
                 ),
               ),
               _StatusBadge(status: order.status),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
-              Text(order.service.icon, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 8),
-              Text(order.service.label, style: AppTextStyles.titleLarge),
+              Text(order.service.icon, style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(order.service.label, style: AppTextStyles.titleLarge),
+                    Text('بتاريخ: ${order.createdAt.toString().split(' ')[0]}', style: AppTextStyles.labelMed),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'تاريخ الطلب: ${order.createdAt.toString().split(' ')[0]}',
-            style: AppTextStyles.bodyMed,
-          ),
-          const Divider(height: 24),
+          const Spacer(),
+          const Divider(),
           Row(
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'تتبع الطلب',
+                  label: 'تتبع الآن',
                   size: ButtonSize.sm,
                   variant: ButtonVariant.ghost,
                   onTap: () => context.push('/track/${order.trackingCode}'),
                 ),
               ),
-              const SizedBox(width: 8),
-              if (isCompleted && order.techId != null)
+              const SizedBox(width: 12),
+              if (isCompleted)
                 Expanded(
                   child: AppButton(
-                    label: 'أطلب الفني ثانية',
+                    label: 'طلب جديد',
                     size: ButtonSize.sm,
-                    icon: Icons.replay_rounded,
-                    onTap: () => context.push('/request', extra: {
-                      'service': order.service,
-                      'techId': order.techId,
-                    }),
+                    icon: Icons.add_task,
+                    onTap: () => context.push('/request', extra: {'service': order.service, 'techId': order.techId}),
                   ),
                 ),
             ],
@@ -233,15 +261,15 @@ class _StatusBadge extends StatelessWidget {
       case OrderStatus.cancelled: color = AppColors.error; break;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         status.label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

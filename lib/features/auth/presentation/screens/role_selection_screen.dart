@@ -37,7 +37,7 @@ class RoleSelectionScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
                 const SizedBox(height: AppSpacing.xl),
-                Text('أهلاً بك في حرافي', style: AppTextStyles.displayMedium),
+                Text('أهلاً بك في حرفي', style: AppTextStyles.displayMedium),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   'اختر نوع الحساب للمتابعة',
@@ -55,7 +55,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 const SizedBox(height: AppSpacing.lg),
                 
                 _RoleCard(
-                  title: 'أنا فني (حرافي)',
+                  title: 'أنا فني (حرفي)',
                   subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
                   icon: Icons.engineering_outlined,
                   isPrimary: true,

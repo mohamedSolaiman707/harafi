@@ -10,7 +10,9 @@ class AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    final isWide = MediaQuery.of(context).size.width > 900;
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 900;
+    final isUltraWide = width > 1400;
 
     return Scaffold(
       appBar: isWide ? null : AppBar(
@@ -24,76 +26,71 @@ class AdminShell extends StatelessWidget {
         children: [
           if (isWide)
             Container(
-              width: 240,
+              width: isUltraWide ? 280 : 240,
               color: AppColors.surface2,
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.xl,
-                    ),
+                    padding: const EdgeInsets.all(AppSpacing.xl),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.menu,
-                              size: 24,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(
-                              'لوحة التحكم',
-                              style: AppTextStyles.titleLarge.copyWith(
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
+                        const Icon(Icons.handyman_rounded, color: AppColors.gold, size: 32),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'حرفي آدو',
+                            style: AppTextStyles.headlineLarge.copyWith(color: AppColors.gold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const NotificationIcon(),
                       ],
                     ),
                   ),
                   const Divider(color: AppColors.borderDefault, height: 1),
+                  const SizedBox(height: AppSpacing.lg),
                   Expanded(
                     child: NavigationRail(
                       backgroundColor: AppColors.surface2,
-                      extended: false,
+                      extended: true, // تفعيل النص بجانب الأيقونة
                       selectedIndex: _getSelectedIndex(location),
-                      onDestinationSelected: (index) =>
-                          _onItemTapped(index, context),
-                      groupAlignment: 0,
-                      labelType: NavigationRailLabelType.all,
-                      selectedLabelTextStyle: AppTextStyles.bodyLarge.copyWith(
+                      onDestinationSelected: (index) => _onItemTapped(index, context),
+                      groupAlignment: -0.9,
+                      selectedLabelTextStyle: AppTextStyles.titleMed.copyWith(
                         color: AppColors.gold,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.bold,
                       ),
-                      unselectedLabelTextStyle: AppTextStyles.bodyLarge
-                          .copyWith(color: AppColors.textSecondary),
-                      selectedIconTheme: const IconThemeData(
-                        color: AppColors.gold,
-                      ),
-                      unselectedIconTheme: const IconThemeData(
+                      unselectedLabelTextStyle: AppTextStyles.bodyLarge.copyWith(
                         color: AppColors.textSecondary,
                       ),
+                      selectedIconTheme: const IconThemeData(color: AppColors.gold, size: 28),
+                      unselectedIconTheme: const IconThemeData(color: AppColors.textMuted, size: 24),
                       destinations: const [
                         NavigationRailDestination(
                           icon: Icon(Icons.dashboard_outlined),
                           selectedIcon: Icon(Icons.dashboard),
-                          label: Text('لوحة التحكم'),
+                          label: Text('الرئيسية'),
                         ),
                         NavigationRailDestination(
                           icon: Icon(Icons.assignment_outlined),
                           selectedIcon: Icon(Icons.assignment),
-                          label: Text('الطلبات'),
+                          label: Text('إدارة الطلبات'),
                         ),
                         NavigationRailDestination(
                           icon: Icon(Icons.people_outline),
                           selectedIcon: Icon(Icons.people),
-                          label: Text('الفنيين'),
+                          label: Text('الفنيين والخبراء'),
                         ),
+                      ],
+                    ),
+                  ),
+                  // زر الإشعارات في الأسفل للشاشات الكبيرة
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    child: Row(
+                      children: [
+                        const NotificationIcon(),
+                        const SizedBox(width: 12),
+                        Text('التنبيهات', style: AppTextStyles.bodyLarge),
                       ],
                     ),
                   ),
@@ -101,12 +98,13 @@ class AdminShell extends StatelessWidget {
               ),
             ),
           if (isWide)
-            const VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: AppColors.borderDefault,
+            const VerticalDivider(width: 1, thickness: 1, color: AppColors.borderDefault),
+          Expanded(
+            child: Container(
+              color: AppColors.surface1, // خلفية أهدأ للمحتوى
+              child: child,
             ),
-          Expanded(child: child),
+          ),
         ],
       ),
       bottomNavigationBar: isWide
@@ -116,18 +114,9 @@ class AdminShell extends StatelessWidget {
               onDestinationSelected: (index) => _onItemTapped(index, context),
               backgroundColor: AppColors.surface2,
               destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined),
-                  label: 'الرئيسية',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.assignment_outlined),
-                  label: 'الطلبات',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.people_outline),
-                  label: 'الفنيين',
-                ),
+                NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'الرئيسية'),
+                NavigationDestination(icon: Icon(Icons.assignment_outlined), label: 'الطلبات'),
+                NavigationDestination(icon: Icon(Icons.people_outline), label: 'الفنيين'),
               ],
             ),
     );
@@ -136,21 +125,14 @@ class AdminShell extends StatelessWidget {
   int _getSelectedIndex(String location) {
     if (location.startsWith('/admin/orders')) return 1;
     if (location.startsWith('/admin/techs')) return 2;
-    if (location.startsWith('/admin')) return 0;
     return 0;
   }
 
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
-      case 0:
-        context.go('/admin');
-        break;
-      case 1:
-        context.go('/admin/orders');
-        break;
-      case 2:
-        context.go('/admin/techs');
-        break;
+      case 0: context.go('/admin'); break;
+      case 1: context.go('/admin/orders'); break;
+      case 2: context.go('/admin/techs'); break;
     }
   }
 }

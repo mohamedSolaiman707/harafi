@@ -34,7 +34,7 @@ class Technician with _$Technician {
       final t = this as dynamic;
       final int jobs = t.totalJobs ?? 0;
       final double rat = t.rating ?? 0.0;
-      if (jobs >= 50 && rat >= 4.7) return 'حرافي بلاتيني';
+      if (jobs >= 50 && rat >= 4.7) return 'حرفي بلاتيني';
       if (jobs >= 30 && rat >= 4.5) return 'فني ذهبي';
       if (jobs >= 10) return 'فني محترف';
     } catch (_) {}

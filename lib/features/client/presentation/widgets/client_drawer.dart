@@ -53,7 +53,7 @@ class ClientDrawer extends ConsumerWidget {
                 ),
                 _buildMenuItem(
                   icon: Icons.info_outline_rounded,
-                  title: 'عن حرافي',
+                  title: 'عن حرفي',
                   onTap: () {
                     // يمكن إضافة شاشة معلومات لاحقاً
                   },

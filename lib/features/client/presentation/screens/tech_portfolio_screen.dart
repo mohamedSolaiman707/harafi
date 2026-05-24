@@ -229,7 +229,7 @@ class _PortfolioBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            tech.bio ?? 'هذا الفني خبير معتمد في شبكة حرافي، يلتزم بتقديم أفضل جودة وأسرع استجابة لعملائنا.',
+            tech.bio ?? 'هذا الفني خبير معتمد في شبكة حرفي، يلتزم بتقديم أفضل جودة وأسرع استجابة لعملائنا.',
             style: AppTextStyles.bodyLarge.copyWith(height: 1.6),
           ),
         ],

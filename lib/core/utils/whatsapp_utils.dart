@@ -18,7 +18,7 @@ class WhatsAppUtils {
   // الرسائل
   static String orderCreated(String trackingCode) =>
       'السلام عليكم 🙏\n'
-      'تم استلام طلبك في حرافي ✅\n'
+      'تم استلام طلبك في حرفي ✅\n'
       'كود التتبع: $trackingCode\n'
       'تابع طلبك: https://7arafi.com/track/$trackingCode';
 
@@ -28,7 +28,7 @@ class WhatsAppUtils {
       'تابع: https://7arafi.com/track/$trackingCode';
 
   static String techAssignedTech(Order order) =>
-      'عندك شغلة جديدة في حرافي 🔧\n\n'
+      'عندك شغلة جديدة في حرفي 🔧\n\n'
       '👤 العميل: ${order.clientName}\n'
       '📍 المنطقة: ${order.area ?? "غير محدد"}\n'
       '🔧 الخدمة: ${order.service.label}\n'

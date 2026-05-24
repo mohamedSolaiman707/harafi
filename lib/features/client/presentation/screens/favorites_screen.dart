@@ -7,7 +7,6 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../providers/favorites_provider.dart';
-import '../screens/service_techs_screen.dart'; // سنستخدم الـ TechListItem منه
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
@@ -16,6 +15,7 @@ class FavoritesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final favIds = ref.watch(favoritesProvider);
     final techsAsync = ref.watch(techniciansProvider);
+    final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       appBar: AppBar(
@@ -30,14 +30,23 @@ class FavoritesScreen extends ConsumerWidget {
             return _buildEmptyState(context);
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            itemCount: favTechs.length,
-            itemBuilder: (context, index) {
-              final tech = favTechs[index];
-              // إدراج الـ _TechListItem يدوياً هنا لضمان التوافق
-              return _FavoriteTechItem(tech: tech);
-            },
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: GridView.builder(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: width > 1200 ? 3 : (width > 800 ? 2 : 1),
+                  crossAxisSpacing: AppSpacing.lg,
+                  mainAxisSpacing: AppSpacing.lg,
+                  mainAxisExtent: 140,
+                ),
+                itemCount: favTechs.length,
+                itemBuilder: (context, index) {
+                  return _FavoriteTechItem(tech: favTechs[index]);
+                },
+              ),
+            ),
           );
         },
         loading: () => const LoadingWidget(),
@@ -75,14 +84,14 @@ class FavoritesScreen extends ConsumerWidget {
 }
 
 class _FavoriteTechItem extends ConsumerWidget {
-  final dynamic tech; // Technician
+  final dynamic tech;
   const _FavoriteTechItem({required this.tech});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AppCard(
       onTap: () => context.push('/tech/portfolio/${tech.id}'),
-      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
           CircleAvatar(
@@ -91,24 +100,41 @@ class _FavoriteTechItem extends ConsumerWidget {
             backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
             child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
           ),
-          const SizedBox(width: AppSpacing.lg),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(tech.name, style: AppTextStyles.titleLarge),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        tech.name, 
+                        style: AppTextStyles.titleMed,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (tech.isVerified) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.verified, color: AppColors.info, size: 14),
+                    ],
+                  ],
+                ),
                 Text(tech.spec.label, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     const Icon(Icons.star, color: Colors.amber, size: 14),
-                    Text(' ${tech.rating.toStringAsFixed(1)}', style: AppTextStyles.labelLarge),
+                    const SizedBox(width: 4),
+                    Text(tech.rating.toStringAsFixed(1), style: AppTextStyles.labelLarge),
                   ],
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.favorite, color: Colors.red),
+            icon: const Icon(Icons.favorite, color: Colors.red, size: 20),
             onPressed: () => ref.read(favoritesProvider.notifier).toggleFavorite(tech.id),
           ),
         ],

@@ -24,6 +24,8 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final techsAsync = ref.watch(techsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 1100;
 
     if (techsAsync.hasError || ordersAsync.hasError) {
       return Scaffold(
@@ -40,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('لوحة التحكم - حرافي'),
+        title: const Text('لوحة التحكم - حرفي'),
         actions: [
           IconButton(
             icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
@@ -65,89 +67,128 @@ class DashboardScreen extends ConsumerWidget {
           ref.invalidate(ordersStreamProvider);
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: EdgeInsets.symmetric(
+            horizontal: isDesktop ? screenWidth * 0.05 : AppSpacing.xl,
+            vertical: AppSpacing.xl,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const StatsWidget(),
               const SizedBox(height: AppSpacing.xxxl),
               
-              // 1. التنبيهات العاجلة
-              techsAsync.when(
-                data: (techs) {
-                  final pending = techs.where((t) => t.status == TechStatus.pending).toList();
-                  if (pending.isEmpty) return const SizedBox.shrink();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSectionHeader('طلبات انضمام عاجلة', AppColors.gold, Icons.notification_important),
-                      const SizedBox(height: AppSpacing.md),
-                      ...pending.take(2).map((tech) => _PendingTechAlert(tech: tech)),
-                      const SizedBox(height: AppSpacing.xxxl),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-
-              // 2. إدارة المحتوى (الوصول السريع)
-              Text('الوصول السريع', style: AppTextStyles.headlineLarge),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickActionCard(
-                      title: 'إدارة الطلبات',
-                      icon: Icons.assignment_outlined,
-                      color: AppColors.info,
-                      onTap: () => context.push('/admin/orders'),
+              if (isDesktop)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // العمود الأيسر (الرئيسي)
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          ordersAsync.when(
+                            data: (orders) => RevenueChart(orders: orders),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                          const SizedBox(height: AppSpacing.xxxl),
+                          _buildRecentOrders(ordersAsync),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.lg),
-                  Expanded(
-                    child: _QuickActionCard(
-                      title: 'إدارة الفنيين',
-                      icon: Icons.people_outline,
-                      color: AppColors.success,
-                      onTap: () => context.push('/admin/techs'),
+                    const SizedBox(width: AppSpacing.xxxl),
+                    // العمود الأيمن (الجانبي)
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          _buildQuickActions(context),
+                          const SizedBox(height: AppSpacing.xxxl),
+                          _buildPendingAlerts(techsAsync),
+                          const SizedBox(height: AppSpacing.xxxl),
+                          ordersAsync.when(
+                            data: (orders) => _RecentReviewsSection(orders: orders),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: AppSpacing.xxxl),
-
-              // جديد: تحليل الإيرادات والنمو
-              ordersAsync.when(
-                data: (orders) => RevenueChart(orders: orders),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-
-              const SizedBox(height: AppSpacing.xxxl),
-
-              // 3. أحدث المراجعات والتقييمات
-              ordersAsync.when(
-                data: (orders) => _RecentReviewsSection(orders: orders),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-
-              const SizedBox(height: AppSpacing.xxxl),
-
-              // 4. أحدث الطلبات
-              _buildSectionHeader('أحدث الطلبات النشطة', AppColors.textPrimary, Icons.history),
-              const SizedBox(height: AppSpacing.md),
-              ordersAsync.when(
-                data: (orders) => _RecentOrdersSection(orders: orders),
-                loading: () => const LoadingWidget(),
-                error: (e, s) => const SizedBox.shrink(),
-              ),
+                  ],
+                )
+              else
+                // التصميم المعتاد للموبايل
+                Column(
+                  children: [
+                    _buildPendingAlerts(techsAsync),
+                    _buildQuickActions(context),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    ordersAsync.when(
+                      data: (orders) => RevenueChart(orders: orders),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    _RecentReviewsSection(orders: ordersAsync.valueOrNull ?? []),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    _buildRecentOrders(ordersAsync),
+                  ],
+                ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('الوصول السريع', style: AppTextStyles.headlineMed),
+        const SizedBox(height: AppSpacing.lg),
+        Row(
+          children: [
+            Expanded(child: _QuickActionCard(title: 'الطلبات', icon: Icons.assignment, color: AppColors.info, onTap: () => context.push('/admin/orders'))),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: _QuickActionCard(title: 'الفنيين', icon: Icons.people, color: AppColors.success, onTap: () => context.push('/admin/techs'))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPendingAlerts(AsyncValue<List<Technician>> techsAsync) {
+    return techsAsync.when(
+      data: (techs) {
+        final pending = techs.where((t) => t.status == TechStatus.pending).toList();
+        if (pending.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('طلبات انضمام عاجلة', AppColors.gold, Icons.notification_important),
+            const SizedBox(height: AppSpacing.md),
+            ...pending.take(2).map((tech) => _PendingTechAlert(tech: tech)),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildRecentOrders(AsyncValue<List<Order>> ordersAsync) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('أحدث الطلبات النشطة', AppColors.textPrimary, Icons.history),
+        const SizedBox(height: AppSpacing.md),
+        ordersAsync.when(
+          data: (orders) => _RecentOrdersSection(orders: orders),
+          loading: () => const LoadingWidget(),
+          error: (e, s) => const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 
@@ -211,10 +252,10 @@ class _RecentReviewsSection extends StatelessWidget {
               children: [
                 const Icon(Icons.star_rate_rounded, color: Colors.amber, size: 24),
                 const SizedBox(width: 12),
-                Text('آخر تقييمات العملاء', style: AppTextStyles.headlineMed),
+                Text('آخر التقييمات', style: AppTextStyles.headlineMed),
               ],
             ),
-            TextButton(onPressed: () {}, child: const Text('عرض الكل')),
+            TextButton(onPressed: () {}, child: const Text('الكل')),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -223,14 +264,15 @@ class _RecentReviewsSection extends StatelessWidget {
           color: AppColors.surface3,
           child: ListTile(
             leading: const CircleAvatar(backgroundColor: AppColors.surface1, child: Icon(Icons.comment_outlined, size: 18, color: AppColors.gold)),
-            title: Row(
+            title: Text(order.clientName, style: AppTextStyles.titleMed),
+            subtitle: Text(order.ratingComment ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(order.clientName, style: AppTextStyles.titleMed),
-                const Spacer(),
-                ...List.generate(5, (i) => Icon(Icons.star, size: 12, color: i < (order.rating ?? 0) ? Colors.amber : AppColors.textMuted)),
+                Text('${order.rating}', style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                const Icon(Icons.star, size: 14, color: Colors.amber),
               ],
             ),
-            subtitle: Text(order.ratingComment ?? 'بدون تعليق', maxLines: 2, overflow: TextOverflow.ellipsis),
             onTap: () => context.push('/admin/order/${order.id}'),
           ),
         )),
@@ -254,9 +296,9 @@ class _PendingTechAlert extends StatelessWidget {
             backgroundColor: AppColors.gold.withValues(alpha: 0.1),
             child: Text(tech.spec.icon),
           ),
-          title: Text(tech.name, style: AppTextStyles.titleLarge),
-          subtitle: Text('تخصص ${tech.spec.label} • ${tech.phone}'),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.gold),
+          title: Text(tech.name, style: AppTextStyles.titleMed),
+          subtitle: Text(tech.spec.label),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.gold),
           onTap: () => context.push('/admin/techs'),
         ),
       ),
@@ -329,19 +371,12 @@ class _QuickActionCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       color: AppColors.surface3,
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 28, color: color),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(title, style: AppTextStyles.titleLarge, textAlign: TextAlign.center),
+          Icon(icon, size: 24, color: color),
+          const SizedBox(height: AppSpacing.sm),
+          Text(title, style: AppTextStyles.titleMed, textAlign: TextAlign.center),
         ],
       ),
     );

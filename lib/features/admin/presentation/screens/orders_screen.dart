@@ -35,10 +35,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final ordersAsync = ref.watch(ordersStreamProvider);
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width > 1100;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('إدارة الطلبات والعمليات'),
+        centerTitle: !isDesktop,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -111,14 +114,23 @@ class _OrdersList extends ConsumerWidget {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width > 1400 ? 3 : (width > 900 ? 2 : 1);
+    final sidePadding = width > 1200 ? width * 0.05 : AppSpacing.lg;
+
+    return GridView.builder(
+      padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: AppSpacing.lg),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: AppSpacing.lg,
+        mainAxisSpacing: AppSpacing.md,
+        mainAxisExtent: 200, // تحديد طول الكارت لضمان التناسق
+      ),
       itemCount: orders.length,
       itemBuilder: (context, index) {
         final order = orders[index];
         return OrderCard(
           order: order,
-          // الأدمن يقدر يغير الحالة (إلغاء فقط) أو يعين فني
           onUpdateStatus: () => _showAdminActionSheet(context, ref, order),
           onAssignTech: () => _showAssignTechSheet(context, ref, order),
         );
@@ -128,11 +140,13 @@ class _OrdersList extends ConsumerWidget {
 
   Future<void> _showAssignTechSheet(BuildContext context, WidgetRef ref, Order order) async {
     final availableTechs = ref.read(availableTechsProvider(order.service));
+    final width = MediaQuery.of(context).size.width;
     
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface2,
+      constraints: BoxConstraints(maxWidth: width > 900 ? 600 : width), // عرض محدد للديسكتوب
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -150,7 +164,7 @@ class _OrdersList extends ConsumerWidget {
               ))
             else
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
                 child: ListView.builder(
                   shrinkWrap: true,
                   itemCount: availableTechs.length,
@@ -182,9 +196,11 @@ class _OrdersList extends ConsumerWidget {
   }
 
   Future<void> _showAdminActionSheet(BuildContext context, WidgetRef ref, Order order) async {
+    final width = MediaQuery.of(context).size.width;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface2,
+      constraints: BoxConstraints(maxWidth: width > 900 ? 500 : width),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -214,7 +230,7 @@ class _OrdersList extends ConsumerWidget {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('حذف الطلب'),
-                    content: const Text('هل أنت متأكد من حذف الطلب نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الفعل.'),
+                    content: const Text('هل أنت متأكد من حذف الطلب نهائياً؟'),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
                       TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: AppColors.error))),

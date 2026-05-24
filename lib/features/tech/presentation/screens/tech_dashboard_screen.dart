@@ -42,6 +42,8 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
   @override
   Widget build(BuildContext context) {
     final currentTechAsync = ref.watch(currentTechnicianProvider);
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width > 900;
 
     return currentTechAsync.when(
       data: (tech) {
@@ -52,13 +54,15 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('لوحة التحكم'),
+            title: const Text('لوحة تحكم الفني'),
+            centerTitle: !isDesktop,
             actions: [
               const NotificationIcon(),
               IconButton(
                 icon: const Icon(Icons.person_outline),
                 onPressed: () => context.push('/tech/profile'),
               ),
+              const SizedBox(width: 8),
             ],
             bottom: TabBar(
               controller: _tabController,
@@ -66,7 +70,7 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
               labelColor: AppColors.gold,
               unselectedLabelColor: AppColors.textSecondary,
               tabs: const [
-                Tab(text: 'المهام الحالية'),
+                Tab(text: 'المهام النشطة'),
                 Tab(text: 'سجل المهام'),
               ],
             ),
@@ -80,8 +84,8 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
               data: (orders) => TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildActiveOrders(orders, tech),
-                  _buildHistoryOrders(orders),
+                  _buildOrderList(orders, tech, isActive: true),
+                  _buildOrderList(orders, tech, isActive: false),
                 ],
               ),
               loading: () => const LoadingWidget(),
@@ -105,64 +109,74 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
     );
   }
 
-  Widget _buildActiveOrders(List<Order> orders, Technician tech) {
-    final activeOrders = orders.where((o) => 
-      o.status != OrderStatus.completed && o.status != OrderStatus.cancelled
-    ).toList();
+  Widget _buildOrderList(List<Order> orders, Technician tech, {required bool isActive}) {
+    final filteredOrders = isActive 
+        ? orders.where((o) => o.status != OrderStatus.completed && o.status != OrderStatus.cancelled).toList()
+        : orders.where((o) => o.status == OrderStatus.completed || o.status == OrderStatus.cancelled).toList();
 
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      children: [
-        _TechStatusCard(tech: tech),
-        const SizedBox(height: AppSpacing.md),
-        _buildFinancialSummary(tech),
-        const SizedBox(height: AppSpacing.xxl),
-        Text('مهام قيد التنفيذ (${activeOrders.length})', style: AppTextStyles.headlineMed),
-        const SizedBox(height: AppSpacing.md),
-        if (activeOrders.isEmpty)
-          _buildEmptyState('لا توجد مهام حالية', Icons.task_alt)
-        else
-          ...activeOrders.map((order) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: _TechOrderCard(order: order),
-          )),
-      ],
-    );
-  }
+    final width = MediaQuery.of(context).size.width;
+    final sidePadding = width > 1200 ? (width - 1100) / 2 : AppSpacing.xl;
+    final crossAxisCount = width > 1100 ? 2 : 1;
 
-  Widget _buildHistoryOrders(List<Order> orders) {
-    final historyOrders = orders.where((o) => 
-      o.status == OrderStatus.completed || o.status == OrderStatus.cancelled
-    ).toList();
-
-    if (historyOrders.isEmpty) {
-      return _buildEmptyState('سجل المهام فارغ', Icons.history);
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      itemCount: historyOrders.length,
-      itemBuilder: (context, index) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-        child: _HistoryOrderCard(order: historyOrders[index]),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message, IconData icon) {
-    return Center(
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: AppSpacing.xl),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 64, color: AppColors.textMuted.withValues(alpha: 0.3)),
-          const SizedBox(height: 16),
-          Text(message, style: TextStyle(color: AppColors.textMuted)),
+          if (isActive) ...[
+            _TechStatusCard(tech: tech),
+            const SizedBox(height: AppSpacing.lg),
+            _buildFinancialSummary(tech, width),
+            const SizedBox(height: AppSpacing.xxl),
+            Text(
+              isActive ? 'المهام المطلوبة منك (${filteredOrders.length})' : 'سجل المهام المنتهية',
+              style: AppTextStyles.headlineMed,
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          
+          if (filteredOrders.isEmpty)
+            _buildEmptyState(
+              isActive ? 'لا توجد مهام حالية' : 'سجل المهام فارغ', 
+              isActive ? Icons.task_alt : Icons.history
+            )
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: AppSpacing.lg,
+                mainAxisSpacing: AppSpacing.lg,
+                mainAxisExtent: isActive ? 210 : 180,
+              ),
+              itemCount: filteredOrders.length,
+              itemBuilder: (context, index) => isActive 
+                  ? _TechOrderCard(order: filteredOrders[index])
+                  : _HistoryOrderCard(order: filteredOrders[index]),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildFinancialSummary(Technician tech) {
+  Widget _buildEmptyState(String message, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 60),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(icon, size: 64, color: AppColors.textMuted.withValues(alpha: 0.2)),
+            const SizedBox(height: 16),
+            Text(message, style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinancialSummary(Technician tech, double width) {
+    final isDesktop = width > 700;
     return Column(
       children: [
         Row(
@@ -170,33 +184,60 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
             Expanded(
               child: AppCard(
                 color: AppColors.success.withValues(alpha: 0.05),
-                child: Column(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Row(
                   children: [
-                    const Icon(Icons.account_balance_wallet_outlined, color: AppColors.success, size: 24),
-                    const SizedBox(height: 8),
-                    Text('${tech.totalEarnings} ج.م', style: AppTextStyles.headlineMed.copyWith(color: AppColors.success)),
-                    Text('إجمالي الأرباح', style: AppTextStyles.labelMed),
+                    const Icon(Icons.account_balance_wallet_outlined, color: AppColors.success, size: 28),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('إجمالي الأرباح', style: AppTextStyles.labelMed),
+                        Text('${tech.totalEarnings} ج.م', style: AppTextStyles.headlineMed.copyWith(color: AppColors.success)),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
             const SizedBox(width: AppSpacing.md),
-            AppCard(
-              color: tech.rankColor.withValues(alpha: 0.1),
-              child: Column(
-                children: [
-                  Icon(tech.rankIcon, color: tech.rankColor, size: 24),
-                  const SizedBox(height: 8),
-                  Text(tech.rank, style: AppTextStyles.titleMed.copyWith(color: tech.rankColor)),
-                  Text('مستواك الحالي', style: AppTextStyles.labelMed),
-                ],
+            if (isDesktop)
+              Expanded(
+                child: AppCard(
+                  color: tech.rankColor.withValues(alpha: 0.1),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Row(
+                    children: [
+                      Icon(tech.rankIcon, color: tech.rankColor, size: 28),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('المستوى الحالي', style: AppTextStyles.labelMed),
+                          Text(tech.rank, style: AppTextStyles.titleLarge.copyWith(color: tech.rankColor)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
           ],
         ),
+        if (!isDesktop) ...[
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            color: tech.rankColor.withValues(alpha: 0.1),
+            child: ListTile(
+              leading: Icon(tech.rankIcon, color: tech.rankColor),
+              title: Text(tech.rank, style: TextStyle(color: tech.rankColor, fontWeight: FontWeight.bold)),
+              subtitle: const Text('مستواك الفني'),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         AppCard(
           color: AppColors.gold.withValues(alpha: 0.05),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -226,49 +267,36 @@ class _HistoryOrderCard extends StatelessWidget {
       color: AppColors.surface2,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(order.trackingCode, style: AppTextStyles.labelLarge),
-              Text(
-                isCompleted ? 'مكتمل ✅' : 'ملغي ❌',
-                style: TextStyle(
-                  color: isCompleted ? AppColors.success : AppColors.error,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+              Text(order.trackingCode, style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (isCompleted ? AppColors.success : AppColors.error).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isCompleted ? 'مكتمل' : 'ملغي',
+                  style: TextStyle(color: isCompleted ? AppColors.success : AppColors.error, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(order.clientName, style: AppTextStyles.titleLarge),
-          const SizedBox(height: 4),
-          Text(
-            'التاريخ: ${order.createdAt.toString().split(' ')[0]}',
-            style: AppTextStyles.labelMed,
-          ),
-          if (isCompleted && order.finalPrice != null) ...[
-            const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('المبلغ المحصل:', style: AppTextStyles.bodyMed),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(order.createdAt.toString().split(' ')[0], style: AppTextStyles.labelMed),
+              if (isCompleted && order.finalPrice != null)
                 Text('${order.finalPrice} ج.م', style: AppTextStyles.titleMed.copyWith(color: AppColors.success)),
-              ],
-            ),
-            if (order.rating != null)
-              Row(
-                children: [
-                  Text('تقييم العميل: ', style: AppTextStyles.bodyMed),
-                  ...List.generate(5, (i) => Icon(
-                    i < order.rating! ? Icons.star : Icons.star_border,
-                    size: 14,
-                    color: AppColors.gold,
-                  )),
-                ],
-              ),
-          ],
+            ],
+          ),
         ],
       ),
     );
@@ -281,25 +309,28 @@ class _NewTechOnboarding extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxxl),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.person_add_outlined, size: 80, color: AppColors.gold),
-              const SizedBox(height: 24),
-              Text('أهلاً بك في حرافي', style: AppTextStyles.displayMedium),
-              const SizedBox(height: 16),
-              const Text(
-                'لقد تم تفعيل رقم هاتفك بنجاح. الخطوة الأخيرة هي إكمال ملفك الفني لنتمكن من إرسال العملاء إليك.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              AppButton(
-                label: 'إكمال بيانات الملف الفني',
-                onTap: () => context.push('/tech/register'),
-              ),
-            ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxxl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.person_add_outlined, size: 80, color: AppColors.gold),
+                const SizedBox(height: 24),
+                Text('أهلاً بك في حرفي', style: AppTextStyles.displayMedium),
+                const SizedBox(height: 16),
+                const Text(
+                  'لقد تم تفعيل رقم هاتفك بنجاح. الخطوة الأخيرة هي إكمال ملفك الفني لنتمكن من إرسال العملاء إليك.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                AppButton(
+                  label: 'إكمال بيانات الملف الفني',
+                  onTap: () => context.push('/tech/register'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -320,37 +351,40 @@ class _PendingApprovalScreen extends StatelessWidget {
         ],
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxxl),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.hourglass_empty_rounded, size: 80, color: AppColors.gold),
-              const SizedBox(height: 24),
-              Text('حسابك قيد المراجعة', style: AppTextStyles.displayMedium),
-              const SizedBox(height: 16),
-              const Text(
-                'شكراً لانضمامك. يقوم فريق حرافي حالياً بمراجعة بياناتك لضمان الجودة. يمكنك الضغط على الزر أدناه لتأكيد هويتك عبر واتساب وتسريع العملية.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              AppButton(
-                label: 'تفعيل الحساب عبر واتساب',
-                variant: ButtonVariant.whatsapp,
-                icon: Icons.chat,
-                onTap: () {
-                  final message = 'السلام عليكم، أنا الفني ${tech.name} (تخصص ${tech.spec.label}) أريد تفعيل حسابي على منصة حرافي برقم ${tech.phone}';
-                  final uri = WhatsAppUtils.buildUri('201014250577', message); 
-                  launchUrl(uri, mode: LaunchMode.externalApplication);
-                },
-              ),
-              const SizedBox(height: 16),
-              AppButton(
-                label: 'العودة للرئيسية',
-                variant: ButtonVariant.ghost,
-                onTap: () => context.go('/'),
-              ),
-            ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxxl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.hourglass_empty_rounded, size: 80, color: AppColors.gold),
+                const SizedBox(height: 24),
+                Text('حسابك قيد المراجعة', style: AppTextStyles.displayMedium),
+                const SizedBox(height: 16),
+                const Text(
+                  'شكراً لانضمامك. يقوم فريق حرفي حالياً بمراجعة بياناتك لضمان الجودة. يمكنك الضغط على الزر أدناه لتأكيد هويتك عبر واتساب وتسريع العملية.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                AppButton(
+                  label: 'تفعيل الحساب عبر واتساب',
+                  variant: ButtonVariant.whatsapp,
+                  icon: Icons.chat,
+                  onTap: () {
+                    final message = 'السلام عليكم، أنا الفني ${tech.name} (تخصص ${tech.spec.label}) أريد تفعيل حسابي على منصة حرفي برقم ${tech.phone}';
+                    final uri = WhatsAppUtils.buildUri('201014250577', message); 
+                    launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                ),
+                const SizedBox(height: 16),
+                AppButton(
+                  label: 'العودة للرئيسية',
+                  variant: ButtonVariant.ghost,
+                  onTap: () => context.go('/'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -371,7 +405,7 @@ class _TechStatusCard extends ConsumerWidget {
       child: Row(
         children: [
           CircleAvatar(
-            radius: 28,
+            radius: 25,
             backgroundColor: isAvailable ? AppColors.success.withValues(alpha: 0.1) : AppColors.textMuted.withValues(alpha: 0.1),
             child: Icon(
               isAvailable ? Icons.check_circle : Icons.pause_circle_filled,
@@ -391,17 +425,20 @@ class _TechStatusCard extends ConsumerWidget {
               ],
             ),
           ),
-          Switch(
-            value: isAvailable,
-            activeColor: AppColors.success,
-            onChanged: (val) async {
-              await ref.read(techsRepositoryProvider).updateTechStatus(
-                tech.id,
-                val ? TechStatus.available : TechStatus.onLeave,
-              );
-              ref.invalidate(currentTechnicianProvider);
-              ref.invalidate(techsStreamProvider);
-            },
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: isAvailable,
+              activeColor: AppColors.success,
+              onChanged: (val) async {
+                await ref.read(techsRepositoryProvider).updateTechStatus(
+                  tech.id,
+                  val ? TechStatus.available : TechStatus.onLeave,
+                );
+                ref.invalidate(currentTechnicianProvider);
+                ref.invalidate(techsStreamProvider);
+              },
+            ),
           ),
         ],
       ),
@@ -437,7 +474,8 @@ class _TechOrderCard extends StatelessWidget {
               Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyMed),
             ],
           ),
-          const Divider(height: AppSpacing.xl),
+          const Spacer(),
+          const Divider(),
           Row(
             children: [
               Expanded(
@@ -458,7 +496,7 @@ class _TechOrderCard extends StatelessWidget {
                 icon: Icons.chat_bubble_outline,
                 color: const Color(0xFF25D366),
                 onTap: () {
-                  final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}، أنا الفني من حرافي وبخصوص طلبك...');
+                  final uri = WhatsAppUtils.buildUri(order.clientPhone, 'السلام عليكم يا ${order.clientName}، أنا الفني من حرفي وبخصوص طلبك...');
                   launchUrl(uri, mode: LaunchMode.externalApplication);
                 },
               ),

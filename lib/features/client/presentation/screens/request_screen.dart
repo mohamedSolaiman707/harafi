@@ -52,7 +52,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     await prefs.setString('client_name', _nameController.text.trim());
     await prefs.setString('client_phone', _phoneController.text.trim());
     await prefs.setString('client_area', _areaController.text.trim());
-    await prefs.setString('last_tracked_code', trackingCode); // حفظ الكود للمتابعة التلقائية
+    await prefs.setString('last_tracked_code', trackingCode);
   }
 
   @override
@@ -81,12 +81,9 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
 
   Future<void> _submit() async {
     if (_selectedService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى اختيار نوع الخدمة أولاً')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى اختيار نوع الخدمة أولاً')));
       return;
     }
-    
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -109,22 +106,14 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       final result = await ref.read(adminActionsProvider).createOrder(order);
 
       result.when(
-        left: (f) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: ${f.message}')),
-        ),
+        left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ: ${f.message}'))),
         right: (createdOrder) async {
           await _saveClientData(createdOrder.trackingCode);
-          if (mounted) {
-            _showSuccessDialog(createdOrder);
-          }
+          if (mounted) _showSuccessDialog(createdOrder);
         },
       );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ غير متوقع: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ غير متوقع: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -137,11 +126,14 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       tech = techs.where((t) => t.id == _preSelectedTechId).firstOrNull;
     }
 
+    final width = MediaQuery.of(context).size.width;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface2,
+        insetPadding: EdgeInsets.symmetric(horizontal: width > 600 ? (width - 500) / 2 : 20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -150,22 +142,13 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
             const SizedBox(height: 16),
             Text('تم استلام طلبك بنجاح!', style: AppTextStyles.headlineMed),
             const SizedBox(height: 24),
-            
             if (tech != null) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surface1,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
-                ),
+                decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.gold.withValues(alpha: 0.2))),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: AppColors.surface2,
-                      child: Text(tech.spec.icon, style: const TextStyle(fontSize: 24)),
-                    ),
+                    CircleAvatar(radius: 25, backgroundColor: AppColors.surface2, child: Text(tech.spec.icon, style: const TextStyle(fontSize: 24))),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -181,7 +164,6 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               ),
               const SizedBox(height: 16),
             ],
-
             Text('كود التتبع الخاص بك:', style: AppTextStyles.labelLarge),
             const SizedBox(height: 8),
             InkWell(
@@ -191,11 +173,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface1,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
-                ),
+                decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.gold.withValues(alpha: 0.3))),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -207,22 +185,12 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              tech != null 
-                ? 'الفني سيتواصل معك قريباً لتأكيد الموعد.'
-                : 'سنقوم بتعيين أفضل فني متاح والتواصل معك عبر الواتساب.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMed,
-            ),
+            Text(tech != null ? 'الفني سيتواصل معك قريباً لتأكيد الموعد.' : 'سنقوم بتعيين أفضل فني متاح والتواصل معك عبر الواتساب.', textAlign: TextAlign.center, style: AppTextStyles.bodyMed),
           ],
         ),
         actions: [
           TextButton(onPressed: () => context.go('/'), child: const Text('الرئيسية')),
-          AppButton(
-            label: 'تتبع الطلب',
-            size: ButtonSize.sm,
-            onTap: () => context.go('/track/${result.trackingCode}'),
-          ),
+          AppButton(label: 'تتبع الطلب', size: ButtonSize.sm, onTap: () => context.go('/track/${result.trackingCode}')),
         ],
       ),
     );
@@ -231,10 +199,10 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final horizontalPadding = width > 800 ? (width - 800) / 2 : AppSpacing.xl;
+    final horizontalPadding = width > 900 ? (width - 800) / 2 : AppSpacing.xl;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('طلب خدمة منزلية')),
+      appBar: AppBar(title: const Text('طلب خدمة منزلية'), centerTitle: width < 900),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: AppSpacing.xl),
         child: Form(
@@ -244,51 +212,31 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
             children: [
               _buildStepHeader('1', 'تأكيد نوع الخدمة'),
               const SizedBox(height: AppSpacing.lg),
-              _buildServiceGrid(),
-              const SizedBox(height: AppSpacing.xxl),
+              _buildServiceGrid(width),
+              const SizedBox(height: AppSpacing.xxxl),
               _buildStepHeader('2', 'بيانات التواصل والعنوان'),
               const SizedBox(height: AppSpacing.lg),
               AppCard(
                 child: Column(
                   children: [
-                    AppTextField(
-                      label: 'الاسم',
-                      controller: _nameController,
-                      prefixIcon: Icons.person_outline,
-                      validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null,
-                    ),
+                    AppTextField(label: 'الاسم', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null),
                     const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'رقم الهاتف (واتساب)',
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      prefixIcon: Icons.phone_android,
-                      validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
-                    ),
+                    AppTextField(label: 'رقم الهاتف (واتساب)', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android, validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null),
                     const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'العنوان بالتفصيل',
-                      controller: _areaController,
-                      prefixIcon: Icons.location_on_outlined,
-                      validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null,
-                    ),
+                    AppTextField(label: 'العنوان بالتفصيل', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
                     const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'وصف المشكلة',
-                      controller: _descriptionController,
-                      hint: 'اشرح لنا المشكلة باختصار لنرسل الفني المناسب',
-                      maxLines: 3,
-                    ),
+                    AppTextField(label: 'وصف المشكلة', controller: _descriptionController, hint: 'اشرح لنا المشكلة باختصار لنرسل الفني المناسب', maxLines: 3),
                   ],
                 ),
               ),
               const SizedBox(height: AppSpacing.xxxl),
-              AppButton(
-                label: 'تأكيد طلب الخدمة',
-                onTap: _submit,
-                isLoading: _isLoading,
-                icon: Icons.send_rounded,
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: AppButton(label: 'تأكيد طلب الخدمة', onTap: _submit, isLoading: _isLoading, icon: Icons.send_rounded),
+                ),
               ),
+              const SizedBox(height: AppSpacing.xxxl),
             ],
           ),
         ),
@@ -299,23 +247,26 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   Widget _buildStepHeader(String step, String title) {
     return Row(
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-          child: Center(child: Text(step, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold))),
-        ),
+        Container(width: 32, height: 32, decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle), child: Center(child: Text(step, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)))),
         const SizedBox(width: 12),
         Text(title, style: AppTextStyles.headlineMed),
       ],
     );
   }
 
-  Widget _buildServiceGrid() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: ServiceType.values.map((type) {
+  Widget _buildServiceGrid(double width) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: width > 600 ? 3 : 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        mainAxisExtent: 60,
+      ),
+      itemCount: ServiceType.values.length,
+      itemBuilder: (context, index) {
+        final type = ServiceType.values[index];
         final isSelected = _selectedService == type;
         final isEnabled = _preSelectedTechId == null;
         
@@ -327,27 +278,23 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
             opacity: !isEnabled && !isSelected ? 0.5 : 1.0,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: isSelected ? AppColors.gold.withValues(alpha: 0.1) : AppColors.surface2,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: isSelected ? AppColors.gold : AppColors.borderDefault, width: 2),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(type.icon, style: const TextStyle(fontSize: 20)),
+                  Text(type.icon, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
-                  Text(
-                    type.label,
-                    style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary),
-                  ),
+                  Expanded(child: Text(type.label, style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
           ),
         );
-      }).toList(),
+      },
     );
   }
 }
