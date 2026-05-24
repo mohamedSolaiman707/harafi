@@ -44,6 +44,11 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
   return DashboardStats(
     totalOrders: orders.length,
     pendingOrders: orders.where((o) => o.status == OrderStatus.pending).length,
+    activeOrders: orders.where((o) => 
+      o.status == OrderStatus.assigned || 
+      o.status == OrderStatus.onTheWay || 
+      o.status == OrderStatus.started
+    ).length,
     completedOrders: orders.where((o) => o.status == OrderStatus.completed).length,
     cancelledOrders: orders.where((o) => o.status == OrderStatus.cancelled).length,
     totalTechs: techs.length,
@@ -59,6 +64,7 @@ final statsProvider = Provider((ref) {
   return {
     'total': stats.totalOrders,
     'pending': stats.pendingOrders,
+    'active': stats.activeOrders,
     'completed': stats.completedOrders,
     'techTotal': stats.totalTechs,
     'techAvailable': stats.availableTechs,

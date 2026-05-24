@@ -10,7 +10,9 @@ class StatsWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(statsProvider);
     final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width > 1100 ? 5 : (width > 800 ? 3 : 2);
+    
+    // تعديل عدد العناصر في الصف بناءً على حجم الشاشة لتناسب الكارت الجديد
+    final crossAxisCount = width > 1200 ? 6 : (width > 900 ? 3 : 2);
 
     return GridView.count(
       shrinkWrap: true,
@@ -27,15 +29,22 @@ class StatsWidget extends ConsumerWidget {
           color: AppColors.info,
         ),
         _StatCard(
-          title: 'طلبات جارية',
+          title: 'طلبات جديدة',
           value: stats['pending'].toString(),
-          icon: Icons.pending_actions,
+          icon: Icons.fiber_new,
+          color: AppColors.gold,
+        ),
+        _StatCard(
+          title: 'قيد التنفيذ',
+          value: stats['active'].toString(),
+          icon: Icons.engineering,
           color: Colors.orange,
+          isAlert: (stats['active'] as int) > 0,
         ),
         _StatCard(
           title: 'إجمالي الفنيين',
           value: stats['techTotal'].toString(),
-          icon: Icons.engineering,
+          icon: Icons.people,
           color: Colors.purple,
         ),
         _StatCard(
@@ -78,10 +87,10 @@ class _StatCard extends StatelessWidget {
         color: AppColors.surface2,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isAlert ? AppColors.gold.withOpacity(0.5) : AppColors.borderDefault,
+          color: isAlert ? color.withOpacity(0.5) : AppColors.borderDefault,
           width: isAlert ? 2 : 1,
         ),
-        boxShadow: isAlert ? [BoxShadow(color: AppColors.gold.withOpacity(0.1), blurRadius: 10)] : null,
+        boxShadow: isAlert ? [BoxShadow(color: color.withOpacity(0.1), blurRadius: 10)] : null,
       ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -111,7 +120,7 @@ class _StatCard extends StatelessWidget {
                     value,
                     style: AppTextStyles.displayMedium.copyWith(
                       fontSize: 24,
-                      color: isAlert ? AppColors.gold : AppColors.textPrimary,
+                      color: isAlert ? color : AppColors.textPrimary,
                     ),
                   ),
                 ],
