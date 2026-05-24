@@ -45,7 +45,7 @@ class ServicesScreen extends StatelessWidget {
               final type = ServiceType.values[index];
               return _ServiceItem(
                 type: type,
-                onTap: () => context.push('/request', extra: type),
+                onTap: () => context.push('/service/${type.name}'),
               );
             },
           ),
@@ -108,7 +108,7 @@ class _ServiceItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'أطلب الآن',
+                  'تصفح الفنيين',
                   style: AppTextStyles.labelMed.copyWith(
                     color: AppColors.gold,
                     fontWeight: FontWeight.bold,

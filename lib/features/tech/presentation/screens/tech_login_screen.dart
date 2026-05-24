@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -42,6 +43,10 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
         email: dummyEmail,
         password: _passwordController.text.trim(),
       );
+
+      // حفظ دور الفني لضمان التوجيه الصحيح مستقبلاً
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'tech');
 
       if (mounted) context.go('/tech/dashboard');
     } catch (e) {
@@ -105,7 +110,6 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                     const Text('ليس لديك حساب؟'),
                     TextButton(
                       onPressed: () {
-                        // تمرير رقم الهاتف لصفحة التسجيل لكي لا يكتبه مرة أخرى
                         context.push('/tech/register', extra: _phoneController.text);
                       },
                       child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
@@ -113,8 +117,8 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                   ],
                 ),
                 TextButton(
-                  onPressed: () => context.go('/'),
-                  child: const Text('العودة للرئيسية'),
+                  onPressed: () => context.go('/welcome'),
+                  child: const Text('العودة لاختيار الدور'),
                 ),
               ],
             ),

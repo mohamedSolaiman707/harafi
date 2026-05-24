@@ -15,8 +15,20 @@ class AppConstants {
     defaultValue: '',
   );
 
-  // Polling Configuration (Real-time alternative)
+  // Polling Configuration
   static const Duration pollingInterval = Duration(seconds: 10);
+
+  // مناطق كفر الزيات
+  static const List<String> areas = [
+    'الكل',
+    'حي الزهور',
+    'حي السلام',
+    'شارع الجلاء',
+    'منطقة المحطة',
+    'شارع الجيش',
+    'حي المعلمين',
+    'قرى مجاورة',
+  ];
 
   // UI Strings
   static const String plumbing = 'سباكة';

@@ -9,16 +9,21 @@ import '../../../features/client/presentation/screens/home_screen.dart';
 import '../../../features/client/presentation/screens/request_screen.dart';
 import '../../../features/client/presentation/screens/track_screen.dart';
 import '../../../features/client/presentation/screens/services_screen.dart';
+import '../../../features/client/presentation/screens/service_techs_screen.dart';
 import '../../../features/client/presentation/screens/tech_portfolio_screen.dart';
+import '../../../features/client/presentation/screens/client_orders_screen.dart';
+import '../../../features/client/presentation/screens/favorites_screen.dart';
 import '../../../features/admin/presentation/screens/dashboard_screen.dart';
 import '../../../features/admin/presentation/screens/orders_screen.dart';
 import '../../../features/admin/presentation/screens/technicians_screen.dart';
+import '../../../features/admin/presentation/screens/admin_order_detail_screen.dart';
 import '../../../features/admin/presentation/screens/admin_shell.dart';
 import '../../../features/tech/presentation/screens/tech_login_screen.dart';
 import '../../../features/tech/presentation/screens/tech_dashboard_screen.dart';
 import '../../../features/tech/presentation/screens/tech_order_detail_screen.dart';
 import '../../../features/tech/presentation/screens/tech_register_screen.dart';
 import '../../../features/tech/presentation/screens/tech_profile_screen.dart';
+import '../../../features/admin/domain/enums/service_type.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/welcome',
@@ -29,21 +34,17 @@ final appRouter = GoRouter(
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final location = state.matchedLocation;
 
-    // القائمة البيضاء للمسارات التي لا تحتاج لاختيار دور أو تسجيل دخول
     final isAuthRoute = location == '/login' || location == '/tech/login' || location == '/tech/register';
     final isWelcomeRoute = location == '/welcome';
 
-    // 1. إذا لم يتم اختيار دور بعد، ولم يكن في صفحة دخول، اذهب للترحيب
     if (userRole == null && !isWelcomeRoute && !isAuthRoute) {
       return '/welcome';
     }
 
-    // 2. إذا كان مسجلاً لدور معين ويحاول فتح شاشة الترحيب، وجهه لمكانه الصحيح
     if (userRole != null && isWelcomeRoute) {
       return userRole == 'client' ? '/' : '/tech/dashboard';
     }
 
-    // 3. حماية مسارات الإدارة والفنيين (تطلب تسجيل دخول)
     final isAdminRoute = location.startsWith('/admin');
     final isTechRoute = location.startsWith('/tech') && !isAuthRoute;
 
@@ -51,7 +52,6 @@ final appRouter = GoRouter(
       return isAdminRoute ? '/login' : '/tech/login';
     }
 
-    // 4. توجيه تلقائي بعد تسجيل الدخول الناجح
     if (location == '/login' && isLoggedIn) return '/admin';
     if (location == '/tech/login' && isLoggedIn) return '/tech/dashboard';
 
@@ -74,6 +74,14 @@ final appRouter = GoRouter(
           AppAnimations.fadeSlide(child: const ServicesScreen()),
     ),
     GoRoute(
+      path: '/service/:type',
+      pageBuilder: (context, state) {
+        final typeStr = state.pathParameters['type']!;
+        final service = ServiceType.values.firstWhere((e) => e.name == typeStr);
+        return AppAnimations.fadeSlide(child: ServiceTechsScreen(service: service));
+      },
+    ),
+    GoRoute(
       path: '/request',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const RequestScreen()),
@@ -82,6 +90,18 @@ final appRouter = GoRouter(
       path: '/track/:code',
       pageBuilder: (context, state) => AppAnimations.fadeSlide(
         child: TrackScreen(code: state.pathParameters['code']!),
+      ),
+    ),
+    GoRoute(
+      path: '/my-orders',
+      pageBuilder: (context, state) => AppAnimations.fadeSlide(
+        child: const ClientOrdersScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/favorites',
+      pageBuilder: (context, state) => AppAnimations.fadeSlide(
+        child: const FavoritesScreen(),
       ),
     ),
     GoRoute(
@@ -96,7 +116,6 @@ final appRouter = GoRouter(
           AppAnimations.fadeSlide(child: const LoginScreen()),
     ),
     
-    // Technician Routes
     GoRoute(
       path: '/tech/login',
       pageBuilder: (context, state) =>
@@ -136,6 +155,12 @@ final appRouter = GoRouter(
           path: '/admin/orders',
           pageBuilder: (context, state) =>
               AppAnimations.fadeSlide(child: const OrdersScreen()),
+        ),
+        GoRoute(
+          path: '/admin/order/:id',
+          pageBuilder: (context, state) => AppAnimations.fadeSlide(
+            child: AdminOrderDetailScreen(orderId: state.pathParameters['id']!),
+          ),
         ),
         GoRoute(
           path: '/admin/techs',

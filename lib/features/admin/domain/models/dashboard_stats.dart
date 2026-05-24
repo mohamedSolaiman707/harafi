@@ -1,14 +1,15 @@
 class DashboardStats {
   final int totalOrders;
-  final int pendingOrders;   // طلبات جديدة بانتظار التعيين
-  final int activeOrders;    // طلبات قيد التنفيذ (Assigned, On Way, Started)
+  final int pendingOrders;
+  final int activeOrders;
   final int completedOrders;
   final int cancelledOrders;
+  final int totalRevenue; // جديد: إجمالي المبالغ المحصلة
   final int totalTechs;
   final int availableTechs;
   final int busyTechs;
   final int onLeaveTechs;
-  final int pendingTechs;    // فنيين بانتظار الاعتماد
+  final int pendingTechs;
 
   DashboardStats({
     required this.totalOrders,
@@ -16,6 +17,7 @@ class DashboardStats {
     required this.activeOrders,
     required this.completedOrders,
     required this.cancelledOrders,
+    required this.totalRevenue,
     required this.totalTechs,
     required this.availableTechs,
     required this.busyTechs,

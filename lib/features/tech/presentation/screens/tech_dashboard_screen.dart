@@ -6,6 +6,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
+import '../../../../shared/widgets/notification_icon.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/domain/enums/order_status.dart';
@@ -16,20 +17,36 @@ import '../../../../core/utils/whatsapp_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class TechDashboardScreen extends ConsumerWidget {
+class TechDashboardScreen extends ConsumerStatefulWidget {
   const TechDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TechDashboardScreen> createState() => _TechDashboardScreenState();
+}
+
+class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentTechAsync = ref.watch(currentTechnicianProvider);
 
     return currentTechAsync.when(
       data: (tech) {
         if (tech == null) return const _NewTechOnboarding();
-        
-        if (tech.status == TechStatus.pending) {
-          return _PendingApprovalScreen(tech: tech);
-        }
+        if (tech.status == TechStatus.pending) return _PendingApprovalScreen(tech: tech);
 
         final ordersAsync = ref.watch(techOrdersStreamProvider(tech.id));
 
@@ -37,46 +54,42 @@ class TechDashboardScreen extends ConsumerWidget {
           appBar: AppBar(
             title: const Text('لوحة التحكم'),
             actions: [
+              const NotificationIcon(),
               IconButton(
                 icon: const Icon(Icons.person_outline),
                 onPressed: () => context.push('/tech/profile'),
               ),
             ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: AppColors.gold,
+              labelColor: AppColors.gold,
+              unselectedLabelColor: AppColors.textSecondary,
+              tabs: const [
+                Tab(text: 'المهام الحالية'),
+                Tab(text: 'سجل المهام'),
+              ],
+            ),
           ),
           body: RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(currentTechnicianProvider);
               ref.invalidate(techOrdersStreamProvider(tech.id));
             },
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: Column(
-                      children: [
-                        _TechStatusCard(tech: tech),
-                        const SizedBox(height: AppSpacing.lg),
-                        _buildFinancialSummary(tech),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                  sliver: SliverToBoxAdapter(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('المهام المطلوبة', style: AppTextStyles.headlineMed),
-                        _buildBadge(ref, tech.id),
-                      ],
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
-                _ordersList(ordersAsync, ref, tech.id),
-              ],
+            child: ordersAsync.when(
+              data: (orders) => TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildActiveOrders(orders, tech),
+                  _buildHistoryOrders(orders),
+                ],
+              ),
+              loading: () => const LoadingWidget(),
+              error: (err, stack) => AppErrorWidget(
+                message: 'خطأ في تحميل المهام',
+                error: err,
+                onRetry: () => ref.invalidate(techOrdersStreamProvider(tech.id)),
+              ),
             ),
           ),
         );
@@ -88,6 +101,63 @@ class TechDashboardScreen extends ConsumerWidget {
           error: err,
           onRetry: () => ref.invalidate(currentTechnicianProvider),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActiveOrders(List<Order> orders, Technician tech) {
+    final activeOrders = orders.where((o) => 
+      o.status != OrderStatus.completed && o.status != OrderStatus.cancelled
+    ).toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      children: [
+        _TechStatusCard(tech: tech),
+        const SizedBox(height: AppSpacing.md),
+        _buildFinancialSummary(tech),
+        const SizedBox(height: AppSpacing.xxl),
+        Text('مهام قيد التنفيذ (${activeOrders.length})', style: AppTextStyles.headlineMed),
+        const SizedBox(height: AppSpacing.md),
+        if (activeOrders.isEmpty)
+          _buildEmptyState('لا توجد مهام حالية', Icons.task_alt)
+        else
+          ...activeOrders.map((order) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: _TechOrderCard(order: order),
+          )),
+      ],
+    );
+  }
+
+  Widget _buildHistoryOrders(List<Order> orders) {
+    final historyOrders = orders.where((o) => 
+      o.status == OrderStatus.completed || o.status == OrderStatus.cancelled
+    ).toList();
+
+    if (historyOrders.isEmpty) {
+      return _buildEmptyState('سجل المهام فارغ', Icons.history);
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      itemCount: historyOrders.length,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: _HistoryOrderCard(order: historyOrders[index]),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message, IconData icon) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: AppColors.textMuted.withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          Text(message, style: TextStyle(color: AppColors.textMuted)),
+        ],
       ),
     );
   }
@@ -111,17 +181,15 @@ class TechDashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: AppCard(
-                color: AppColors.info.withValues(alpha: 0.05),
-                child: Column(
-                  children: [
-                    const Icon(Icons.assignment_turned_in_outlined, color: AppColors.info, size: 24),
-                    const SizedBox(height: 8),
-                    Text('${tech.totalJobs}', style: AppTextStyles.headlineMed.copyWith(color: AppColors.info)),
-                    Text('مهام مكتملة', style: AppTextStyles.labelMed),
-                  ],
-                ),
+            AppCard(
+              color: tech.rankColor.withValues(alpha: 0.1),
+              child: Column(
+                children: [
+                  Icon(tech.rankIcon, color: tech.rankColor, size: 24),
+                  const SizedBox(height: 8),
+                  Text(tech.rank, style: AppTextStyles.titleMed.copyWith(color: tech.rankColor)),
+                  Text('مستواك الحالي', style: AppTextStyles.labelMed),
+                ],
               ),
             ),
           ],
@@ -144,60 +212,64 @@ class TechDashboardScreen extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _buildBadge(WidgetRef ref, String techId) {
-    final orders = ref.watch(techOrdersStreamProvider(techId)).valueOrNull ?? [];
-    final activeCount = orders.where((o) => 
-      o.status != OrderStatus.completed && o.status != OrderStatus.cancelled
-    ).length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(12)),
-      child: Text('$activeCount نشط', style: AppTextStyles.labelLarge.copyWith(color: Colors.black, fontWeight: FontWeight.bold)),
-    );
-  }
+class _HistoryOrderCard extends StatelessWidget {
+  final Order order;
+  const _HistoryOrderCard({required this.order});
 
-  Widget _ordersList(AsyncValue<List<Order>> ordersAsync, WidgetRef ref, String techId) {
-    return ordersAsync.when(
-      data: (orders) {
-        final activeOrders = orders.where((o) => 
-          o.status != OrderStatus.completed && o.status != OrderStatus.cancelled
-        ).toList();
-        
-        if (activeOrders.isEmpty) {
-          return const SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+  @override
+  Widget build(BuildContext context) {
+    final isCompleted = order.status == OrderStatus.completed;
+
+    return AppCard(
+      color: AppColors.surface2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(order.trackingCode, style: AppTextStyles.labelLarge),
+              Text(
+                isCompleted ? 'مكتمل ✅' : 'ملغي ❌',
+                style: TextStyle(
+                  color: isCompleted ? AppColors.success : AppColors.error,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(order.clientName, style: AppTextStyles.titleLarge),
+          const SizedBox(height: 4),
+          Text(
+            'التاريخ: ${order.createdAt.toString().split(' ')[0]}',
+            style: AppTextStyles.labelMed,
+          ),
+          if (isCompleted && order.finalPrice != null) ...[
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('المبلغ المحصل:', style: AppTextStyles.bodyMed),
+                Text('${order.finalPrice} ج.م', style: AppTextStyles.titleMed.copyWith(color: AppColors.success)),
+              ],
+            ),
+            if (order.rating != null)
+              Row(
                 children: [
-                  Icon(Icons.task_alt, size: 64, color: AppColors.textMuted),
-                  SizedBox(height: 16),
-                  Text('لا توجد مهام حالية.. استمتع بوقتك!'),
+                  Text('تقييم العميل: ', style: AppTextStyles.bodyMed),
+                  ...List.generate(5, (i) => Icon(
+                    i < order.rating! ? Icons.star : Icons.star_border,
+                    size: 14,
+                    color: AppColors.gold,
+                  )),
                 ],
               ),
-            ),
-          );
-        }
-
-        return SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
-              child: _TechOrderCard(order: activeOrders[index]),
-            ),
-            childCount: activeOrders.length,
-          ),
-        );
-      },
-      loading: () => const SliverToBoxAdapter(child: LoadingWidget()),
-      error: (err, stack) => SliverFillRemaining(
-        hasScrollBody: false,
-        child: AppErrorWidget(
-          message: 'فشل تحميل الطلبات',
-          error: err,
-          onRetry: () => ref.invalidate(techOrdersStreamProvider(techId)),
-        ),
+          ],
+        ],
       ),
     );
   }

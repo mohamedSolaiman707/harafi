@@ -11,8 +11,8 @@ class StatsWidget extends ConsumerWidget {
     final stats = ref.watch(statsProvider);
     final width = MediaQuery.of(context).size.width;
     
-    // تعديل عدد العناصر في الصف بناءً على حجم الشاشة لتناسب الكارت الجديد
-    final crossAxisCount = width > 1200 ? 6 : (width > 900 ? 3 : 2);
+    // تعديل عدد العناصر في الصف بناءً على حجم الشاشة
+    final crossAxisCount = width > 1400 ? 7 : (width > 1100 ? 4 : (width > 600 ? 3 : 2));
 
     return GridView.count(
       shrinkWrap: true,
@@ -33,13 +33,25 @@ class StatsWidget extends ConsumerWidget {
           value: stats['pending'].toString(),
           icon: Icons.fiber_new,
           color: AppColors.gold,
+          isAlert: (stats['pending'] as int) > 0,
         ),
         _StatCard(
           title: 'قيد التنفيذ',
           value: stats['active'].toString(),
           icon: Icons.engineering,
           color: Colors.orange,
-          isAlert: (stats['active'] as int) > 0,
+        ),
+        _StatCard(
+          title: 'طلبات مكتملة',
+          value: stats['completed'].toString(),
+          icon: Icons.task_alt,
+          color: AppColors.success,
+        ),
+        _StatCard(
+          title: 'إجمالي الإيرادات',
+          value: '${stats['revenue']} ج.م',
+          icon: Icons.account_balance_wallet,
+          color: AppColors.success,
         ),
         _StatCard(
           title: 'إجمالي الفنيين',
@@ -53,12 +65,6 @@ class StatsWidget extends ConsumerWidget {
           icon: Icons.person_add_alt_1,
           color: AppColors.gold,
           isAlert: (stats['techPending'] as int) > 0,
-        ),
-        _StatCard(
-          title: 'طلبات مكتملة',
-          value: stats['completed'].toString(),
-          icon: Icons.task_alt,
-          color: AppColors.success,
         ),
       ],
     );
@@ -119,7 +125,7 @@ class _StatCard extends StatelessWidget {
                   Text(
                     value,
                     style: AppTextStyles.displayMedium.copyWith(
-                      fontSize: 24,
+                      fontSize: 20,
                       color: isAlert ? color : AppColors.textPrimary,
                     ),
                   ),

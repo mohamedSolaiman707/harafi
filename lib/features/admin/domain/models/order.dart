@@ -20,6 +20,7 @@ class Order {
   final DateTime? estimatedArrival;
   final DateTime? completedAt;
   final List<OrderLog> logs;
+  final List<String> completionImages; // جديد: صور إثبات العمل
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,6 +42,7 @@ class Order {
     this.estimatedArrival,
     this.completedAt,
     this.logs = const [],
+    this.completionImages = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -80,6 +82,7 @@ class Order {
       logs: (json['order_logs'] as List?)
               ?.map((e) => OrderLog.fromJson(e))
               .toList() ?? [],
+      completionImages: (json['completion_images'] as List?)?.map((e) => e.toString()).toList() ?? [],
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
@@ -103,6 +106,7 @@ class Order {
     if (ratingComment != null) data['rating_comment'] = ratingComment;
     if (estimatedArrival != null) data['estimated_arrival'] = estimatedArrival?.toIso8601String();
     if (completedAt != null) data['completed_at'] = completedAt?.toIso8601String();
+    if (completionImages.isNotEmpty) data['completion_images'] = completionImages;
 
     return data;
   }
@@ -125,6 +129,7 @@ class Order {
     DateTime? estimatedArrival,
     DateTime? completedAt,
     List<OrderLog>? logs,
+    List<String>? completionImages,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -146,6 +151,7 @@ class Order {
       estimatedArrival: estimatedArrival ?? this.estimatedArrival,
       completedAt: completedAt ?? this.completedAt,
       logs: logs ?? this.logs,
+      completionImages: completionImages ?? this.completionImages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

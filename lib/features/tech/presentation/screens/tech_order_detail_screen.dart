@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
@@ -42,6 +45,12 @@ class TechOrderDetailScreen extends ConsumerWidget {
                   _buildClientInfo(order),
                   const SizedBox(height: AppSpacing.xl),
                   _buildOrderDescription(order),
+                  
+                  if (order.completionImages.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xl),
+                    _buildCompletionImages(context, order.completionImages),
+                  ],
+
                   if (order.techNotes != null) ...[
                     const SizedBox(height: AppSpacing.xl),
                     _buildTechReport(order),
@@ -61,6 +70,45 @@ class TechOrderDetailScreen extends ConsumerWidget {
           error: e,
           onRetry: () => ref.invalidate(ordersStreamProvider),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCompletionImages(BuildContext context, List<String> images) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('صور إثبات العمل', style: AppTextStyles.labelLarge.copyWith(color: AppColors.success)),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: images.length,
+            itemBuilder: (context, index) => GestureDetector(
+              onTap: () => _showFullScreenImage(context, images[index]),
+              child: Container(
+                width: 120,
+                margin: const EdgeInsets.only(left: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String url) {
+    showDialog(
+      context: context, 
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent, 
+        child: InteractiveViewer(child: Image.network(url)),
       ),
     );
   }
@@ -202,75 +250,148 @@ class TechOrderDetailScreen extends ConsumerWidget {
             label: 'تم الإنجاز (إغلاق الطلب)',
             icon: Icons.check_circle,
             variant: ButtonVariant.success,
-            onTap: () => _showCompletionDialog(context, ref, order),
+            onTap: () => _showCompletionSheet(context, ref, order),
           ),
       ],
     );
   }
 
-  void _showCompletionDialog(BuildContext context, WidgetRef ref, Order order) {
-    final priceController = TextEditingController();
-    final notesController = TextEditingController();
-    
-    showDialog(
+  void _showCompletionSheet(BuildContext context, WidgetRef ref, Order order) {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface2,
-        title: const Text('إغلاق الطلب'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('ماذا تم في هذه المهمة؟'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: notesController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'وصف العمل المنجز',
-                  hintText: 'مثال: تم تغيير قلب الحنفية وإصلاح التسريب الخارجي',
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface2,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
+      builder: (context) => _CompletionSheet(order: order),
+    );
+  }
+}
+
+class _CompletionSheet extends ConsumerStatefulWidget {
+  final Order order;
+  const _CompletionSheet({required this.order});
+
+  @override
+  ConsumerState<_CompletionSheet> createState() => _CompletionSheetState();
+}
+
+class _CompletionSheetState extends ConsumerState<_CompletionSheet> {
+  final _priceController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _picker = ImagePicker();
+  final List<XFile> _selectedImages = [];
+  bool _isLoading = false;
+
+  Future<void> _pickImages() async {
+    final images = await _picker.pickMultiImage(imageQuality: 70, maxWidth: 1000);
+    if (images.isNotEmpty) {
+      setState(() => _selectedImages.addAll(images));
+    }
+  }
+
+  Future<void> _submit() async {
+    final price = int.tryParse(_priceController.text);
+    if (price == null || _notesController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء السعر ووصف العمل')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final storage = StorageService();
+      final List<String> imageUrls = [];
+
+      // رفع الصور باستخدام الميثود المحدثة uploadImage
+      for (var image in _selectedImages) {
+        final url = await storage.uploadImage(
+          image: image, 
+          path: 'order_completions', 
+          fileName: '${widget.order.id}_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        if (url != null) imageUrls.add(url);
+      }
+
+      await ref.read(adminActionsProvider).completeOrder(
+        widget.order,
+        finalPrice: price,
+        techNotes: _notesController.text.trim(),
+        logMessage: 'تم إنجاز المهمة بنجاح، شكراً لتعاملكم مع حرافي',
+      );
+
+      // تحديث إضافي للصور في جدول الطلبات
+      await ref.read(ordersRepositoryProvider).update(widget.order.id, {
+        'completion_images': imageUrls,
+      });
+
+      if (mounted) {
+        Navigator.pop(context); 
+        context.pop(); 
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ أثناء الحفظ: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('إغلاق الطلب وإثبات العمل', style: AppTextStyles.headlineMed),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'ماذا تم في هذه المهمة؟', hintText: 'تم إصلاح العطل وتغيير قطع الغيار...'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _priceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'السعر النهائي المحصل (ج.م)'),
+            ),
+            const SizedBox(height: 24),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('صور إثبات العمل (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
+                TextButton.icon(onPressed: _pickImages, icon: const Icon(Icons.add_a_photo), label: const Text('إضافة صور')),
+              ],
+            ),
+            if (_selectedImages.isNotEmpty)
+              SizedBox(
+                height: 80,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _selectedImages.length, // تم التعديل هنا من .size إلى .length
+                  itemBuilder: (context, index) => Container(
+                    width: 80,
+                    margin: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: FileImage(File(_selectedImages[index].path)), fit: BoxFit.cover)),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'السعر النهائي (ج.م)',
-                  hintText: 'أدخل المبلغ المتفق عليه مع العميل',
-                ),
-              ),
-            ],
-          ),
+              
+            const SizedBox(height: 32),
+            AppButton(
+              label: 'تأكيد الإنجاز النهائي',
+              onTap: _submit,
+              isLoading: _isLoading,
+              icon: Icons.done_all,
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-            onPressed: () async {
-              final price = int.tryParse(priceController.text);
-              if (price == null || notesController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع البيانات')));
-                return;
-              }
-              
-              // تم التعديل هنا لاستخدام adminActionsProvider بدلاً من repository مباشرة
-              await ref.read(adminActionsProvider).updateOrderStatus(
-                order, 
-                OrderStatus.completed,
-                finalPrice: price,
-                techNotes: notesController.text.trim(),
-                logMessage: 'تم إنجاز المهمة بنجاح، شكراً لتعاملكم مع حرافي',
-              );
-              
-              if (context.mounted) {
-                Navigator.pop(context);
-                context.pop();
-              }
-            },
-            child: const Text('تأكيد الإنجاز'),
-          ),
-        ],
       ),
     );
   }

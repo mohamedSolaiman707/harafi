@@ -33,6 +33,11 @@ final techOrdersStreamProvider = StreamProvider.family<List<Order>, String>((ref
   });
 });
 
+// جلب طلبات العميل برقم الهاتف
+final clientOrdersProvider = FutureProvider.family<List<Order>, String>((ref, phone) {
+  return ref.watch(ordersRepositoryProvider).getByPhone(phone);
+});
+
 final ordersProvider = FutureProvider<List<Order>>((ref) {
   return ref.watch(ordersRepositoryProvider).getAll();
 });
@@ -41,6 +46,11 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
   final orders = ref.watch(ordersStreamProvider).valueOrNull ?? [];
   final techs = ref.watch(techsStreamProvider).valueOrNull ?? [];
   
+  // حساب إجمالي الإيرادات من الطلبات المكتملة
+  final revenue = orders
+      .where((o) => o.status == OrderStatus.completed && o.finalPrice != null)
+      .fold(0, (sum, o) => sum + o.finalPrice!);
+
   return DashboardStats(
     totalOrders: orders.length,
     pendingOrders: orders.where((o) => o.status == OrderStatus.pending).length,
@@ -51,6 +61,7 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
     ).length,
     completedOrders: orders.where((o) => o.status == OrderStatus.completed).length,
     cancelledOrders: orders.where((o) => o.status == OrderStatus.cancelled).length,
+    totalRevenue: revenue,
     totalTechs: techs.length,
     availableTechs: techs.where((t) => t.status == TechStatus.available).length,
     busyTechs: techs.where((t) => t.status == TechStatus.busy).length,
@@ -66,6 +77,7 @@ final statsProvider = Provider((ref) {
     'pending': stats.pendingOrders,
     'active': stats.activeOrders,
     'completed': stats.completedOrders,
+    'revenue': stats.totalRevenue,
     'techTotal': stats.totalTechs,
     'techAvailable': stats.availableTechs,
     'techPending': stats.pendingTechs,

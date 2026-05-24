@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_web_plugins/url_strategy.dart'; // أضف هذا السطر
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'core/config/supabase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
+import 'shared/widgets/notification_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +30,16 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.darkTheme,
       routerConfig: appRouter,
       builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child!);
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Stack(
+            children: [
+              child!,
+              // طبقة التنبيهات المنبثقة تظهر فوق كل شيء
+              const NotificationOverlay(),
+            ],
+          ),
+        );
       },
     );
   }

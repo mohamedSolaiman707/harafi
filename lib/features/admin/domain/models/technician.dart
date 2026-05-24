@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../enums/service_type.dart';
 import '../enums/tech_status.dart';
@@ -7,6 +9,8 @@ part 'technician.g.dart';
 
 @freezed
 class Technician with _$Technician {
+  const Technician._(); // ضروري لإضافة الـ methods والـ getters
+
   const factory Technician({
     required String id,
     required String name,
@@ -21,22 +25,44 @@ class Technician with _$Technician {
     @JsonKey(name: 'photo_url') String? photoUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') @Default(0) int totalEarnings,
+    @JsonKey(name: 'portfolio_images') @Default([]) List<String> portfolioImages,
+    @JsonKey(name: 'is_verified') @Default(false) bool isVerified,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _Technician;
 
+  // منطق حساب مستوى الاحترافية (Rank System)
+  String get rank {
+    if (totalJobs >= 50 && rating >= 4.7) return 'حرافي بلاتيني';
+    if (totalJobs >= 30 && rating >= 4.5) return 'فني ذهبي';
+    if (totalJobs >= 10) return 'فني محترف';
+    return 'فني صاعد';
+  }
+
+  Color get rankColor {
+    if (totalJobs >= 50 && rating >= 4.7) return const Color(0xFFE5E4E2); // Platinum
+    if (totalJobs >= 30 && rating >= 4.5) return const Color(0xFFFFD700); // Gold
+    if (totalJobs >= 10) return const Color(0xFFC0C0C0); // Silver
+    return const Color(0xFFCD7F32); // Bronze
+  }
+
+  IconData get rankIcon {
+    if (totalJobs >= 50) return Icons.workspace_premium;
+    if (totalJobs >= 30) return Icons.military_tech;
+    if (totalJobs >= 10) return Icons.stars;
+    return Icons.person_outline;
+  }
+
   factory Technician.fromJson(Map<String, dynamic> json) {
     try {
-      // 1. معالجة التخصص (Spec) - دعم شامل لكل الصيغ
       final specValue = json['spec']?.toString().trim() ?? '';
       final spec = ServiceType.values.firstWhere(
-        (e) => e.label == specValue || e.name == specValue || e.toString().contains(specValue),
+            (e) => e.label == specValue || e.name == specValue || e.toString().contains(specValue),
         orElse: () => ServiceType.plumbing,
       );
 
-      // 2. معالجة الحالة (Status) - دعم شامل لكل الصيغ
       final statusValue = json['status']?.toString().trim() ?? '';
       final status = TechStatus.values.firstWhere(
-        (e) => e.label == statusValue || e.name == statusValue || e.toString().contains(statusValue),
+            (e) => e.label == statusValue || e.name == statusValue || e.toString().contains(statusValue),
         orElse: () => TechStatus.pending,
       );
 
@@ -54,12 +80,13 @@ class Technician with _$Technician {
         photoUrl: json['photo_url']?.toString(),
         bio: json['bio']?.toString(),
         totalEarnings: _toInt(json['total_earnings']) ?? 0,
-        createdAt: json['created_at'] != null 
+        portfolioImages: (json['portfolio_images'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        isVerified: json['is_verified'] == true,
+        createdAt: json['created_at'] != null
             ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
             : DateTime.now(),
       );
     } catch (e) {
-      // في حالة حدوث خطأ كارثي، نعود بكائن آمن لكي لا يتوقف البرنامج
       return Technician(
         id: json['id']?.toString() ?? '',
         name: 'خطأ في بيانات: ${json['name']}',
@@ -70,6 +97,26 @@ class Technician with _$Technician {
       );
     }
   }
+
+  Map<String, dynamic> toJson() => technicianToJson(this);
+
+  static Map<String, dynamic> technicianToJson(Technician tech) => {
+    'id': tech.id,
+    'name': tech.name,
+    'phone': tech.phone,
+    'spec': tech.spec.label,
+    'visit_price': tech.visitPrice,
+    'area': tech.area,
+    'status': tech.status.label,
+    'rating': tech.rating,
+    'total_jobs': tech.totalJobs,
+    'total_earnings': tech.totalEarnings,
+    'bio': tech.bio,
+    'photo_url': tech.photoUrl,
+    'portfolio_images': tech.portfolioImages,
+    'is_verified': tech.isVerified,
+    'created_at': tech.createdAt.toIso8601String(),
+  };
 
   static int? _toInt(dynamic value) {
     if (value == null) return null;

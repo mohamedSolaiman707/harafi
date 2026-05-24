@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../admin/domain/enums/service_type.dart';
+import '../../../admin/domain/enums/order_status.dart';
 import '../../../admin/domain/models/order.dart';
-import '../../../admin/presentation/providers/orders_provider.dart';
+import '../../../admin/domain/models/technician.dart';
+import '../../../admin/presentation/providers/techs_provider.dart';
+import '../../../admin/presentation/providers/admin_actions_provider.dart';
 
 class RequestScreen extends ConsumerStatefulWidget {
   const RequestScreen({super.key});
@@ -26,16 +28,45 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   final _areaController = TextEditingController();
   final _descriptionController = TextEditingController();
   ServiceType? _selectedService;
-  bool _isPreSelected = false;
+  String? _preSelectedTechId;
+  bool _isInitialized = false;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedClientData();
+  }
+
+  Future<void> _loadSavedClientData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _nameController.text = prefs.getString('client_name') ?? '';
+      _phoneController.text = prefs.getString('client_phone') ?? '';
+      _areaController.text = prefs.getString('client_area') ?? '';
+    });
+  }
+
+  Future<void> _saveClientData(String trackingCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('client_name', _nameController.text.trim());
+    await prefs.setString('client_phone', _phoneController.text.trim());
+    await prefs.setString('client_area', _areaController.text.trim());
+    await prefs.setString('last_tracked_code', trackingCode); // حفظ الكود للمتابعة التلقائية
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final extra = GoRouterState.of(context).extra;
-    if (extra is ServiceType && !_isPreSelected) {
-      _selectedService = extra;
-      _isPreSelected = true;
+    if (!_isInitialized) {
+      final extra = GoRouterState.of(context).extra;
+      if (extra is ServiceType) {
+        _selectedService = extra;
+      } else if (extra is Map<String, dynamic>) {
+        _selectedService = extra['service'] as ServiceType?;
+        _preSelectedTechId = extra['techId'] as String?;
+      }
+      _isInitialized = true;
     }
   }
 
@@ -69,19 +100,29 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
         service: _selectedService!,
         area: _areaController.text.trim(),
         description: _descriptionController.text.trim(),
+        techId: _preSelectedTechId,
+        status: _preSelectedTechId != null ? OrderStatus.assigned : OrderStatus.pending,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      final result = await ref.read(ordersRepositoryProvider).create(order);
+      final result = await ref.read(adminActionsProvider).createOrder(order);
 
-      if (mounted) {
-        _showSuccessDialog(result);
-      }
+      result.when(
+        left: (f) => ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ: ${f.message}')),
+        ),
+        right: (createdOrder) async {
+          await _saveClientData(createdOrder.trackingCode);
+          if (mounted) {
+            _showSuccessDialog(createdOrder);
+          }
+        },
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ أثناء إرسال الطلب: $e')),
+          SnackBar(content: Text('حدث خطأ غير متوقع: $e')),
         );
       }
     } finally {
@@ -90,55 +131,93 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   }
 
   void _showSuccessDialog(Order result) {
+    Technician? tech;
+    if (_preSelectedTechId != null) {
+      final techs = ref.read(techniciansProvider).valueOrNull ?? [];
+      tech = techs.where((t) => t.id == _preSelectedTechId).firstOrNull;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
-        title: const Icon(Icons.check_circle_outline, color: AppColors.success, size: 64),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('تم استلام طلبك بنجاح!', style: AppTextStyles.headlineMed),
+            const Icon(Icons.check_circle_outline, color: AppColors.success, size: 64),
             const SizedBox(height: 16),
-            Text(
-              'كود التتبع الخاص بك:',
-              style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
-            ),
+            Text('تم استلام طلبك بنجاح!', style: AppTextStyles.headlineMed),
+            const SizedBox(height: 24),
+            
+            if (tech != null) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surface1,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 25,
+                      backgroundColor: AppColors.surface2,
+                      child: Text(tech.spec.icon, style: const TextStyle(fontSize: 24)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('الفني المختار:', style: AppTextStyles.labelMed),
+                          Text(tech.name, style: AppTextStyles.titleMed),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            Text('كود التتبع الخاص بك:', style: AppTextStyles.labelLarge),
             const SizedBox(height: 8),
-            GestureDetector(
+            InkWell(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: result.trackingCode));
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الكود')));
               },
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.surface1,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(result.trackingCode, style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold, letterSpacing: 2)),
+                    Text(result.trackingCode, style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold, fontSize: 24, letterSpacing: 2)),
                     const SizedBox(width: 12),
-                    const Icon(Icons.copy, size: 20, color: AppColors.gold),
+                    const Icon(Icons.copy, size: 18, color: AppColors.gold),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              'سنقوم بالتواصل معك عبر الواتساب لتأكيد الموعد.',
+              tech != null 
+                ? 'الفني سيتواصل معك قريباً لتأكيد الموعد.'
+                : 'سنقوم بتعيين أفضل فني متاح والتواصل معك عبر الواتساب.',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMed,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => context.go('/'), child: const Text('العودة للرئيسية')),
+          TextButton(onPressed: () => context.go('/'), child: const Text('الرئيسية')),
           AppButton(
             label: 'تتبع الطلب',
             size: ButtonSize.sm,
@@ -163,7 +242,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildStepHeader('1', 'اختر نوع الخدمة'),
+              _buildStepHeader('1', 'تأكيد نوع الخدمة'),
               const SizedBox(height: AppSpacing.lg),
               _buildServiceGrid(),
               const SizedBox(height: AppSpacing.xxl),
@@ -184,7 +263,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       prefixIcon: Icons.phone_android,
-                      validator: (v) => v!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+                      validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
@@ -238,27 +317,33 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       runSpacing: 12,
       children: ServiceType.values.map((type) {
         final isSelected = _selectedService == type;
+        final isEnabled = _preSelectedTechId == null;
+        
         return InkWell(
-          onTap: () => setState(() => _selectedService = type),
+          onTap: isEnabled ? () => setState(() => _selectedService = type) : null,
           borderRadius: BorderRadius.circular(16),
-          child: AnimatedContainer(
+          child: AnimatedOpacity(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.gold.withOpacity(0.1) : AppColors.surface2,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isSelected ? AppColors.gold : AppColors.borderDefault, width: 2),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(type.icon, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 8),
-                Text(
-                  type.label,
-                  style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary),
-                ),
-              ],
+            opacity: !isEnabled && !isSelected ? 0.5 : 1.0,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.gold.withValues(alpha: 0.1) : AppColors.surface2,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: isSelected ? AppColors.gold : AppColors.borderDefault, width: 2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(type.icon, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    type.label,
+                    style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary),
+                  ),
+                ],
+              ),
             ),
           ),
         );

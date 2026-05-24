@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
+import '../../../../shared/widgets/notification_icon.dart';
 import '../widgets/stats_widget.dart';
+import '../widgets/revenue_chart.dart';
 import '../providers/techs_provider.dart';
 import '../providers/orders_provider.dart';
 import '../../domain/models/technician.dart';
@@ -22,7 +25,6 @@ class DashboardScreen extends ConsumerWidget {
     final techsAsync = ref.watch(techsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
 
-    // إذا فشل تحميل البيانات الأساسية (الفنيين أو الطلبات) بسبب النت
     if (techsAsync.hasError || ordersAsync.hasError) {
       return Scaffold(
         body: AppErrorWidget(
@@ -40,6 +42,16 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('لوحة التحكم - حرافي'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
+            tooltip: 'تبديل نوع الحساب',
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('user_role');
+              if (context.mounted) context.go('/welcome');
+            },
+          ),
+          const NotificationIcon(),
           IconButton(
             onPressed: () => _showLogoutDialog(context),
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
@@ -79,7 +91,7 @@ class DashboardScreen extends ConsumerWidget {
                 error: (_, __) => const SizedBox.shrink(),
               ),
 
-              // 2. الوصول السريع
+              // 2. إدارة المحتوى (الوصول السريع)
               Text('الوصول السريع', style: AppTextStyles.headlineLarge),
               const SizedBox(height: AppSpacing.lg),
               Row(
@@ -106,22 +118,29 @@ class DashboardScreen extends ConsumerWidget {
               
               const SizedBox(height: AppSpacing.xxxl),
 
-              // 3. أحدث الطلبات
-              _buildSectionHeader('أحدث الطلبات', AppColors.textPrimary, Icons.history),
-              const SizedBox(height: AppSpacing.md),
+              // جديد: تحليل الإيرادات والنمو
               ordersAsync.when(
-                data: (orders) => _RecentOrdersSection(orders: orders),
-                loading: () => const LoadingWidget(),
-                error: (e, s) => const SizedBox.shrink(),
+                data: (orders) => RevenueChart(orders: orders),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
               ),
 
               const SizedBox(height: AppSpacing.xxxl),
 
-              // 4. ملخص أداء الفنيين
-              _buildSectionHeader('أداء الفنيين المعتمدين', AppColors.textPrimary, Icons.analytics_outlined),
+              // 3. أحدث المراجعات والتقييمات
+              ordersAsync.when(
+                data: (orders) => _RecentReviewsSection(orders: orders),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+
+              const SizedBox(height: AppSpacing.xxxl),
+
+              // 4. أحدث الطلبات
+              _buildSectionHeader('أحدث الطلبات النشطة', AppColors.textPrimary, Icons.history),
               const SizedBox(height: AppSpacing.md),
-              techsAsync.when(
-                data: (techs) => TechnicianSummarySection(techs: techs),
+              ordersAsync.when(
+                data: (orders) => _RecentOrdersSection(orders: orders),
                 loading: () => const LoadingWidget(),
                 error: (e, s) => const SizedBox.shrink(),
               ),
@@ -143,7 +162,12 @@ class DashboardScreen extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
-              if (context.mounted) context.go('/login');
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              if (context.mounted) {
+                Navigator.pop(context);
+                context.go('/welcome');
+              }
             },
             child: const Text('خروج', style: TextStyle(color: AppColors.error)),
           ),
@@ -163,6 +187,53 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(width: 12),
         ],
         Text(title, style: AppTextStyles.headlineMed.copyWith(color: color)),
+      ],
+    );
+  }
+}
+
+class _RecentReviewsSection extends StatelessWidget {
+  final List<Order> orders;
+  const _RecentReviewsSection({required this.orders});
+
+  @override
+  Widget build(BuildContext context) {
+    final reviews = orders.where((o) => o.rating != null && o.rating! > 0).take(3).toList();
+    if (reviews.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.star_rate_rounded, color: Colors.amber, size: 24),
+                const SizedBox(width: 12),
+                Text('آخر تقييمات العملاء', style: AppTextStyles.headlineMed),
+              ],
+            ),
+            TextButton(onPressed: () {}, child: const Text('عرض الكل')),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        ...reviews.map((order) => AppCard(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          color: AppColors.surface3,
+          child: ListTile(
+            leading: const CircleAvatar(backgroundColor: AppColors.surface1, child: Icon(Icons.comment_outlined, size: 18, color: AppColors.gold)),
+            title: Row(
+              children: [
+                Text(order.clientName, style: AppTextStyles.titleMed),
+                const Spacer(),
+                ...List.generate(5, (i) => Icon(Icons.star, size: 12, color: i < (order.rating ?? 0) ? Colors.amber : AppColors.textMuted)),
+              ],
+            ),
+            subtitle: Text(order.ratingComment ?? 'بدون تعليق', maxLines: 2, overflow: TextOverflow.ellipsis),
+            onTap: () => context.push('/admin/order/${order.id}'),
+          ),
+        )),
       ],
     );
   }
@@ -201,7 +272,8 @@ class _RecentOrdersSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (orders.isEmpty) return const Text('لا توجد طلبات مسجلة بعد.');
     
-    final recent = orders.take(5).toList();
+    final recent = orders.where((o) => o.status != OrderStatus.completed && o.status != OrderStatus.cancelled).take(5).toList();
+    if (recent.isEmpty) return const Text('لا توجد طلبات نشطة حالياً.');
     
     return AppCard(
       padding: EdgeInsets.zero,
@@ -216,12 +288,9 @@ class _RecentOrdersSection extends StatelessWidget {
                   child: Text(order.service.icon),
                 ),
                 title: Text(order.clientName, style: AppTextStyles.titleMed),
-                subtitle: Text(order.status.label),
-                trailing: Text(
-                  '${order.createdAt.hour}:${order.createdAt.minute.toString().padLeft(2, '0')}',
-                  style: AppTextStyles.labelMed,
-                ),
-                onTap: () => context.push('/admin/orders'),
+                subtitle: Text(order.status.label, style: TextStyle(color: _getStatusColor(order.status))),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () => context.push('/admin/order/${order.id}'),
               ),
               if (!isLast) const Divider(height: 1, indent: 70),
             ],
@@ -230,53 +299,15 @@ class _RecentOrdersSection extends StatelessWidget {
       ),
     );
   }
-}
 
-class TechnicianSummarySection extends StatelessWidget {
-  final List<Technician> techs;
-  const TechnicianSummarySection({super.key, required this.techs});
-
-  @override
-  Widget build(BuildContext context) {
-    final approvedTechs = techs.where((t) => t.status != TechStatus.pending).toList();
-    if (approvedTechs.isEmpty) return const Text('لا يوجد فنيين معتمدين بعد.');
-    
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: approvedTechs.map((t) {
-          final isLast = approvedTechs.last == t;
-          return Column(
-            children: [
-              ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppColors.surface1,
-                  child: Text(t.spec.icon),
-                ),
-                title: Text(t.name, style: AppTextStyles.titleMed),
-                subtitle: Text('${t.spec.label} • ${t.totalJobs} مهمة'),
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('${t.totalEarnings} ج.م', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 12),
-                        Text(' ${t.rating.toStringAsFixed(1)}', style: AppTextStyles.labelMed),
-                      ],
-                    ),
-                  ],
-                ),
-                onTap: () => context.push('/admin/techs'),
-              ),
-              if (!isLast) const Divider(height: 1, indent: 70),
-            ],
-          );
-        }).toList(),
-      ),
-    );
+  Color _getStatusColor(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending: return AppColors.gold;
+      case OrderStatus.assigned: return AppColors.info;
+      case OrderStatus.onTheWay: return Colors.orange;
+      case OrderStatus.started: return Colors.blue;
+      default: return AppColors.textSecondary;
+    }
   }
 }
 

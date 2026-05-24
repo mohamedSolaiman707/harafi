@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/notification_icon.dart';
 
 class AdminShell extends StatelessWidget {
   final Widget child;
@@ -12,6 +13,13 @@ class AdminShell extends StatelessWidget {
     final isWide = MediaQuery.of(context).size.width > 900;
 
     return Scaffold(
+      appBar: isWide ? null : AppBar(
+        title: const Text('لوحة التحكم'),
+        actions: const [
+          NotificationIcon(),
+          SizedBox(width: 8),
+        ],
+      ),
       body: Row(
         children: [
           if (isWide)
@@ -26,19 +34,25 @@ class AdminShell extends StatelessWidget {
                       vertical: AppSpacing.xl,
                     ),
                     child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(
-                          Icons.menu,
-                          size: 24,
-                          color: AppColors.textSecondary,
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.menu,
+                              size: 24,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              'لوحة التحكم',
+                              style: AppTextStyles.titleLarge.copyWith(
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'لوحة التحكم',
-                          style: AppTextStyles.titleLarge.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
+                        const NotificationIcon(),
                       ],
                     ),
                   ),

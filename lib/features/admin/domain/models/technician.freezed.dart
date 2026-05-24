@@ -15,10 +15,6 @@ final _privateConstructorUsedError = UnsupportedError(
   'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
 );
 
-Technician _$TechnicianFromJson(Map<String, dynamic> json) {
-  return _Technician.fromJson(json);
-}
-
 /// @nodoc
 mixin _$Technician {
   String get id => throw _privateConstructorUsedError;
@@ -39,11 +35,12 @@ mixin _$Technician {
   String? get bio => throw _privateConstructorUsedError;
   @JsonKey(name: 'total_earnings')
   int get totalEarnings => throw _privateConstructorUsedError;
+  @JsonKey(name: 'portfolio_images')
+  List<String> get portfolioImages => throw _privateConstructorUsedError;
+  @JsonKey(name: 'is_verified')
+  bool get isVerified => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
-
-  /// Serializes this Technician to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of Technician
   /// with the given fields replaced by the non-null parameter values.
@@ -73,6 +70,8 @@ abstract class $TechnicianCopyWith<$Res> {
     @JsonKey(name: 'photo_url') String? photoUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') int totalEarnings,
+    @JsonKey(name: 'portfolio_images') List<String> portfolioImages,
+    @JsonKey(name: 'is_verified') bool isVerified,
     @JsonKey(name: 'created_at') DateTime createdAt,
   });
 }
@@ -105,6 +104,8 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
     Object? photoUrl = freezed,
     Object? bio = freezed,
     Object? totalEarnings = null,
+    Object? portfolioImages = null,
+    Object? isVerified = null,
     Object? createdAt = null,
   }) {
     return _then(
@@ -161,6 +162,14 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
                 ? _value.totalEarnings
                 : totalEarnings // ignore: cast_nullable_to_non_nullable
                       as int,
+            portfolioImages: null == portfolioImages
+                ? _value.portfolioImages
+                : portfolioImages // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            isVerified: null == isVerified
+                ? _value.isVerified
+                : isVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -194,6 +203,8 @@ abstract class _$$TechnicianImplCopyWith<$Res>
     @JsonKey(name: 'photo_url') String? photoUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') int totalEarnings,
+    @JsonKey(name: 'portfolio_images') List<String> portfolioImages,
+    @JsonKey(name: 'is_verified') bool isVerified,
     @JsonKey(name: 'created_at') DateTime createdAt,
   });
 }
@@ -225,6 +236,8 @@ class __$$TechnicianImplCopyWithImpl<$Res>
     Object? photoUrl = freezed,
     Object? bio = freezed,
     Object? totalEarnings = null,
+    Object? portfolioImages = null,
+    Object? isVerified = null,
     Object? createdAt = null,
   }) {
     return _then(
@@ -281,6 +294,14 @@ class __$$TechnicianImplCopyWithImpl<$Res>
             ? _value.totalEarnings
             : totalEarnings // ignore: cast_nullable_to_non_nullable
                   as int,
+        portfolioImages: null == portfolioImages
+            ? _value._portfolioImages
+            : portfolioImages // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        isVerified: null == isVerified
+            ? _value.isVerified
+            : isVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -291,8 +312,8 @@ class __$$TechnicianImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
-class _$TechnicianImpl implements _Technician {
+
+class _$TechnicianImpl extends _Technician {
   const _$TechnicianImpl({
     required this.id,
     required this.name,
@@ -301,17 +322,18 @@ class _$TechnicianImpl implements _Technician {
     @JsonKey(name: 'price_range') this.priceRange,
     @JsonKey(name: 'visit_price') this.visitPrice = 50,
     this.area,
-    this.status = TechStatus.available,
+    this.status = TechStatus.pending,
     this.rating = 0.0,
     @JsonKey(name: 'total_jobs') this.totalJobs = 0,
     @JsonKey(name: 'photo_url') this.photoUrl,
     this.bio,
     @JsonKey(name: 'total_earnings') this.totalEarnings = 0,
+    @JsonKey(name: 'portfolio_images')
+    final List<String> portfolioImages = const [],
+    @JsonKey(name: 'is_verified') this.isVerified = false,
     @JsonKey(name: 'created_at') required this.createdAt,
-  });
-
-  factory _$TechnicianImpl.fromJson(Map<String, dynamic> json) =>
-      _$$TechnicianImplFromJson(json);
+  }) : _portfolioImages = portfolioImages,
+       super._();
 
   @override
   final String id;
@@ -346,13 +368,25 @@ class _$TechnicianImpl implements _Technician {
   @override
   @JsonKey(name: 'total_earnings')
   final int totalEarnings;
+  final List<String> _portfolioImages;
+  @override
+  @JsonKey(name: 'portfolio_images')
+  List<String> get portfolioImages {
+    if (_portfolioImages is EqualUnmodifiableListView) return _portfolioImages;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_portfolioImages);
+  }
+
+  @override
+  @JsonKey(name: 'is_verified')
+  final bool isVerified;
   @override
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
   @override
   String toString() {
-    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, bio: $bio, totalEarnings: $totalEarnings, createdAt: $createdAt)';
+    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, bio: $bio, totalEarnings: $totalEarnings, portfolioImages: $portfolioImages, isVerified: $isVerified, createdAt: $createdAt)';
   }
 
   @override
@@ -378,11 +412,16 @@ class _$TechnicianImpl implements _Technician {
             (identical(other.bio, bio) || other.bio == bio) &&
             (identical(other.totalEarnings, totalEarnings) ||
                 other.totalEarnings == totalEarnings) &&
+            const DeepCollectionEquality().equals(
+              other._portfolioImages,
+              _portfolioImages,
+            ) &&
+            (identical(other.isVerified, isVerified) ||
+                other.isVerified == isVerified) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
@@ -399,6 +438,8 @@ class _$TechnicianImpl implements _Technician {
     photoUrl,
     bio,
     totalEarnings,
+    const DeepCollectionEquality().hash(_portfolioImages),
+    isVerified,
     createdAt,
   );
 
@@ -409,14 +450,9 @@ class _$TechnicianImpl implements _Technician {
   @pragma('vm:prefer-inline')
   _$$TechnicianImplCopyWith<_$TechnicianImpl> get copyWith =>
       __$$TechnicianImplCopyWithImpl<_$TechnicianImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$TechnicianImplToJson(this);
-  }
 }
 
-abstract class _Technician implements Technician {
+abstract class _Technician extends Technician {
   const factory _Technician({
     required final String id,
     required final String name,
@@ -431,11 +467,11 @@ abstract class _Technician implements Technician {
     @JsonKey(name: 'photo_url') final String? photoUrl,
     final String? bio,
     @JsonKey(name: 'total_earnings') final int totalEarnings,
+    @JsonKey(name: 'portfolio_images') final List<String> portfolioImages,
+    @JsonKey(name: 'is_verified') final bool isVerified,
     @JsonKey(name: 'created_at') required final DateTime createdAt,
   }) = _$TechnicianImpl;
-
-  factory _Technician.fromJson(Map<String, dynamic> json) =
-      _$TechnicianImpl.fromJson;
+  const _Technician._() : super._();
 
   @override
   String get id;
@@ -468,6 +504,12 @@ abstract class _Technician implements Technician {
   @override
   @JsonKey(name: 'total_earnings')
   int get totalEarnings;
+  @override
+  @JsonKey(name: 'portfolio_images')
+  List<String> get portfolioImages;
+  @override
+  @JsonKey(name: 'is_verified')
+  bool get isVerified;
   @override
   @JsonKey(name: 'created_at')
   DateTime get createdAt;

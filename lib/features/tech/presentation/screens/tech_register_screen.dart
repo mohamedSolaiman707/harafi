@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -11,7 +12,7 @@ import '../../../admin/domain/enums/service_type.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 
 class TechRegisterScreen extends ConsumerStatefulWidget {
-  final String? initialPhone; // استلام الرقم من صفحة الدخول
+  final String? initialPhone;
   const TechRegisterScreen({super.key, this.initialPhone});
 
   @override
@@ -24,6 +25,8 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   late final TextEditingController _phoneController;
   final _passwordController = TextEditingController();
   final _bioController = TextEditingController();
+  final _visitPriceController = TextEditingController(text: '50');
+  final _areaController = TextEditingController();
   ServiceType? _selectedSpec;
   bool _isLoading = false;
 
@@ -40,6 +43,8 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _bioController.dispose();
+    _visitPriceController.dispose();
+    _areaController.dispose();
     super.dispose();
   }
 
@@ -56,45 +61,47 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
       final phone = _phoneController.text.trim();
       final dummyEmail = '$phone@harafi.com';
 
-      // 1. فحص هل الفني مضاف مسبقاً من الأدمن؟
-      final existingTechs = await Supabase.instance.client
-          .from('technicians')
-          .select()
-          .eq('phone', phone);
-
-      // 2. إنشاء حساب Auth
+      // 1. إنشاء حساب Auth
       final authResponse = await Supabase.instance.client.auth.signUp(
         email: dummyEmail,
         password: _passwordController.text.trim(),
       );
 
       if (authResponse.user == null) throw 'فشل إنشاء الحساب';
-
       String userId = authResponse.user!.id;
 
-      // 3. الربط الذكي: إذا وجدنا سجل قديم بنفس الرقم، نقوم بتحديثه وربطه بالـ Auth ID
+      // 2. فحص هل الفني مضاف مسبقاً من الأدمن؟
+      final existingTechs = await Supabase.instance.client
+          .from('technicians')
+          .select()
+          .eq('phone', phone);
+
+      final technicianData = {
+        'id': userId,
+        'name': _nameController.text.trim(),
+        'phone': phone,
+        'spec': _selectedSpec!.label,
+        'bio': _bioController.text.trim(),
+        'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
+        'area': _areaController.text.trim(),
+      };
+
       if (existingTechs.isNotEmpty) {
-        final existingId = existingTechs.first['id'];
+        // تحديث السجل الموجود وربطه بالـ Auth ID
         await Supabase.instance.client
             .from('technicians')
-            .update({
-          'id': userId, // تحديث المعرف ليتوافق مع Auth
-          'name': _nameController.text.trim(),
-          'spec': _selectedSpec!.label,
-          'bio': _bioController.text.trim(),
-        })
-            .eq('id', existingId);
+            .update(technicianData)
+            .eq('phone', phone);
       } else {
-        // إذا كان فني جديد تماماً
-        final dto = CreateTechnicianDto(
-          id: userId,
-          name: _nameController.text.trim(),
-          phone: phone,
-          spec: _selectedSpec!,
-          bio: _bioController.text.trim(),
-        );
-        await ref.read(techsRepositoryProvider).addTechnician(dto);
+        // إنشاء سجل جديد تماماً
+        await Supabase.instance.client
+            .from('technicians')
+            .insert(technicianData);
       }
+
+      // 3. حفظ "الدور" محلياً لضمان التوجيه الصحيح مستقبلاً
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'tech');
 
       if (mounted) {
         ref.invalidate(currentTechnicianProvider);
@@ -102,7 +109,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e')),
+        SnackBar(content: Text('خطأ في التسجيل: $e')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -124,7 +131,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                 children: [
                   const Icon(Icons.handyman_rounded, size: 64, color: AppColors.gold),
                   const SizedBox(height: AppSpacing.lg),
-                  Text('سجل بياناتك مرة واحدة فقط', style: AppTextStyles.headlineMed),
+                  Text('سجل بياناتك المهنية', style: AppTextStyles.headlineMed),
                   const SizedBox(height: AppSpacing.xl),
                   AppCard(
                     child: Column(
@@ -143,7 +150,6 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
                           prefixIcon: Icons.phone_android,
-                          // قفل الحقل إذا جاء الرقم من صفحة الدخول لضمان "المظبوطية"
                           hint: '01xxxxxxxxx',
                           validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
                         ),
@@ -171,10 +177,34 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           validator: (v) => v == null ? 'يرجى اختيار التخصص' : null,
                         ),
                         const SizedBox(height: AppSpacing.md),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppTextField(
+                                label: 'سعر الزيارة (ج.م)',
+                                controller: _visitPriceController,
+                                keyboardType: TextInputType.number,
+                                prefixIcon: Icons.payments_outlined,
+                                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: AppTextField(
+                                label: 'منطقة العمل',
+                                controller: _areaController,
+                                hint: 'مثال: حي الزهور',
+                                prefixIcon: Icons.location_on_outlined,
+                                validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
                         AppTextField(
                           label: 'نبذة قصيرة عن خبرتك',
                           controller: _bioController,
-                          hint: 'مثال: خبرة 10 سنوات في صيانة التكييفات',
+                          hint: 'مثال: خبرة 10 سنوات في صيانة التكييفات والتبريد المركزي',
                           maxLines: 3,
                         ),
                         const SizedBox(height: AppSpacing.xxl),

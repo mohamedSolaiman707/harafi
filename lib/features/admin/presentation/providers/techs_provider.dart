@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../data/repositories/techs_repository.dart';
 import '../../domain/enums/service_type.dart';
@@ -14,36 +16,101 @@ final techsRepositoryProvider = Provider<TechniciansRepository>((ref) {
 final techniciansProvider = StreamProvider<List<Technician>>((ref) async* {
   final repo = ref.watch(techsRepositoryProvider);
   
-  // 1. جلب البيانات فوراً
-  yield await repo.getAll();
+  // جلب البيانات فوراً
+  final initialData = await repo.getAll();
+  yield initialData;
   
-  // 2. تكرار الجلب بشكل دوري
+  // تكرار الجلب بشكل دوري
   yield* Stream.periodic(AppConstants.pollingInterval).asyncMap((_) => repo.getAll());
 });
 
 final techsStreamProvider = techniciansProvider;
 
-// الفني الحالي الموثق
-final currentTechnicianProvider = Provider<AsyncValue<Technician?>>((ref) {
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user == null) return const AsyncValue.data(null);
-  
-  final techsAsync = ref.watch(techniciansProvider);
-  return techsAsync.whenData((techs) => 
-    techs.where((t) => t.id == user.id).firstOrNull
-  );
+// الفنيون المتميزون (الأعلى تقييماً)
+final topRatedTechsProvider = Provider<List<Technician>>((ref) {
+  final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
+  final approvedTechs = techs.where((t) => t.status != TechStatus.pending).toList();
+  // ترتيب حسب التقييم ثم عدد العمليات
+  approvedTechs.sort((a, b) {
+    int res = b.rating.compareTo(a.rating);
+    if (res == 0) return b.totalJobs.compareTo(a.totalJobs);
+    return res;
+  });
+  return approvedTechs.take(5).toList();
 });
 
-// الفنيين المتاحين للتعيين (يجب أن يكون متاحاً ومعتمداً ومن نفس التخصص)
-final availableTechsProvider = Provider.family<List<Technician>, ServiceType>((
-  ref,
-  serviceType,
-) {
+// الفني الحالي الموثق مع دعم الكاش الدائم (Persistent Cache)
+final currentTechnicianProvider = StateNotifierProvider<CurrentTechNotifier, AsyncValue<Technician?>>((ref) {
+  return CurrentTechNotifier(ref);
+});
+
+class CurrentTechNotifier extends StateNotifier<AsyncValue<Technician?>> {
+  final Ref _ref;
+  static const _cacheKey = 'cached_tech_profile';
+
+  CurrentTechNotifier(this._ref) : super(const AsyncValue.loading()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadFromCache();
+
+    _ref.listen(techniciansProvider, (previous, next) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        state = const AsyncValue.data(null);
+        return;
+      }
+
+      next.whenData((techs) {
+        final tech = techs.where((t) => t.id == user.id).firstOrNull;
+        if (tech != null) {
+          state = AsyncValue.data(tech);
+          _saveToCache(tech);
+        }
+      });
+    });
+  }
+
+  Future<void> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString(_cacheKey);
+      
+      if (cachedData != null) {
+        final Map<String, dynamic> json = jsonDecode(cachedData);
+        final tech = Technician.fromJson(json);
+        state = AsyncValue.data(tech);
+      }
+    } catch (e) {
+      // Ignore cache errors
+    }
+  }
+
+  Future<void> _saveToCache(Technician tech) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = jsonEncode(Technician.technicianToJson(tech));
+      await prefs.setString(_cacheKey, jsonStr);
+    } catch (e) {
+      // Ignore cache errors
+    }
+  }
+
+  Future<void> clearCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_cacheKey);
+    state = const AsyncValue.data(null);
+  }
+}
+
+// الفنيين المتاحين للتعيين
+final availableTechsProvider = Provider.family<List<Technician>, ServiceType>((ref, serviceType) {
   final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
   return techs
       .where((t) => 
-        t.status == TechStatus.available && // متاح للعمل
-        t.spec == serviceType // نفس التخصص المطلوبة
+        t.status == TechStatus.available && 
+        t.spec == serviceType
       )
       .toList();
 });
@@ -63,10 +130,5 @@ class TechStats {
   final int available;
   final int busy;
   final int pending;
-  TechStats({
-    required this.total, 
-    required this.available, 
-    required this.busy, 
-    required this.pending,
-  });
+  TechStats({required this.total, required this.available, required this.busy, required this.pending});
 }

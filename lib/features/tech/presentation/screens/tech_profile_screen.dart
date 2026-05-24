@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -21,21 +24,21 @@ class TechProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الملف الشخصي'),
+        title: const Text('الملف الشخصي والمهني'),
         actions: [
-          // زر تبديل الحساب
           IconButton(
             icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
             tooltip: 'تبديل نوع الحساب',
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.remove('user_role');
+              await ref.read(currentTechnicianProvider.notifier).clearCache();
               if (context.mounted) context.go('/welcome');
             },
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            onPressed: () => _showLogoutDialog(context),
+            onPressed: () => _showLogoutDialog(context, ref),
           ),
         ],
       ),
@@ -50,7 +53,7 @@ class TechProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -61,7 +64,13 @@ class TechProfileScreen extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
-              if (context.mounted) context.go('/');
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              await ref.read(currentTechnicianProvider.notifier).clearCache();
+              if (context.mounted) {
+                Navigator.pop(context);
+                context.go('/welcome');
+              }
             },
             child: const Text('خروج', style: TextStyle(color: AppColors.error)),
           ),
@@ -82,23 +91,58 @@ class _ProfileContent extends ConsumerStatefulWidget {
 class _ProfileContentState extends ConsumerState<_ProfileContent> {
   late TextEditingController _nameController;
   late TextEditingController _bioController;
-  final _passwordController = TextEditingController();
+  late TextEditingController _visitPriceController;
+  final _storageService = StorageService();
+  final _picker = ImagePicker();
+  
   bool _isEditing = false;
   bool _isLoading = false;
+  bool _isUploadingAvatar = false;
+  String? _selectedArea;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.tech.name);
     _bioController = TextEditingController(text: widget.tech.bio);
+    _visitPriceController = TextEditingController(text: widget.tech.visitPrice.toString());
+    _selectedArea = widget.tech.area ?? AppConstants.areas[1];
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
-    _passwordController.dispose();
+    _visitPriceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateAvatar() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 500,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+
+    // استخدام الميثود المحدثة في StorageService
+    final url = await _storageService.uploadImage(
+      image: image, 
+      path: 'avatars', 
+      fileName: widget.tech.id,
+    );
+
+    if (url != null) {
+      await ref.read(techsRepositoryProvider).update(widget.tech.id, {
+        'photo_url': url,
+      });
+      ref.invalidate(techniciansProvider);
+    }
+
+    setState(() => _isUploadingAvatar = false);
   }
 
   Future<void> _updateProfile() async {
@@ -107,94 +151,66 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     final dto = UpdateTechnicianDto(
       name: _nameController.text.trim(),
       bio: _bioController.text.trim(),
+      visitPrice: int.tryParse(_visitPriceController.text),
+      area: _selectedArea,
     );
 
-    final result = await ref.read(techsRepositoryProvider).updateTechnician(
-      widget.tech.id, 
-      dto,
+    await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
+    ref.invalidate(techniciansProvider);
+    
+    setState(() {
+      _isEditing = false;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _pickAndUploadPortfolio() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1200,
     );
 
-    if (_passwordController.text.isNotEmpty) {
-      await Supabase.instance.client.auth.updateUser(
-        UserAttributes(password: _passwordController.text.trim()),
-      );
+    if (image == null) return;
+
+    final url = await _storageService.uploadImage(
+      image: image, 
+      path: 'portfolios', 
+      fileName: '${widget.tech.id}_${DateTime.now().millisecondsSinceEpoch}',
+    );
+
+    if (url != null) {
+      final newImages = [...widget.tech.portfolioImages, url];
+      await ref.read(techsRepositoryProvider).update(widget.tech.id, {
+        'portfolio_images': newImages,
+      });
+      ref.invalidate(techniciansProvider);
     }
-
-    result.when(
-      left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
-      right: (_) {
-        setState(() {
-          _isEditing = false;
-          _isLoading = false;
-          _passwordController.clear();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح')));
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        children: [
-          _buildHeader(),
-          const SizedBox(height: AppSpacing.xxl),
-          _buildQuickStats(),
-          const SizedBox(height: AppSpacing.xxl),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('البيانات الشخصية', style: AppTextStyles.titleLarge),
-                    IconButton(
-                      icon: Icon(_isEditing ? Icons.close : Icons.edit, size: 20, color: AppColors.gold),
-                      onPressed: () => setState(() => _isEditing = !_isEditing),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppTextField(
-                  label: 'الاسم الكامل',
-                  controller: _nameController,
-                  prefixIcon: Icons.person_outline,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(
-                  label: 'نبذة عن خبرتك',
-                  controller: _bioController,
-                  prefixIcon: Icons.description_outlined,
-                  maxLines: 3,
-                ),
-                if (_isEditing) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  const Divider(),
-                  const SizedBox(height: AppSpacing.md),
-                  Text('تغيير كلمة المرور (اختياري)', style: AppTextStyles.titleMed),
-                  const SizedBox(height: AppSpacing.sm),
-                  AppTextField(
-                    label: 'كلمة المرور الجديدة',
-                    controller: _passwordController,
-                    isPassword: true,
-                    prefixIcon: Icons.lock_reset,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppButton(
-                    label: 'حفظ التغييرات',
-                    onTap: _updateProfile,
-                    isLoading: _isLoading,
-                  ),
-                ],
-              ],
-            ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: AppSpacing.xxl),
+              _buildQuickStats(),
+              const SizedBox(height: AppSpacing.xxl),
+              
+              _buildGallerySection(),
+              
+              const SizedBox(height: AppSpacing.xxl),
+              _buildInfoForm(),
+              const SizedBox(height: AppSpacing.xxl),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xl),
-          _buildInfoNote(),
-        ],
+        ),
       ),
     );
   }
@@ -202,57 +218,167 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   Widget _buildHeader() {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.gold, width: 2),
-          ),
-          child: CircleAvatar(
-            radius: 50,
-            backgroundColor: AppColors.surface2,
-            child: Text(widget.tech.spec.icon, style: const TextStyle(fontSize: 40)),
-          ),
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.gold, width: 2),
+              ),
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: AppColors.surface2,
+                backgroundImage: widget.tech.photoUrl != null ? NetworkImage(widget.tech.photoUrl!) : null,
+                child: widget.tech.photoUrl == null 
+                    ? Text(widget.tech.spec.icon, style: const TextStyle(fontSize: 48))
+                    : null,
+              ),
+            ),
+            if (_isUploadingAvatar)
+              const Positioned.fill(child: CircularProgressIndicator(color: AppColors.gold))
+            else
+              GestureDetector(
+                onTap: _updateAvatar,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                  child: const Icon(Icons.camera_alt, size: 20, color: Colors.black),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: AppSpacing.md),
-        Text(widget.tech.name, style: AppTextStyles.displayMedium),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(widget.tech.name, style: AppTextStyles.displayMedium),
+            if (widget.tech.isVerified) ...[
+              const SizedBox(width: 8),
+              const Icon(Icons.verified, color: AppColors.info, size: 24),
+            ],
+          ],
+        ),
         Text(widget.tech.spec.label, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  Widget _buildGallerySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('معرض سابقة أعمالك', style: AppTextStyles.titleLarge),
+            IconButton(
+              onPressed: _pickAndUploadPortfolio,
+              icon: const Icon(Icons.add_a_photo_outlined, color: AppColors.gold),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (widget.tech.portfolioImages.isEmpty)
+          const Text('لم تقم بإضافة صور لأعمالك بعد.')
+        else
+          SizedBox(
+            height: 140,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.tech.portfolioImages.length,
+              itemBuilder: (context, index) {
+                final url = widget.tech.portfolioImages[index];
+                return Container(
+                  width: 180,
+                  margin: const EdgeInsets.only(left: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+                    border: Border.all(color: AppColors.borderDefault),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInfoForm() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('البيانات المهنية', style: AppTextStyles.titleLarge),
+              AppButton(
+                label: _isEditing ? 'حفظ' : 'تعديل',
+                size: ButtonSize.sm,
+                variant: _isEditing ? ButtonVariant.primary : ButtonVariant.ghost,
+                onTap: () => _isEditing ? _updateProfile() : setState(() => _isEditing = true),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          AppTextField(
+            label: 'الاسم الميداني',
+            controller: _nameController,
+            enabled: _isEditing,
+            prefixIcon: Icons.person_outline,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: AppTextField(
+                  label: 'سعر الزيارة (ج.م)',
+                  controller: _visitPriceController,
+                  enabled: _isEditing,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.payments_outlined,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedArea,
+                  decoration: const InputDecoration(labelText: 'منطقة العمل'),
+                  dropdownColor: AppColors.surface2,
+                  items: AppConstants.areas.where((a) => a != 'الكل').map((area) => DropdownMenuItem(
+                    value: area,
+                    child: Text(area),
+                  )).toList(),
+                  onChanged: _isEditing ? (val) => setState(() => _selectedArea = val) : null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            label: 'تكلم عن خبرتك',
+            controller: _bioController,
+            enabled: _isEditing,
+            prefixIcon: Icons.history_edu_outlined,
+            maxLines: 4,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildQuickStats() {
     return Row(
       children: [
-        Expanded(child: _StatCard(label: 'إجمالي الأرباح', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success)),
+        Expanded(child: _StatCard(label: 'إيراداتك', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success)),
         const SizedBox(width: AppSpacing.md),
-        Expanded(child: _StatCard(label: 'المهمات', value: '${widget.tech.totalJobs}', icon: Icons.build_circle, color: AppColors.info)),
+        Expanded(child: _StatCard(label: 'عملياتك', value: '${widget.tech.totalJobs}', icon: Icons.build_circle, color: AppColors.info)),
         const SizedBox(width: AppSpacing.md),
-        Expanded(child: _StatCard(label: 'التقييم', value: widget.tech.rating.toStringAsFixed(1), icon: Icons.star, color: Colors.amber)),
+        Expanded(child: _StatCard(label: 'تقييمك', value: widget.tech.rating.toStringAsFixed(1), icon: Icons.star, color: Colors.amber)),
       ],
-    );
-  }
-
-  Widget _buildInfoNote() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.info.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, color: AppColors.info, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'لا يمكن تغيير التخصص أو رقم الهاتف الموثق إلا من خلال التواصل مع الإدارة.',
-              style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

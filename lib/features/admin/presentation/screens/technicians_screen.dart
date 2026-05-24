@@ -91,120 +91,141 @@ class TechniciansScreen extends ConsumerWidget {
     
     ServiceType selectedSpec = technician?.spec ?? ServiceType.plumbing;
     TechStatus selectedStatus = technician?.status ?? TechStatus.available;
+    bool isVerified = technician?.isVerified ?? false;
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface2,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: AppSpacing.xl,
-          right: AppSpacing.xl,
-          top: AppSpacing.xl,
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  technician == null ? 'إضافة فني جديد' : (technician.status == TechStatus.pending ? 'مراجعة واعتماد الفني' : 'تعديل بيانات الفني'),
-                  style: AppTextStyles.headlineMed,
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person)),
-                  validator: (v) => v!.isEmpty ? 'مطلوب' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone)),
-                  keyboardType: TextInputType.phone,
-                  enabled: technician == null, // لا نغير الرقم الموثق إلا من خلال نظام الدخول
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<ServiceType>(
-                  value: selectedSpec,
-                  decoration: const InputDecoration(labelText: 'التخصص المهني', prefixIcon: Icon(Icons.build)),
-                  items: ServiceType.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
-                  onChanged: (v) => selectedSpec = v!,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: visitPriceController,
-                        decoration: const InputDecoration(labelText: 'سعر الزيارة', prefixIcon: Icon(Icons.payments)),
-                        keyboardType: TextInputType.number,
-                      ),
+      builder: (context) => StatefulBuilder( // استخدام StatefulBuilder للتحكم في مفتاح التوثيق داخل الشيت
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: AppSpacing.xl,
+            right: AppSpacing.xl,
+            top: AppSpacing.xl,
+          ),
+          child: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    technician == null ? 'إضافة فني جديد' : (technician.status == TechStatus.pending ? 'مراجعة واعتماد الفني' : 'تعديل بيانات الفني'),
+                    style: AppTextStyles.headlineMed,
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // خيار التوثيق (يظهر فقط عند التعديل)
+                  if (technician != null)
+                    SwitchListTile(
+                      title: const Text('فني موثق (Verified)'),
+                      subtitle: const Text('تظهر علامة الصح الزرقاء بجانب الاسم'),
+                      secondary: Icon(Icons.verified, color: isVerified ? AppColors.info : AppColors.textMuted),
+                      value: isVerified,
+                      activeColor: AppColors.info,
+                      onChanged: (val) => setModalState(() => isVerified = val),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<TechStatus>(
-                        value: selectedStatus,
-                        decoration: const InputDecoration(labelText: 'الحالة الآن'),
-                        items: TechStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
-                        onChanged: (v) => selectedStatus = v!,
+                  
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person)),
+                    validator: (v) => v!.isEmpty ? 'مطلوب' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone)),
+                    keyboardType: TextInputType.phone,
+                    enabled: technician == null,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<ServiceType>(
+                    value: selectedSpec,
+                    decoration: const InputDecoration(labelText: 'التخصص المهني', prefixIcon: Icon(Icons.build)),
+                    items: ServiceType.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                    onChanged: (v) => selectedSpec = v!,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: visitPriceController,
+                          decoration: const InputDecoration(labelText: 'سعر الزيارة', prefixIcon: Icon(Icons.payments)),
+                          keyboardType: TextInputType.number,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: areaController,
-                  decoration: const InputDecoration(labelText: 'منطقة العمل (اختياري)', prefixIcon: Icon(Icons.location_on)),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: bioController,
-                  decoration: const InputDecoration(labelText: 'نبذة عن الخبرة'),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (!formKey.currentState!.validate()) return;
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<TechStatus>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(labelText: 'الحالة الآن'),
+                          items: TechStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                          onChanged: (v) => selectedStatus = v!,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: areaController,
+                    decoration: const InputDecoration(labelText: 'منطقة العمل (اختياري)', prefixIcon: Icon(Icons.location_on)),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: bioController,
+                    decoration: const InputDecoration(labelText: 'نبذة عن الخبرة'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (!formKey.currentState!.validate()) return;
 
-                    final dto = UpdateTechnicianDto(
-                      name: nameController.text.trim(),
-                      spec: selectedSpec,
-                      visitPrice: int.tryParse(visitPriceController.text),
-                      area: areaController.text.trim(),
-                      bio: bioController.text.trim(),
-                      status: selectedStatus == TechStatus.pending ? TechStatus.available : selectedStatus,
-                    );
+                      // تحديث التوثيق أولاً لو تغير
+                      if (technician != null && isVerified != technician.isVerified) {
+                        await ref.read(adminActionsProvider).toggleVerification(technician.id, isVerified);
+                      }
 
-                    final result = technician == null 
-                      ? await ref.read(adminActionsProvider).addTechnician(CreateTechnicianDto(
-                          name: nameController.text.trim(),
-                          phone: phoneController.text.trim(),
-                          spec: selectedSpec,
-                          bio: bioController.text.trim(),
-                          visitPrice: int.tryParse(visitPriceController.text) ?? 50,
-                          area: areaController.text.trim(),
-                        ))
-                      : await ref.read(adminActionsProvider).updateTechnician(technician.id, dto);
-
-                    if (context.mounted) {
-                      result.when(
-                        left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
-                        right: (_) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت العملية بنجاح')));
-                        },
+                      final dto = UpdateTechnicianDto(
+                        name: nameController.text.trim(),
+                        spec: selectedSpec,
+                        visitPrice: int.tryParse(visitPriceController.text),
+                        area: areaController.text.trim(),
+                        bio: bioController.text.trim(),
+                        status: selectedStatus == TechStatus.pending ? TechStatus.available : selectedStatus,
                       );
-                    }
-                  },
-                  child: Text(technician?.status == TechStatus.pending ? 'اعتماد الفني وتفعيل حسابه' : 'حفظ التغييرات'),
-                ),
-                const SizedBox(height: 16),
-              ],
+
+                      final result = technician == null 
+                        ? await ref.read(adminActionsProvider).addTechnician(CreateTechnicianDto(
+                            name: nameController.text.trim(),
+                            phone: phoneController.text.trim(),
+                            spec: selectedSpec,
+                            bio: bioController.text.trim(),
+                            visitPrice: int.tryParse(visitPriceController.text) ?? 50,
+                            area: areaController.text.trim(),
+                          ))
+                        : await ref.read(adminActionsProvider).updateTechnician(technician.id, dto);
+
+                      if (context.mounted) {
+                        result.when(
+                          left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+                          right: (_) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت العملية بنجاح')));
+                          },
+                        );
+                      }
+                    },
+                    child: Text(technician?.status == TechStatus.pending ? 'اعتماد الفني وتفعيل حسابه' : 'حفظ التغييرات'),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
