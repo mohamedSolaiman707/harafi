@@ -53,7 +53,7 @@ class AppErrorWidget extends StatelessWidget {
                 ? 'يرجى التحقق من اتصالك بالشبكة والمحاولة مرة أخرى' 
                 : 'حدث خطأ غير متوقع، نحن نعمل على إصلاحه',
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(
+              style: AppTextStyles.bodyMed.copyWith(
                 color: AppColors.textMuted,
               ),
             ),
@@ -64,7 +64,7 @@ class AppErrorWidget extends StatelessWidget {
                 child: AppButton(
                   label: 'إعادة المحاولة',
                   onTap: onRetry!,
-                  variant: ButtonVariant.outline,
+                  variant: ButtonVariant.ghost,
                   size: ButtonSize.md,
                 ),
               ),
