@@ -159,7 +159,6 @@ class TechOrderDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, Order order) {
-    // 1. لو المهمة اكتملت
     if (order.status == OrderStatus.completed) {
       return const AppCard(
         color: AppColors.success,
@@ -167,7 +166,6 @@ class TechOrderDetailScreen extends ConsumerWidget {
       );
     }
 
-    // 2. لو المهمة ملغاة
     if (order.status == OrderStatus.cancelled) {
       return const AppCard(
         color: AppColors.error,
@@ -177,7 +175,6 @@ class TechOrderDetailScreen extends ConsumerWidget {
 
     return Column(
       children: [
-        // الحالة: تم التعيين -> الفني يضغط "أنا في الطريق"
         if (order.status == OrderStatus.assigned)
           AppButton(
             label: 'أنا في الطريق للعميل',
@@ -189,7 +186,6 @@ class TechOrderDetailScreen extends ConsumerWidget {
             ),
           ),
 
-        // الحالة: في الطريق -> الفني يضغط "بدء العمل" (وصل للعميل)
         if (order.status == OrderStatus.onTheWay)
           AppButton(
             label: 'وصلت للعميل (بدء العمل)',
@@ -201,7 +197,6 @@ class TechOrderDetailScreen extends ConsumerWidget {
             ),
           ),
 
-        // الحالة: بدأ العمل -> الفني يضغط "تم الإنجاز"
         if (order.status == OrderStatus.started)
           AppButton(
             label: 'تم الإنجاز (إغلاق الطلب)',
@@ -259,12 +254,12 @@ class TechOrderDetailScreen extends ConsumerWidget {
                 return;
               }
               
-              await ref.read(ordersRepositoryProvider).updateOrderStatus(
-                order.id, 
+              // تم التعديل هنا لاستخدام adminActionsProvider بدلاً من repository مباشرة
+              await ref.read(adminActionsProvider).updateOrderStatus(
+                order, 
                 OrderStatus.completed,
                 finalPrice: price,
                 techNotes: notesController.text.trim(),
-                completedAt: DateTime.now(),
                 logMessage: 'تم إنجاز المهمة بنجاح، شكراً لتعاملكم مع حرافي',
               );
               
