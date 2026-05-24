@@ -17,8 +17,13 @@ class RoleSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width > 900;
+
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -30,47 +35,58 @@ class RoleSelectionScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
-                const SizedBox(height: AppSpacing.xl),
-                Text('أهلاً بك في حرفي', style: AppTextStyles.displayMedium),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'اختر نوع الحساب للمتابعة',
-                  style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: AppSpacing.xxxl),
-                
-                _RoleCard(
-                  title: 'أنا عميل',
-                  subtitle: 'أبحث عن فني لإصلاح أعطال منزلي',
-                  icon: Icons.person_search_outlined,
-                  onTap: () => _setRole('client', context),
-                ),
-                
-                const SizedBox(height: AppSpacing.lg),
-                
-                _RoleCard(
-                  title: 'أنا فني (حرفي)',
-                  subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
-                  icon: Icons.engineering_outlined,
-                  isPrimary: true,
-                  onTap: () => _setRole('tech', context),
-                ),
+          child: Center( // تمركز المحتوى في منتصف الشاشة
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500), // تحديد عرض أقصى مريح للعين
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Spacer(),
+                    const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text(
+                      'أهلاً بك في حرفي', 
+                      style: AppTextStyles.displayMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'اختر نوع الحساب للمتابعة',
+                      style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    
+                    _RoleCard(
+                      title: 'أنا عميل',
+                      subtitle: 'أبحث عن فني لإصلاح أعطال منزلي',
+                      icon: Icons.person_search_outlined,
+                      onTap: () => _setRole('client', context),
+                    ),
+                    
+                    const SizedBox(height: AppSpacing.lg),
+                    
+                    _RoleCard(
+                      title: 'أنا فني (حرفي)',
+                      subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
+                      icon: Icons.engineering_outlined,
+                      isPrimary: true,
+                      onTap: () => _setRole('tech', context),
+                    ),
 
-                const Spacer(),
-                TextButton(
-                  onPressed: () => context.push('/login'),
-                  child: const Text(
-                    'دخول الإدارة',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => context.push('/login'),
+                      child: const Text(
+                        'دخول الإدارة',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -99,6 +115,7 @@ class _RoleCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       color: isPrimary ? AppColors.surface3 : AppColors.surface2,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           Container(
@@ -115,6 +132,7 @@ class _RoleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: AppTextStyles.titleLarge),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
@@ -122,7 +140,7 @@ class _RoleCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textMuted),
+          const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
         ],
       ),
     );

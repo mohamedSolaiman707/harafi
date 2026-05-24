@@ -21,10 +21,13 @@ class TechProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final techAsync = ref.watch(currentTechnicianProvider);
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width > 1000;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('الملف الشخصي والمهني'),
+        centerTitle: !isDesktop,
         actions: [
           IconButton(
             icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
@@ -40,12 +43,13 @@ class TechProfileScreen extends ConsumerWidget {
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
             onPressed: () => _showLogoutDialog(context, ref),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: techAsync.when(
         data: (tech) {
           if (tech == null) return const _NoProfileError();
-          return _ProfileContent(tech: tech);
+          return _ProfileContent(tech: tech, isDesktop: isDesktop);
         },
         loading: () => const LoadingWidget(),
         error: (e, s) => Center(child: Text('خطأ في تحميل البيانات: $e')),
@@ -82,7 +86,8 @@ class TechProfileScreen extends ConsumerWidget {
 
 class _ProfileContent extends ConsumerStatefulWidget {
   final Technician tech;
-  const _ProfileContent({required this.tech});
+  final bool isDesktop;
+  const _ProfileContent({required this.tech, required this.isDesktop});
 
   @override
   ConsumerState<_ProfileContent> createState() => _ProfileContentState();
@@ -129,6 +134,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
 
     await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
     ref.invalidate(techniciansProvider);
+    ref.invalidate(currentTechnicianProvider);
     
     setState(() {
       _isEditing = false;
@@ -155,6 +161,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
       if (url != null) {
         await ref.read(techsRepositoryProvider).update(widget.tech.id, {'photo_url': url});
         ref.invalidate(techniciansProvider);
+        ref.invalidate(currentTechnicianProvider);
       }
       setState(() => _isUploadingAvatar = false);
     } else {
@@ -167,6 +174,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
         final newImages = [...widget.tech.portfolioImages, url];
         await ref.read(techsRepositoryProvider).update(widget.tech.id, {'portfolio_images': newImages});
         ref.invalidate(techniciansProvider);
+        ref.invalidate(currentTechnicianProvider);
       }
     }
   }
@@ -180,25 +188,15 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('اختر مصدر الصورة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined, color: AppColors.gold),
               title: const Text('التقاط صورة بالكاميرا'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera, isAvatar);
-              },
+              onTap: () { Navigator.pop(context); _pickImage(ImageSource.camera, isAvatar); },
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: AppColors.gold),
               title: const Text('اختيار من معرض الصور'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery, isAvatar);
-              },
+              onTap: () { Navigator.pop(context); _pickImage(ImageSource.gallery, isAvatar); },
             ),
             const SizedBox(height: 16),
           ],
@@ -209,76 +207,103 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final horizontalPadding = width > 1200 ? (width - 1100) / 2 : AppSpacing.xl;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: AppSpacing.xxl),
-              _buildQuickStats(),
-              const SizedBox(height: AppSpacing.xxl),
-              _buildGallerySection(),
-              const SizedBox(height: AppSpacing.xxl),
-              _buildInfoForm(),
-              const SizedBox(height: AppSpacing.xxl),
-            ],
-          ),
-        ),
-      ),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: AppSpacing.xl),
+      child: widget.isDesktop 
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: AppSpacing.xl),
+                      _buildQuickStats(isRow: false),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xxxl),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      _buildInfoForm(),
+                      const SizedBox(height: AppSpacing.xxxl),
+                      _buildGallerySection(),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildQuickStats(isRow: true),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildInfoForm(),
+                const SizedBox(height: AppSpacing.xxl),
+                _buildGallerySection(),
+              ],
+            ),
     );
   }
 
   Widget _buildHeader() {
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.bottomRight,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.gold, width: 2),
-              ),
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: AppColors.surface2,
-                backgroundImage: widget.tech.photoUrl != null ? NetworkImage(widget.tech.photoUrl!) : null,
-                child: widget.tech.photoUrl == null 
-                    ? Text(widget.tech.spec.icon, style: const TextStyle(fontSize: 48))
-                    : null,
-              ),
-            ),
-            if (_isUploadingAvatar)
-              const Positioned.fill(child: CircularProgressIndicator(color: AppColors.gold))
-            else
-              GestureDetector(
-                onTap: () => _showImageSourceSheet(true),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-                  child: const Icon(Icons.camera_alt, size: 20, color: Colors.black),
+    return AppCard(
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.gold, width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor: AppColors.surface2,
+                  backgroundImage: widget.tech.photoUrl != null ? NetworkImage(widget.tech.photoUrl!) : null,
+                  child: widget.tech.photoUrl == null 
+                      ? Text(widget.tech.spec.icon, style: const TextStyle(fontSize: 48))
+                      : null,
                 ),
               ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(widget.tech.name, style: AppTextStyles.displayMedium),
-            if (widget.tech.isVerified) ...[
-              const SizedBox(width: 8),
-              const Icon(Icons.verified, color: AppColors.info, size: 24),
+              if (_isUploadingAvatar)
+                const Positioned.fill(child: CircularProgressIndicator(color: AppColors.gold))
+              else
+                GestureDetector(
+                  onTap: () => _showImageSourceSheet(true),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                    child: const Icon(Icons.camera_alt, size: 20, color: Colors.black),
+                  ),
+                ),
             ],
-          ],
-        ),
-        Text(widget.tech.spec.label, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
-      ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(widget.tech.name, style: AppTextStyles.headlineLarge, textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(widget.tech.spec.label, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
+              if (widget.tech.isVerified) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.verified, color: AppColors.info, size: 18),
+              ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -289,35 +314,39 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('معرض سابقة أعمالك', style: AppTextStyles.titleLarge),
-            IconButton(
+            Text('معرض سابقة أعمالك', style: AppTextStyles.headlineMed),
+            FilledButton.icon(
               onPressed: () => _showImageSourceSheet(false),
-              icon: const Icon(Icons.add_a_photo_outlined, color: AppColors.gold),
+              icon: const Icon(Icons.add_a_photo),
+              label: const Text('إضافة صورة'),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
         if (widget.tech.portfolioImages.isEmpty)
-          const Text('لم تقم بإضافة صور لأعمالك بعد.')
+          AppCard(
+            color: AppColors.surface2,
+            child: const Center(child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('لم تقم بإضافة صور لأعمالك السابقة بعد، أضف صوراً لجذب العملاء!'),
+            )),
+          )
         else
-          SizedBox(
-            height: 140,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: widget.tech.portfolioImages.length,
-              itemBuilder: (context, index) {
-                final url = widget.tech.portfolioImages[index];
-                return Container(
-                  width: 180,
-                  margin: const EdgeInsets.only(left: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
-                    border: Border.all(color: AppColors.borderDefault),
-                  ),
-                );
-              },
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: widget.isDesktop ? 3 : 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
+            itemCount: widget.tech.portfolioImages.length,
+            itemBuilder: (context, index) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(widget.tech.portfolioImages[index], fit: BoxFit.cover),
+              );
+            },
           ),
       ],
     );
@@ -331,72 +360,51 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('البيانات المهنية', style: AppTextStyles.titleLarge),
-              AppButton(
-                label: _isEditing ? 'حفظ' : 'تعديل',
-                size: ButtonSize.sm,
-                variant: _isEditing ? ButtonVariant.primary : ButtonVariant.ghost,
-                onTap: () => _isEditing ? _updateProfile() : setState(() => _isEditing = true),
-              ),
+              Text('البيانات المهنية', style: AppTextStyles.headlineMed),
+              _isLoading 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : TextButton.icon(
+                    onPressed: () => _isEditing ? _updateProfile() : setState(() => _isEditing = true),
+                    icon: Icon(_isEditing ? Icons.check : Icons.edit),
+                    label: Text(_isEditing ? 'حفظ التغييرات' : 'تعديل البيانات'),
+                  ),
             ],
           ),
+          const SizedBox(height: AppSpacing.xl),
+          AppTextField(label: 'الاسم الميداني', controller: _nameController, enabled: _isEditing, prefixIcon: Icons.person_outline),
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'الاسم الميداني',
-            controller: _nameController,
-            enabled: _isEditing,
-            prefixIcon: Icons.person_outline,
-          ),
-          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Expanded(
-                child: AppTextField(
-                  label: 'سعر الزيارة (ج.م)',
-                  controller: _visitPriceController,
-                  enabled: _isEditing,
-                  keyboardType: TextInputType.number,
-                  prefixIcon: Icons.payments_outlined,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
+              Expanded(child: AppTextField(label: 'سعر الزيارة (ج.م)', controller: _visitPriceController, enabled: _isEditing, keyboardType: TextInputType.number, prefixIcon: Icons.payments_outlined)),
+              const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: _selectedArea,
                   decoration: const InputDecoration(labelText: 'منطقة العمل'),
                   dropdownColor: AppColors.surface2,
-                  items: AppConstants.areas.where((a) => a != 'الكل').map((area) => DropdownMenuItem(
-                    value: area,
-                    child: Text(area),
-                  )).toList(),
+                  items: AppConstants.areas.where((a) => a != 'الكل').map((area) => DropdownMenuItem(value: area, child: Text(area))).toList(),
                   onChanged: _isEditing ? (val) => setState(() => _selectedArea = val) : null,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          AppTextField(
-            label: 'تكلم عن خبرتك',
-            controller: _bioController,
-            enabled: _isEditing,
-            prefixIcon: Icons.history_edu_outlined,
-            maxLines: 4,
-          ),
+          const SizedBox(height: AppSpacing.lg),
+          AppTextField(label: 'نبذة عن خبرتك', controller: _bioController, enabled: _isEditing, prefixIcon: Icons.history_edu_outlined, maxLines: 5),
         ],
       ),
     );
   }
 
-  Widget _buildQuickStats() {
-    return Row(
-      children: [
-        Expanded(child: _StatCard(label: 'إيراداتك', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success)),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(child: _StatCard(label: 'عملياتك', value: '${widget.tech.totalJobs}', icon: Icons.build_circle, color: AppColors.info)),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(child: _StatCard(label: 'تقييمك', value: widget.tech.rating.toStringAsFixed(1), icon: Icons.star, color: Colors.amber)),
-      ],
-    );
+  Widget _buildQuickStats({required bool isRow}) {
+    final stats = [
+      _StatCard(label: 'إجمالي الأرباح', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success),
+      _StatCard(label: 'المهمات المنجزة', value: '${widget.tech.totalJobs}', icon: Icons.build_circle, color: AppColors.info),
+      _StatCard(label: 'تقييمك العام', value: widget.tech.rating.toStringAsFixed(1), icon: Icons.star, color: Colors.amber),
+    ];
+
+    if (isRow) return Row(children: stats.map((s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: s))).toList());
+    
+    return Column(children: stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: s)).toList());
   }
 }
 
@@ -410,13 +418,12 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         children: [
-          Icon(icon, color: color.withValues(alpha: 0.8), size: 24),
+          Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
-          Text(value, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
+          Text(value, style: AppTextStyles.headlineLarge.copyWith(fontSize: 22)),
           Text(label, style: AppTextStyles.labelMed, textAlign: TextAlign.center),
         ],
       ),
@@ -430,14 +437,14 @@ class _NoProfileError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: const EdgeInsets.all(AppSpacing.xxxl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: AppColors.error),
-            const SizedBox(height: 16),
-            const Text('لم يتم العثور على بيانات فني لهذا الحساب.', textAlign: TextAlign.center),
+            const Icon(Icons.error_outline, size: 80, color: AppColors.error),
             const SizedBox(height: 24),
+            const Text('لم نتمكن من العثور على بروفايل فني لهذا الحساب.', textAlign: TextAlign.center),
+            const SizedBox(height: 32),
             AppButton(label: 'العودة للرئيسية', onTap: () => context.go('/')),
           ],
         ),
