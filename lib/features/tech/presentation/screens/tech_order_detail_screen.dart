@@ -37,6 +37,8 @@ class TechOrderDetailScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _StatusBanner(status: order.status),
+                  const SizedBox(height: AppSpacing.lg),
                   _buildClientInfo(order),
                   const SizedBox(height: AppSpacing.xl),
                   _buildOrderDescription(order),
@@ -157,6 +159,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, Order order) {
+    // 1. لو المهمة اكتملت
     if (order.status == OrderStatus.completed) {
       return const AppCard(
         color: AppColors.success,
@@ -164,14 +167,41 @@ class TechOrderDetailScreen extends ConsumerWidget {
       );
     }
 
+    // 2. لو المهمة ملغاة
+    if (order.status == OrderStatus.cancelled) {
+      return const AppCard(
+        color: AppColors.error,
+        child: Center(child: Text('هذا الطلب ملغي', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
+      );
+    }
+
     return Column(
       children: [
+        // الحالة: تم التعيين -> الفني يضغط "أنا في الطريق"
         if (order.status == OrderStatus.assigned)
           AppButton(
-            label: 'بدء العمل الآن',
-            icon: Icons.play_arrow,
-            onTap: () => ref.read(adminActionsProvider).updateOrderStatus(order, OrderStatus.started),
+            label: 'أنا في الطريق للعميل',
+            icon: Icons.directions_bike,
+            onTap: () => ref.read(adminActionsProvider).updateOrderStatus(
+              order, 
+              OrderStatus.onTheWay,
+              logMessage: 'الفني تحرك الآن وفي طريقه إليك',
+            ),
           ),
+
+        // الحالة: في الطريق -> الفني يضغط "بدء العمل" (وصل للعميل)
+        if (order.status == OrderStatus.onTheWay)
+          AppButton(
+            label: 'وصلت للعميل (بدء العمل)',
+            icon: Icons.play_arrow,
+            onTap: () => ref.read(adminActionsProvider).updateOrderStatus(
+              order, 
+              OrderStatus.started,
+              logMessage: 'وصل الفني لموقع العميل وبدأ في تنفيذ المهمة',
+            ),
+          ),
+
+        // الحالة: بدأ العمل -> الفني يضغط "تم الإنجاز"
         if (order.status == OrderStatus.started)
           AppButton(
             label: 'تم الإنجاز (إغلاق الطلب)',
@@ -235,6 +265,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
                 finalPrice: price,
                 techNotes: notesController.text.trim(),
                 completedAt: DateTime.now(),
+                logMessage: 'تم إنجاز المهمة بنجاح، شكراً لتعاملكم مع حرافي',
               );
               
               if (context.mounted) {
@@ -243,6 +274,37 @@ class TechOrderDetailScreen extends ConsumerWidget {
               }
             },
             child: const Text('تأكيد الإنجاز'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBanner extends StatelessWidget {
+  final OrderStatus status;
+  const _StatusBanner({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color = AppColors.gold;
+    if (status == OrderStatus.completed) color = AppColors.success;
+    if (status == OrderStatus.cancelled) color = AppColors.error;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            'الحالة الحالية: ${status.label}',
+            style: AppTextStyles.titleMed.copyWith(color: color),
           ),
         ],
       ),

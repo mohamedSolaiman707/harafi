@@ -118,7 +118,8 @@ class _OrdersList extends ConsumerWidget {
         final order = orders[index];
         return OrderCard(
           order: order,
-          onUpdateStatus: () => _showStatusSheet(context, ref, order),
+          // الأدمن يقدر يغير الحالة (إلغاء فقط) أو يعين فني
+          onUpdateStatus: () => _showAdminActionSheet(context, ref, order),
           onAssignTech: () => _showAssignTechSheet(context, ref, order),
         );
       },
@@ -143,7 +144,10 @@ class _OrdersList extends ConsumerWidget {
             Text('الخدمة: ${order.service.label}', style: AppTextStyles.bodyMed.copyWith(color: AppColors.gold)),
             const SizedBox(height: 24),
             if (availableTechs.isEmpty)
-              const Center(child: Text('عذراً، لا يوجد فنيين متاحين حالياً لهذا التخصص'))
+              const Center(child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('عذراً، لا يوجد فنيين متاحين حالياً لهذا التخصص'),
+              ))
             else
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
@@ -177,7 +181,7 @@ class _OrdersList extends ConsumerWidget {
     );
   }
 
-  Future<void> _showStatusSheet(BuildContext context, WidgetRef ref, Order order) async {
+  Future<void> _showAdminActionSheet(BuildContext context, WidgetRef ref, Order order) async {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface2,
@@ -185,20 +189,42 @@ class _OrdersList extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.local_shipping_outlined, color: Colors.amber),
-              title: const Text('الفني في الطريق'),
-              onTap: () {
-                ref.read(adminActionsProvider).updateOrderStatus(order, OrderStatus.onTheWay);
-                Navigator.pop(context);
-              },
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('إجراءات إدارية', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ),
+            if (order.status != OrderStatus.cancelled && order.status != OrderStatus.completed)
+              ListTile(
+                leading: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                title: const Text('إلغاء هذا الطلب نهائياً'),
+                onTap: () {
+                  ref.read(adminActionsProvider).updateOrderStatus(
+                    order, 
+                    OrderStatus.cancelled,
+                    logMessage: 'تم إلغاء الطلب بمعرفة الإدارة',
+                  );
+                  Navigator.pop(context);
+                },
+              ),
             ListTile(
-              leading: const Icon(Icons.cancel_outlined, color: AppColors.error),
-              title: const Text('إلغاء الطلب'),
-              onTap: () {
-                ref.read(adminActionsProvider).updateOrderStatus(order, OrderStatus.cancelled);
-                Navigator.pop(context);
+              leading: const Icon(Icons.delete_forever, color: Colors.grey),
+              title: const Text('حذف من السجلات'),
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('حذف الطلب'),
+                    content: const Text('هل أنت متأكد من حذف الطلب نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الفعل.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف', style: TextStyle(color: AppColors.error))),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await ref.read(ordersRepositoryProvider).deleteOrder(order.id);
+                  if (context.mounted) Navigator.pop(context);
+                }
               },
             ),
           ],

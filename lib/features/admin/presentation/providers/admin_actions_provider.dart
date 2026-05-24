@@ -69,27 +69,26 @@ class AdminActions {
   Future<Either<Failure, Order>> completeOrder(
     Order order, {
     int? finalPrice,
+    String? techNotes,
+    String? logMessage,
   }) async {
-    // 1. تحديث حالة الطلب والسعر النهائي
     final statusResult = await _ref
         .read(ordersRepositoryProvider)
         .updateOrderStatus(
           order.id,
           OrderStatus.completed,
           finalPrice: finalPrice,
+          techNotes: techNotes,
+          completedAt: DateTime.now(),
+          logMessage: logMessage,
         );
 
     return await statusResult.when(
       left: (failure) => Left(failure),
       right: (updatedOrder) async {
         if (order.techId != null) {
-          // 2. تحرير الفني ليصبح متاحاً مرة أخرى
           await _ref.read(techsRepositoryProvider).updateTechStatus(order.techId!, TechStatus.available);
-          
-          // 3. زيادة عدد العمليات الناجحة للفني
           await _ref.read(techsRepositoryProvider).incrementJobCount(order.techId!);
-          
-          // 4. تحديث إجمالي الأرباح للفني إذا وجد سعر نهائي
           if (finalPrice != null) {
             await _ref.read(techsRepositoryProvider).incrementEarnings(order.techId!, finalPrice);
           }
@@ -99,10 +98,14 @@ class AdminActions {
     );
   }
 
-  Future<Either<Failure, Order>> cancelOrder(Order order) async {
+  Future<Either<Failure, Order>> cancelOrder(Order order, {String? logMessage}) async {
     final statusResult = await _ref
         .read(ordersRepositoryProvider)
-        .updateOrderStatus(order.id, OrderStatus.cancelled);
+        .updateOrderStatus(
+          order.id, 
+          OrderStatus.cancelled,
+          logMessage: logMessage,
+        );
     return await statusResult.when(
       left: (failure) => Left(failure),
       right: (updatedOrder) async {
@@ -118,19 +121,20 @@ class AdminActions {
     Order order,
     OrderStatus status, {
     int? finalPrice,
+    String? techNotes,
+    String? logMessage,
   }) async {
     if (status == OrderStatus.completed) {
-      return await completeOrder(order, finalPrice: finalPrice);
+      return await completeOrder(order, finalPrice: finalPrice, techNotes: techNotes, logMessage: logMessage);
     }
     if (status == OrderStatus.cancelled) {
-      return await cancelOrder(order);
+      return await cancelOrder(order, logMessage: logMessage);
     }
     return await _ref
         .read(ordersRepositoryProvider)
-        .updateOrderStatus(order.id, status);
+        .updateOrderStatus(order.id, status, logMessage: logMessage);
   }
 
-  // ... باقي الدوال (addOrderNotes, rateOrder, deleteOrder)
   Future<Either<Failure, Order>> addOrderNotes(String orderId, String notes) async {
     return await _ref.read(ordersRepositoryProvider).addAdminNotes(orderId, notes);
   }
