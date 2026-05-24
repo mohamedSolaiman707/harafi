@@ -18,7 +18,7 @@ class AppConstants {
   // Polling Configuration (Real-time alternative)
   static const Duration pollingInterval = Duration(seconds: 10);
 
-  // UI Strings
+  // UI Strings (يفضل استخدام Enums بدلاً منها في اللوجيك)
   static const String plumbing = 'سباكة';
   static const String electrical = 'كهرباء';
   static const String carpentry = 'نجارة';

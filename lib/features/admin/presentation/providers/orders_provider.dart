@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../data/repositories/orders_repository.dart';
 import '../../domain/enums/order_status.dart';
 import '../../domain/enums/tech_status.dart';
@@ -11,16 +12,27 @@ final ordersRepositoryProvider = Provider<OrdersRepository>((ref) {
   return SupabaseOrdersRepository(Supabase.instance.client);
 });
 
-final ordersStreamProvider = StreamProvider<List<Order>>((ref) {
-  return ref.watch(ordersRepositoryProvider).watchOrders();
+// تحديث دوري (Polling) للطلبات باستخدام الثابت المعرف في النظام
+final ordersStreamProvider = StreamProvider<List<Order>>((ref) async* {
+  final repo = ref.watch(ordersRepositoryProvider);
+  
+  yield await repo.getAll();
+  
+  yield* Stream.periodic(AppConstants.pollingInterval).asyncMap((_) => repo.getAll());
 });
 
-// المزود المفقود الذي يراقب طلبات فني محدد فقط
-final techOrdersStreamProvider = StreamProvider.family<List<Order>, String>((ref, techId) {
-  return ref.watch(ordersRepositoryProvider).watchTechOrders(techId);
+// تحديث دوري لطلبات الفني المحدد
+final techOrdersStreamProvider = StreamProvider.family<List<Order>, String>((ref, techId) async* {
+  final repo = ref.watch(ordersRepositoryProvider);
+  
+  yield await repo.getOrdersByTech(techId).then((value) => value.getRight() ?? []);
+  
+  yield* Stream.periodic(AppConstants.pollingInterval).asyncMap((_) async {
+    final result = await repo.getOrdersByTech(techId);
+    return result.getRight() ?? [];
+  });
 });
 
-// لضمان التوافق مع الكود القديم
 final ordersProvider = FutureProvider<List<Order>>((ref) {
   return ref.watch(ordersRepositoryProvider).getAll();
 });

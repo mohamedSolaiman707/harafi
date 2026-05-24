@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../data/repositories/techs_repository.dart';
 import '../../domain/enums/service_type.dart';
 import '../../domain/enums/tech_status.dart';
@@ -9,8 +10,15 @@ final techsRepositoryProvider = Provider<TechniciansRepository>((ref) {
   return SupabaseTechniciansRepository(Supabase.instance.client);
 });
 
-final techniciansProvider = StreamProvider<List<Technician>>((ref) {
-  return ref.watch(techsRepositoryProvider).watchTechnicians();
+// تحديث دوري (Polling) للفنيين باستخدام الثابت المعرف في النظام
+final techniciansProvider = StreamProvider<List<Technician>>((ref) async* {
+  final repo = ref.watch(techsRepositoryProvider);
+  
+  // 1. جلب البيانات فوراً
+  yield await repo.getAll();
+  
+  // 2. تكرار الجلب بشكل دوري
+  yield* Stream.periodic(AppConstants.pollingInterval).asyncMap((_) => repo.getAll());
 });
 
 final techsStreamProvider = techniciansProvider;
