@@ -8,6 +8,20 @@ abstract class Either<L, R> {
 
   bool get isLeft => this is Left<L, R>;
   bool get isRight => this is Right<L, R>;
+
+  R? getRight() {
+    return when(
+      left: (_) => null,
+      right: (r) => r,
+    );
+  }
+
+  L? getLeft() {
+    return when(
+      left: (l) => l,
+      right: (_) => null,
+    );
+  }
 }
 
 class Left<L, R> extends Either<L, R> {
