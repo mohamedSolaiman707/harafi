@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +9,7 @@ import '../../../../shared/widgets/error_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
+import '../../../admin/presentation/providers/admin_actions_provider.dart';
 import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/enums/order_status.dart';
 
@@ -19,7 +19,6 @@ class TrackScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // استخدام StreamProvider لمتابعة الطلب لحظياً
     final ordersStream = ref.watch(ordersStreamProvider);
 
     return Scaffold(
@@ -48,6 +47,10 @@ class TrackScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         children: [
+          if (order.status == OrderStatus.completed && order.rating == null)
+             _RatingCard(order: order),
+          
+          const SizedBox(height: AppSpacing.md),
           _StatusCard(status: order.status),
           const SizedBox(height: AppSpacing.xl),
           if (tech != null) _TechInfoCard(tech: tech),
@@ -80,6 +83,127 @@ class TrackScreen extends ConsumerWidget {
   }
 }
 
+class _RatingCard extends StatefulWidget {
+  final Order order;
+  const _RatingCard({required this.order});
+
+  @override
+  State<_RatingCard> createState() => _RatingCardState();
+}
+
+class _RatingCardState extends State<_RatingCard> {
+  int _selectedRating = 0;
+  final _commentController = TextEditingController();
+  final List<String> _selectedReasons = [];
+  bool _isSubmitting = false;
+
+  final List<String> _lowRatingReasons = [
+    'تأخير عن الموعد',
+    'سعر مرتفع جداً',
+    'تعامل غير مريح',
+    'جودة عمل ضعيفة',
+    'عدم الاهتمام بالنظافة',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      color: AppColors.gold.withValues(alpha: 0.1),
+      child: Column(
+        children: [
+          Text('كيف كانت تجربتك مع الفني؟', style: AppTextStyles.titleLarge),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return IconButton(
+                icon: Icon(
+                  index < _selectedRating ? Icons.star : Icons.star_border,
+                  color: AppColors.gold,
+                  size: 32,
+                ),
+                onPressed: () => setState(() {
+                  _selectedRating = index + 1;
+                  if (_selectedRating > 3) _selectedReasons.clear();
+                }),
+              );
+            }),
+          ),
+          
+          // إظهار الأسباب لو التقييم 3 نجوم أو أقل
+          if (_selectedRating > 0 && _selectedRating <= 3) ...[
+            const SizedBox(height: 16),
+            const Text('ما الذي لم يعجبك؟ (يمكنك اختيار أكثر من سبب)', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: _lowRatingReasons.map((reason) {
+                final isSelected = _selectedReasons.contains(reason);
+                return ChoiceChip(
+                  label: Text(reason),
+                  selected: isSelected,
+                  onSelected: (val) {
+                    setState(() {
+                      val ? _selectedReasons.add(reason) : _selectedReasons.remove(reason);
+                    });
+                  },
+                  selectedColor: AppColors.gold.withValues(alpha: 0.2),
+                  labelStyle: TextStyle(
+                    color: isSelected ? AppColors.gold : AppColors.textPrimary,
+                    fontSize: 12,
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+
+          if (_selectedRating > 0) ...[
+            const SizedBox(height: 16),
+            TextField(
+              controller: _commentController,
+              decoration: const InputDecoration(
+                hintText: 'اكتب رأيك هنا (اختياري)...',
+                fillColor: AppColors.surface1,
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            Consumer(builder: (context, ref, child) {
+              return AppButton(
+                label: 'إرسال التقييم',
+                isLoading: _isSubmitting,
+                onTap: () async {
+                  setState(() => _isSubmitting = true);
+                  
+                  // دمج الأسباب مع التعليق
+                  String finalComment = _commentController.text.trim();
+                  if (_selectedReasons.isNotEmpty) {
+                    finalComment = '[${_selectedReasons.join(" - ")}] $finalComment';
+                  }
+
+                  await ref.read(adminActionsProvider).rateOrder(
+                    widget.order.id, 
+                    _selectedRating,
+                    comment: finalComment,
+                  );
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('شكراً لتقييمك! نحن نهتم برأيك جداً')),
+                    );
+                  }
+                },
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _StatusCard extends StatelessWidget {
   final OrderStatus status;
   const _StatusCard({required this.status});
@@ -87,7 +211,7 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      color: AppColors.gold.withOpacity(0.05),
+      color: AppColors.gold.withValues(alpha: 0.05),
       child: Column(
         children: [
           Text('حالة طلبك الآن', style: AppTextStyles.bodyMed),

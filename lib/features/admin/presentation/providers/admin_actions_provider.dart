@@ -77,6 +77,48 @@ class AdminActions {
     );
   }
 
+  /// وظيفة تقييم الطلب وتحديث متوسط تقييم الفني بشكل تلقائي
+  Future<Either<Failure, Order>> rateOrder(String orderId, int rating, {String? comment}) async {
+    // 1. تحديث التقييم والتعليق في جدول الطلبات (الـ Order نفسه)
+    final result = await _ref.read(ordersRepositoryProvider).rateOrder(orderId, rating, comment: comment);
+
+    return await result.when(
+      left: (failure) => Left(failure),
+      right: (updatedOrder) async {
+        final techId = updatedOrder.techId;
+        if (techId != null) {
+          try {
+            // 2. جلب جميع طلبات الفني التي تم تقييمها سابقاً لحساب المتوسط الجديد
+            final ordersResult = await _ref.read(ordersRepositoryProvider).getOrdersByTech(techId);
+            
+            await ordersResult.when(
+              left: (f) async => debugPrint('فشل جلب طلبات الفني لحساب التقييم: ${f.message}'),
+              right: (allTechOrders) async {
+                // 3. فلترة الطلبات التي تحتوي على تقييم فعلي وحساب المتوسط الحسابي بدقة
+                final ratedOrders = allTechOrders.where((o) => o.rating != null && o.rating! > 0).toList();
+                
+                if (ratedOrders.isNotEmpty) {
+                  final double totalRating = ratedOrders.fold(0.0, (sum, item) => sum + item.rating!);
+                  final double averageRating = totalRating / ratedOrders.length;
+
+                  // 4. تحديث حقل التقييم العام (rating) في جدول الفنيين
+                  await _ref.read(techsRepositoryProvider).updateRating(techId, averageRating);
+                  
+                  // تحديث الـ Provider لظهور النجوم الجديدة في كل أنحاء التطبيق فوراً
+                  _ref.invalidate(techsStreamProvider);
+                }
+              },
+            );
+          } catch (e) {
+            debugPrint('خطأ أثناء تحديث تقييم الفني: $e');
+          }
+        }
+        _ref.invalidate(ordersStreamProvider);
+        return Right(updatedOrder);
+      },
+    );
+  }
+
   /// وظيفة تعيين فني (وتحويل حالته لمشغول)
   Future<Either<Failure, Order>> assignTech(
     Order order,
@@ -169,8 +211,6 @@ class AdminActions {
   ) => _ref.read(techsRepositoryProvider).updateTechnician(id, dto);
   Future<Either<Failure, Order>> addOrderNotes(String id, String notes) =>
       _ref.read(ordersRepositoryProvider).addAdminNotes(id, notes);
-  Future<Either<Failure, Order>> rateOrder(String id, int rating) =>
-      _ref.read(ordersRepositoryProvider).rateOrder(id, rating);
 
   Future<Either<Failure, void>> deleteOrder(Order order) async {
     if (AdminBusinessRules.shouldFreeTechOnDelete(order) &&

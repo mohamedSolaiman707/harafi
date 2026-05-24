@@ -93,33 +93,52 @@ class TechDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildFinancialSummary(Technician tech) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: AppCard(
-            color: AppColors.success.withValues(alpha: 0.05),
-            child: Column(
-              children: [
-                const Icon(Icons.account_balance_wallet_outlined, color: AppColors.success, size: 24),
-                const SizedBox(height: 8),
-                Text('${tech.totalEarnings} ج.م', style: AppTextStyles.headlineMed.copyWith(color: AppColors.success)),
-                 Text('إجمالي الأرباح', style: AppTextStyles.labelMed),
-              ],
+        Row(
+          children: [
+            Expanded(
+              child: AppCard(
+                color: AppColors.success.withValues(alpha: 0.05),
+                child: Column(
+                  children: [
+                    const Icon(Icons.account_balance_wallet_outlined, color: AppColors.success, size: 24),
+                    const SizedBox(height: 8),
+                    Text('${tech.totalEarnings} ج.م', style: AppTextStyles.headlineMed.copyWith(color: AppColors.success)),
+                    Text('إجمالي الأرباح', style: AppTextStyles.labelMed),
+                  ],
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: AppCard(
+                color: AppColors.info.withValues(alpha: 0.05),
+                child: Column(
+                  children: [
+                    const Icon(Icons.assignment_turned_in_outlined, color: AppColors.info, size: 24),
+                    const SizedBox(height: 8),
+                    Text('${tech.totalJobs}', style: AppTextStyles.headlineMed.copyWith(color: AppColors.info)),
+                    Text('مهام مكتملة', style: AppTextStyles.labelMed),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: AppCard(
-            color: AppColors.info.withValues(alpha: 0.05),
-            child: Column(
-              children: [
-                const Icon(Icons.assignment_turned_in_outlined, color: AppColors.info, size: 24),
-                const SizedBox(height: 8),
-                Text('${tech.totalJobs}', style: AppTextStyles.headlineMed.copyWith(color: AppColors.info)),
-                 Text('مهام مكتملة', style: AppTextStyles.labelMed),
-              ],
-            ),
+        const SizedBox(height: AppSpacing.md),
+        AppCard(
+          color: AppColors.gold.withValues(alpha: 0.05),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.star, color: AppColors.gold, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'تقييمك العام: ${tech.rating.toStringAsFixed(1)} / 5',
+                style: AppTextStyles.titleMed.copyWith(color: AppColors.gold),
+              ),
+            ],
           ),
         ),
       ],
@@ -303,11 +322,13 @@ class _TechStatusCard extends ConsumerWidget {
           Switch(
             value: isAvailable,
             activeColor: AppColors.success,
-            onChanged: (val) {
-              ref.read(techsRepositoryProvider).updateTechStatus(
+            onChanged: (val) async {
+              await ref.read(techsRepositoryProvider).updateTechStatus(
                 tech.id,
                 val ? TechStatus.available : TechStatus.onLeave,
               );
+              ref.invalidate(currentTechnicianProvider);
+              ref.invalidate(techsStreamProvider);
             },
           ),
         ],
