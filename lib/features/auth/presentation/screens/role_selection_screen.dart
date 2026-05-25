@@ -1,11 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_card.dart';
 
-class RoleSelectionScreen extends StatelessWidget {
+class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
+
+  @override
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+}
+
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  int _adminTapCount = 0;
+  Timer? _adminTapTimer;
 
   Future<void> _setRole(String role, BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
@@ -13,6 +22,30 @@ class RoleSelectionScreen extends StatelessWidget {
     if (context.mounted) {
       context.go(role == 'client' ? '/' : '/tech/login');
     }
+  }
+
+  void _handleAdminAccess() {
+    _adminTapTimer?.cancel(); // إلغاء المؤقت السابق
+    
+    setState(() {
+      _adminTapCount++;
+    });
+
+    if (_adminTapCount >= 5) {
+      _adminTapCount = 0;
+      context.push('/login');
+    } else {
+      // إعادة التصفير لو توقف عن الضغط لمدة ثانية ونصف
+      _adminTapTimer = Timer(const Duration(milliseconds: 1500), () {
+        _adminTapCount = 0;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _adminTapTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -40,10 +73,13 @@ class RoleSelectionScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // دخول الإدارة سري عن طريق الضغط المطول هنا
+                      // دخول الإدارة سري: اضغط 5 مرات متتالية بسرعة هنا
                       GestureDetector(
-                        onLongPress: () => context.push('/login'),
-                        child: const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                        onTap: _handleAdminAccess,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       Text(
@@ -77,7 +113,6 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
 
                       const SizedBox(height: AppSpacing.xxxl),
-                      // تم حذف زر دخول الإدارة الظاهر
                     ],
                   ),
                 ),

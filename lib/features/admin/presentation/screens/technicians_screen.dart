@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/widgets/app_button.dart';
 import '../providers/admin_actions_provider.dart';
 import '../providers/techs_provider.dart';
 import '../widgets/tech_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
+import '../../../../shared/widgets/app_button.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/dtos/technician_dtos.dart';
 import '../../domain/enums/service_type.dart';
@@ -58,7 +58,6 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
 
           return CustomScrollView(
             slivers: [
-              // شريط البحث - لمسة UX ضرورية للأدمن
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 24),
                 sliver: SliverToBoxAdapter(
@@ -76,7 +75,6 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                 ),
               ),
 
-              // قسم طلبات الانضمام
               if (pendingTechs.isNotEmpty) ...[
                 SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: sidePadding),
@@ -105,7 +103,6 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
 
-              // قسم الفنيين المعتمدين
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: sidePadding),
                 sliver: SliverToBoxAdapter(
