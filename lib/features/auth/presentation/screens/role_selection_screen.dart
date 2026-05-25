@@ -24,8 +24,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
     }
   }
 
-  void _handleAdminAccess() {
-    _adminTapTimer?.cancel(); // إلغاء المؤقت السابق
+  Future<void> _handleAdminAccess() async {
+    _adminTapTimer?.cancel(); 
     
     setState(() {
       _adminTapCount++;
@@ -33,11 +33,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
     if (_adminTapCount >= 5) {
       _adminTapCount = 0;
-      context.push('/login');
+      
+      // حل مشكلة الـ Rebuild: نحفظ الدور كأدمن فوراً قبل الانتقال
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'admin');
+      
+      if (mounted) {
+        context.push('/login');
+      }
     } else {
-      // إعادة التصفير لو توقف عن الضغط لمدة ثانية ونصف
-      _adminTapTimer = Timer(const Duration(milliseconds: 1500), () {
-        _adminTapCount = 0;
+      // إعادة التصفير لو توقف عن الضغط لمدة ثانية (وقت كافي للماوس)
+      _adminTapTimer = Timer(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() => _adminTapCount = 0);
+        }
       });
     }
   }
@@ -73,12 +82,25 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // دخول الإدارة سري: اضغط 5 مرات متتالية بسرعة هنا
-                      GestureDetector(
-                        onTap: _handleAdminAccess,
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                      // استخدام Material و InkWell لضمان استجابة الماوس في الويب
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _handleAdminAccess,
+                          borderRadius: BorderRadius.circular(50),
+                          splashColor: AppColors.gold.withOpacity(0.1),
+                          highlightColor: Colors.transparent,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Icon(
+                                Icons.build_circle_outlined, 
+                                size: 80, 
+                                color: _adminTapCount > 0 ? AppColors.gold : AppColors.gold.withOpacity(0.8)
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.xl),

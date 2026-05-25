@@ -36,22 +36,27 @@ final appRouter = GoRouter(
 
     final isAuthRoute = location == '/login' || location == '/tech/login' || location == '/tech/register';
     final isWelcomeRoute = location == '/welcome';
+    final isAdminRoute = location.startsWith('/admin');
 
-    if (userRole == null && !isWelcomeRoute && !isAuthRoute) {
+    // 1. إذا لم يتم اختيار دور والمستخدم ليس في مسار مسموح، وجهه للترحيب
+    if (userRole == null && !isWelcomeRoute && !isAuthRoute && !isAdminRoute) {
       return '/welcome';
     }
 
+    // 2. إذا كان في صفحة الترحيب وتم تحديد الدور بالفعل، وجهه لمساره الصحيح
     if (userRole != null && isWelcomeRoute) {
+      if (userRole == 'admin') return isLoggedIn ? '/admin' : '/login';
       return userRole == 'client' ? '/' : '/tech/dashboard';
     }
 
-    final isAdminRoute = location.startsWith('/admin');
     final isTechRoute = location.startsWith('/tech') && !isAuthRoute;
 
+    // 3. حماية مسارات الأدمن والفني
     if ((isAdminRoute || isTechRoute) && !isLoggedIn) {
       return isAdminRoute ? '/login' : '/tech/login';
     }
 
+    // 4. إذا كان مسجل دخول بالفعل، لا تفتح له صفحات اللوجن
     if (location == '/login' && isLoggedIn) return '/admin';
     if (location == '/tech/login' && isLoggedIn) return '/tech/dashboard';
 
