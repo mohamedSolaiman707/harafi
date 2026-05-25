@@ -87,7 +87,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                   sliver: SliverGrid(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 420,
-                      mainAxisExtent: 320,
+                      mainAxisExtent: 380, // زيادة الارتفاع
                       crossAxisSpacing: AppSpacing.lg,
                       mainAxisSpacing: AppSpacing.lg,
                     ),
@@ -114,7 +114,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 400,
-                    mainAxisExtent: 300,
+                    mainAxisExtent: 360, // زيادة الارتفاع
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
                   ),
