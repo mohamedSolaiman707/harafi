@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../admin/domain/dtos/technician_dtos.dart';
 import '../../../admin/domain/enums/service_type.dart';
+import '../../../admin/domain/enums/tech_status.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 
 class TechRegisterScreen extends ConsumerStatefulWidget {
@@ -140,13 +141,13 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
       String userId = authResponse.user!.id;
 
       // 2. رفع صورة إثبات الهوية
-      final idProofUrl = await _storageService.uploadImage(
+      final imageUrl = await _storageService.uploadImage(
         image: _idProofImage!,
-        path: 'identity_proofs',
+        path: 'tech_photos',
         fileName: userId,
       );
 
-      // 3. حفظ بيانات الفني
+      // 3. حفظ بيانات الفني مع المسميات الصحيحة للأعمدة
       final technicianData = {
         'id': userId,
         'name': _nameController.text.trim(),
@@ -155,8 +156,13 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'bio': _bioController.text.trim(),
         'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
         'area': _areaController.text.trim(),
-        'identity_proof_url': idProofUrl,
-        'status': 'بانتظار المراجعة',
+        'photo_url': imageUrl,
+        'status': TechStatus.pending.label, // "قيد الانتظار"
+        'is_verified': false,
+        'total_earnings': 0,
+        'total_jobs': 0,
+        'rating': 0.0,
+        'created_at': DateTime.now().toIso8601String(),
       };
 
       await Supabase.instance.client.from('technicians').upsert(technicianData);
