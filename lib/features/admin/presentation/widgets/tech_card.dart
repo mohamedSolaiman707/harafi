@@ -14,41 +14,54 @@ class TechCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: AppColors.surface3,
+        color: AppColors.surface1,
         borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(
           color: tech.status == TechStatus.pending 
-              ? AppColors.gold.withValues(alpha: 0.5) 
+              ? AppColors.gold.withOpacity(0.5) 
               : AppColors.borderDefault,
-          width: tech.status == TechStatus.pending ? 2 : 1,
+          width: tech.status == TechStatus.pending ? 1.5 : 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         child: Column(
           children: [
-            if (tech.status == TechStatus.pending)
-              _buildPendingBadge(),
-            Row(
-              children: [
-                _buildAvatar(),
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(child: _buildInfo()),
-                _StatusBadge(status: tech.status),
-              ],
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _StatusBadge(status: tech.status),
+                        const Spacer(),
+                        _buildAvatar(),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(tech.name, style: AppTextStyles.headlineMed),
+                    Text(tech.spec.label, style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted)),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildRankBadge(),
+                    const Spacer(),
+                    const Divider(color: AppColors.borderSubtle),
+                    const Spacer(),
+                    _buildStatsGrid(),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            _buildRankBadge(), // إضافة بادج الرتبة الجديد
-            const SizedBox(height: AppSpacing.md),
-            const Divider(color: AppColors.borderDefault),
-            const SizedBox(height: AppSpacing.lg),
-            _buildStatsGrid(),
-            const SizedBox(height: AppSpacing.lg),
-            const Divider(color: AppColors.borderDefault),
-            const SizedBox(height: AppSpacing.lg),
-            _buildActionButtons(),
+            _buildActionRow(),
           ],
         ),
       ),
@@ -57,113 +70,87 @@ class TechCard extends StatelessWidget {
 
   Widget _buildRankBadge() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: tech.rankColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tech.rankColor.withValues(alpha: 0.3)),
+        color: tech.rankColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: tech.rankColor.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(tech.rankIcon, color: tech.rankColor, size: 14),
-          const SizedBox(width: 8),
+          Icon(tech.rankIcon, color: tech.rankColor, size: 12),
+          const SizedBox(width: 6),
           Text(
             tech.rank,
-            style: AppTextStyles.labelLarge.copyWith(
-              color: tech.rankColor,
-              fontWeight: FontWeight.bold,
-            ),
+            style: AppTextStyles.labelMed.copyWith(color: tech.rankColor, fontWeight: FontWeight.bold),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPendingBadge() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.info_outline, color: AppColors.gold, size: 16),
-          const SizedBox(width: 8),
-          Text('طلب انضمام جديد - يحتاج مراجعة', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
         ],
       ),
     );
   }
 
   Widget _buildAvatar() {
-    return Stack(
-      alignment: Alignment.bottomRight,
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: AppColors.surface1,
-          backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-          child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
-        ),
-        if (tech.isVerified)
-          const Icon(Icons.verified, color: AppColors.info, size: 18),
-      ],
-    );
-  }
-
-  Widget _buildInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(tech.name, style: AppTextStyles.headlineMed),
-        const SizedBox(height: AppSpacing.xs),
-        Text(tech.spec.label, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary)),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 2),
+      ),
+      child: CircleAvatar(
+        radius: 28,
+        backgroundColor: AppColors.surface2,
+        backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
+        child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
+      ),
     );
   }
 
   Widget _buildStatsGrid() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _TechStat(label: 'التقييم', value: tech.rating.toStringAsFixed(1), icon: Icons.star, color: Colors.amber),
-        _TechStat(label: 'العمليات', value: tech.totalJobs.toString(), icon: Icons.build, color: AppColors.info),
-        _TechStat(label: 'الأرباح', value: '${tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success),
-        _TechStat(label: 'سعر الزيارة', value: '${tech.visitPrice}', icon: Icons.request_quote, color: AppColors.textMuted),
+        _TechStat(label: 'التقييم', value: tech.rating.toStringAsFixed(1), icon: Icons.star_rounded, color: Colors.amber),
+        _TechStat(label: 'العمليات', value: tech.totalJobs.toString(), icon: Icons.handyman_rounded, color: AppColors.info),
+        _TechStat(label: 'الأرباح', value: '${tech.totalEarnings}', icon: Icons.account_balance_wallet_rounded, color: AppColors.success),
+        _TechStat(label: 'الزيارة', value: '${tech.visitPrice}', icon: Icons.confirmation_number_rounded, color: AppColors.textMuted),
       ],
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: AppColors.borderDefault),
+  Widget _buildActionRow() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: const BoxDecoration(
+        color: AppColors.surface2,
+        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onEdit,
+            icon: Icon(
+              tech.status == TechStatus.pending ? Icons.how_to_reg : Icons.edit_note_rounded,
+              color: AppColors.textSecondary,
             ),
-            onPressed: () => launchUrl(
-              WhatsAppUtils.buildUri(tech.phone, 'السلام عليكم يا بشمهندس ${tech.name}'),
-              mode: LaunchMode.externalApplication,
+            tooltip: 'تعديل البيانات',
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: TextButton.icon(
+              onPressed: () => launchUrl(
+                WhatsAppUtils.buildUri(tech.phone, 'السلام عليكم يا بشمهندس ${tech.name}'),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+              label: const Text('واتساب الفني'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.gold,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
-            icon: const Icon(Icons.chat_bubble_outline),
-            label: const Text('واتساب الفني'),
           ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        IconButton(
-          onPressed: onEdit,
-          icon: Icon(
-            tech.status == TechStatus.pending ? Icons.how_to_reg : Icons.edit,
-            color: tech.status == TechStatus.pending ? AppColors.gold : AppColors.textSecondary,
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -178,12 +165,29 @@ class _StatusBadge extends StatelessWidget {
       case TechStatus.pending: color = AppColors.gold; break;
       case TechStatus.available: color = AppColors.success; break;
       case TechStatus.busy: color = AppColors.info; break;
-      case TechStatus.onLeave: color = AppColors.textSecondary; break;
+      case TechStatus.onLeave: color = AppColors.textMuted; break;
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: color.withOpacity(0.14), borderRadius: BorderRadius.circular(AppRadius.md)),
-      child: Text(status.label, style: AppTextStyles.labelLarge.copyWith(color: color, fontWeight: FontWeight.w700)),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: AppTextStyles.labelMed.copyWith(color: color, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -198,11 +202,10 @@ class _TechStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: AppSpacing.sm),
-        Text(value, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: AppSpacing.xs),
-        Text(label, style: AppTextStyles.labelMed.copyWith(color: AppColors.textSecondary)),
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 4),
+        Text(value, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
       ],
     );
   }

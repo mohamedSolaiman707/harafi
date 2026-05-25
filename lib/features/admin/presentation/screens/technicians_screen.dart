@@ -11,63 +11,86 @@ import '../../domain/enums/service_type.dart';
 import '../../domain/enums/tech_status.dart';
 import '../../domain/models/technician.dart';
 
-class TechniciansScreen extends ConsumerWidget {
+class TechniciansScreen extends ConsumerStatefulWidget {
   const TechniciansScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TechniciansScreen> createState() => _TechniciansScreenState();
+}
+
+class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final techsAsync = ref.watch(techsStreamProvider);
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width > 1100;
-    final sidePadding = width > 1200 ? width * 0.05 : AppSpacing.xl;
+    final sidePadding = width > 1200 ? AppSpacing.xl : AppSpacing.lg;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('إدارة الفنيين والخبراء'),
-        centerTitle: !isDesktop,
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: FilledButton.icon(
               onPressed: () => _showTechnicianForm(context, ref),
-              icon: const Icon(Icons.person_add_alt_1),
+              icon: const Icon(Icons.person_add_alt_1, size: 20),
               label: const Text('إضافة فني'),
             ),
           ),
         ],
       ),
       body: techsAsync.when(
-        data: (techs) {
-          if (techs.isEmpty) {
+        data: (allTechs) {
+          final techs = allTechs.where((t) => 
+            t.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            t.phone.contains(_searchQuery)
+          ).toList();
+
+          if (allTechs.isEmpty) {
             return const Center(child: Text('لا يوجد فنيين مسجلين حالياً'));
           }
 
           final pendingTechs = techs.where((t) => t.status == TechStatus.pending).toList();
           final approvedTechs = techs.where((t) => t.status != TechStatus.pending).toList();
-          
-          final isMobile = width < 600;
-          final crossAxisCount = width > 1400 ? 3 : (width > 800 ? 2 : 1);
-          // زيادة الارتفاع في الموبايل لتجنب خروج الأزرار عن حدود البطاقة
-          final cardHeight = isMobile ? 400.0 : 340.0;
 
           return CustomScrollView(
             slivers: [
+              // شريط البحث - لمسة UX ضرورية للأدمن
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 24),
+                sliver: SliverToBoxAdapter(
+                  child: SearchBar(
+                    hintText: 'بحث باسم الفني أو رقم الهاتف...',
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    leading: const Icon(Icons.search, color: AppColors.textMuted),
+                    backgroundColor: MaterialStateProperty.all(AppColors.surface1),
+                    elevation: MaterialStateProperty.all(0),
+                    shape: MaterialStateProperty.all(RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: AppColors.borderDefault),
+                    )),
+                  ),
+                ),
+              ),
+
               // قسم طلبات الانضمام
               if (pendingTechs.isNotEmpty) ...[
                 SliverPadding(
-                  padding: EdgeInsets.fromLTRB(sidePadding, 24, sidePadding, 16),
+                  padding: EdgeInsets.symmetric(horizontal: sidePadding),
                   sliver: SliverToBoxAdapter(
-                    child: _buildSectionHeader('طلبات انضمام جديدة (${pendingTechs.length})', AppColors.gold),
+                    child: _buildSectionHeader('طلبات انضمام جديدة', pendingTechs.length, AppColors.gold),
                   ),
                 ),
                 SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: sidePadding),
+                  padding: EdgeInsets.all(sidePadding),
                   sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 420,
+                      mainAxisExtent: 320,
                       crossAxisSpacing: AppSpacing.lg,
                       mainAxisSpacing: AppSpacing.lg,
-                      mainAxisExtent: cardHeight + 20, // زيادة بسيطة لطلبات الانضمام لوجود بادج إضافي
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => TechCard(
@@ -78,24 +101,24 @@ class TechniciansScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
 
               // قسم الفنيين المعتمدين
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(sidePadding, 24, sidePadding, 16),
+                padding: EdgeInsets.symmetric(horizontal: sidePadding),
                 sliver: SliverToBoxAdapter(
-                  child: _buildSectionHeader('الفنيين المعتمدين (${approvedTechs.length})', AppColors.success),
+                  child: _buildSectionHeader('الفنيين المعتمدين', approvedTechs.length, AppColors.success),
                 ),
               ),
               SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: sidePadding),
+                padding: EdgeInsets.all(sidePadding),
                 sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 400,
+                    mainAxisExtent: 300,
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
-                    mainAxisExtent: cardHeight,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => TechCard(
@@ -106,7 +129,7 @@ class TechniciansScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              const SliverToBoxAdapter(child: SizedBox(height: 60)),
             ],
           );
         },
@@ -120,15 +143,25 @@ class TechniciansScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, Color color) {
-    return Row(
-      children: [
-        Container(width: 4, height: 24, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-        const SizedBox(width: 12),
-        Text(title, style: AppTextStyles.headlineMed.copyWith(color: color)),
-        const SizedBox(width: 12),
-        Expanded(child: Divider(color: color.withOpacity(0.2))),
-      ],
+  Widget _buildSectionHeader(String title, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(right: BorderSide(color: color, width: 4)),
+      ),
+      child: Row(
+        children: [
+          Text(title, style: AppTextStyles.titleLarge.copyWith(color: color)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+            child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -149,8 +182,8 @@ class TechniciansScreen extends ConsumerWidget {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface2,
-      constraints: BoxConstraints(maxWidth: width > 900 ? 600 : width),
+      backgroundColor: AppColors.surface1,
+      constraints: BoxConstraints(maxWidth: width > 900 ? 550 : width),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
@@ -180,10 +213,15 @@ class TechniciansScreen extends ConsumerWidget {
                   
                   if (technician != null)
                     Container(
-                      decoration: BoxDecoration(color: AppColors.surface3, borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2, 
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderDefault)
+                      ),
                       child: SwitchListTile(
                         title: const Text('توثيق الحساب (Verified)'),
-                        subtitle: const Text('تفعيل العلامة الزرقاء للفني'),
+                        subtitle: const Text('تفعيل العلامة الزرقاء للفني لزيادة الثقة'),
                         secondary: Icon(Icons.verified, color: isVerified ? AppColors.info : AppColors.textMuted),
                         value: isVerified,
                         activeColor: AppColors.info,
@@ -191,7 +229,6 @@ class TechniciansScreen extends ConsumerWidget {
                       ),
                     ),
                   
-                  const SizedBox(height: 16),
                   TextFormField(
                     controller: nameController,
                     decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
@@ -217,7 +254,7 @@ class TechniciansScreen extends ConsumerWidget {
                       Expanded(
                         child: TextFormField(
                           controller: visitPriceController,
-                          decoration: const InputDecoration(labelText: 'سعر الزيارة (ج.م)', prefixIcon: Icon(Icons.monetization_on_outlined)),
+                          decoration: const InputDecoration(labelText: 'سعر الزيارة', prefixIcon: Icon(Icons.monetization_on_outlined)),
                           keyboardType: TextInputType.number,
                         ),
                       ),
@@ -240,14 +277,13 @@ class TechniciansScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: bioController,
-                    decoration: const InputDecoration(labelText: 'نبذة مختصرة عن الفني'),
+                    decoration: const InputDecoration(labelText: 'نبذة مختصرة عن الخبرة'),
                     maxLines: 3,
                   ),
                   const SizedBox(height: 32),
-                  SizedBox(
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () async {
+                  AppButton(
+                    label: technician?.status == TechStatus.pending ? 'اعتماد الحساب الآن' : 'حفظ التعديلات',
+                    onTap: () async {
                         if (!formKey.currentState!.validate()) return;
 
                         if (technician != null && isVerified != technician.isVerified) {
@@ -279,13 +315,11 @@ class TechniciansScreen extends ConsumerWidget {
                             left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
                             right: (_) {
                               Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ البيانات بنجاح')));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث بيانات الفني بنجاح ✅')));
                             },
                           );
                         }
-                      },
-                      child: Text(technician?.status == TechStatus.pending ? 'اعتماد الحساب وتفعيله' : 'تحديث البيانات'),
-                    ),
+                    },
                   ),
                   const SizedBox(height: 12),
                   if (technician != null)
@@ -309,14 +343,14 @@ class TechniciansScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حذف الفني'),
-        content: Text('هل أنت متأكد من حذف الفني "${tech.name}"؟ لا يمكن التراجع عن هذا الإجراء.'),
+        title: const Text('حذف فني'),
+        content: Text('هل أنت متأكد من حذف الفني "${tech.name}"؟ سيتم مسح كافة بياناته نهائياً.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('حذف'),
+            child: const Text('تأكيد الحذف'),
           ),
         ],
       ),

@@ -224,6 +224,10 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
+    Technician? selectedTech;
+    if (_preSelectedTechId != null) {
+      selectedTech = ref.watch(techniciansProvider).valueOrNull?.where((t) => t.id == _preSelectedTechId).firstOrNull;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -241,12 +245,16 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (selectedTech != null) _buildSelectedTechHeader(selectedTech),
+                  
                   _buildStepHeader('1', 'تأكيد نوع الخدمة'),
-                  const SizedBox(height: AppSpacing.lg),
+                  _buildConnectingLine(),
                   _buildServiceGrid(width),
-                  const SizedBox(height: AppSpacing.xxxl),
+                  
+                  const SizedBox(height: AppSpacing.xxl),
+                  
                   _buildStepHeader('2', 'بيانات التواصل والعنوان'),
-                  const SizedBox(height: AppSpacing.lg),
+                  _buildConnectingLine(),
                   AppCard(
                     child: Column(
                       children: [
@@ -265,13 +273,67 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                     label: 'إرسال طلب الخدمة الآن', 
                     onTap: _submit, 
                     isLoading: _isLoading, 
-                    icon: Icons.check_circle_rounded
+                    icon: Icons.send_rounded
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.security_rounded, size: 14, color: AppColors.success),
+                        const SizedBox(width: 6),
+                        Text('بياناتك آمنة ولن يتم مشاركتها مع أي جهة خارجية', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedTechHeader(Technician tech) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(backgroundColor: AppColors.gold.withOpacity(0.1), child: Text(tech.spec.icon)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('طلب خدمة من الفني:', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
+                Text(tech.name, style: AppTextStyles.titleLarge),
+              ],
+            ),
+          ),
+          IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.close, size: 18))
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConnectingLine() {
+    return Container(
+      margin: const EdgeInsets.only(right: 15),
+      width: 2,
+      height: 20,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.gold.withOpacity(0.5), Colors.transparent],
         ),
       ),
     );
@@ -287,7 +349,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
             color: AppColors.gold, 
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
-              BoxShadow(color: AppColors.gold.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))
+              BoxShadow(color: AppColors.gold.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))
             ]
           ), 
           child: Center(child: Text(step, style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold)))
@@ -306,7 +368,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
         crossAxisCount: width > 600 ? 3 : 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        mainAxisExtent: 70, // زيادة الارتفاع لراحة أكبر
+        mainAxisExtent: 70,
       ),
       itemCount: ServiceType.values.length,
       itemBuilder: (context, index) {
@@ -318,9 +380,8 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
           onTap: isEnabled ? () => setState(() => _selectedService = type) : null,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: isSelected ? AppColors.gold.withOpacity(0.08) : AppColors.surface1,
               borderRadius: BorderRadius.circular(AppRadius.md),
@@ -328,33 +389,22 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                 color: isSelected ? AppColors.gold : AppColors.borderDefault, 
                 width: isSelected ? 2 : 1
               ),
-              boxShadow: isSelected ? [
-                BoxShadow(color: AppColors.gold.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
-              ] : null,
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.gold.withOpacity(0.2) : AppColors.surface2,
-                    borderRadius: BorderRadius.circular(8)
-                  ),
-                  child: Text(type.icon, style: const TextStyle(fontSize: 20)),
-                ),
-                const SizedBox(width: 12),
+                Text(type.icon, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     type.label, 
                     style: AppTextStyles.titleMed.copyWith(
                       color: isSelected ? AppColors.gold : AppColors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
                     ), 
                     overflow: TextOverflow.ellipsis
                   )
                 ),
-                if (isSelected) 
-                  const Icon(Icons.check_circle, color: AppColors.gold, size: 16),
+                if (!isEnabled && !isSelected) 
+                   Icon(Icons.lock_outline, size: 14, color: AppColors.textMuted.withOpacity(0.5)),
               ],
             ),
           ),
