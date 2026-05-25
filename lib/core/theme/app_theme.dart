@@ -166,7 +166,6 @@ class AppTheme {
           backgroundColor: AppColors.gold,
           foregroundColor: const Color(0xFF0F172A), // Dark text on gold button
           elevation: 0,
-          fontWeight: FontWeight.bold,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
