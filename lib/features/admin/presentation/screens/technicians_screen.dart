@@ -87,7 +87,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                   sliver: SliverGrid(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 420,
-                      mainAxisExtent: 380, // زيادة الارتفاع
+                      mainAxisExtent: 380,
                       crossAxisSpacing: AppSpacing.lg,
                       mainAxisSpacing: AppSpacing.lg,
                     ),
@@ -114,7 +114,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 400,
-                    mainAxisExtent: 360, // زيادة الارتفاع
+                    mainAxisExtent: 360,
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
                   ),
@@ -172,7 +172,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
     final areaController = TextEditingController(text: technician?.area);
     
     ServiceType selectedSpec = technician?.spec ?? ServiceType.plumbing;
-    TechStatus selectedStatus = technician?.status ?? TechStatus.available;
+    TechStatus selectedStatus = (technician?.status == TechStatus.pending) ? TechStatus.available : (technician?.status ?? TechStatus.available);
     bool isVerified = technician?.isVerified ?? false;
 
     final width = MediaQuery.of(context).size.width;
@@ -259,7 +259,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<TechStatus>(
-                          value: selectedStatus == TechStatus.pending ? TechStatus.available : selectedStatus,
+                          value: selectedStatus,
                           decoration: const InputDecoration(labelText: 'الحالة الحالية'),
                           items: TechStatus.values.where((s) => s != TechStatus.pending).map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
                           onChanged: (v) => selectedStatus = v!,
@@ -284,10 +284,6 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                     onTap: () async {
                         if (!formKey.currentState!.validate()) return;
 
-                        if (technician != null && isVerified != technician.isVerified) {
-                          await ref.read(adminActionsProvider).toggleVerification(technician.id, isVerified);
-                        }
-
                         final dto = UpdateTechnicianDto(
                           name: nameController.text.trim(),
                           spec: selectedSpec,
@@ -295,6 +291,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                           area: areaController.text.trim(),
                           bio: bioController.text.trim(),
                           status: selectedStatus,
+                          isVerified: isVerified, // الحفظ يتم هنا في خطوة واحدة
                         );
 
                         final result = technician == null 
@@ -305,6 +302,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                               bio: bioController.text.trim(),
                               visitPrice: int.tryParse(visitPriceController.text) ?? 50,
                               area: areaController.text.trim(),
+                              isVerified: isVerified,
                             ))
                           : await ref.read(adminActionsProvider).updateTechnician(technician.id, dto);
 
