@@ -64,15 +64,23 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
               ),
               const SizedBox(width: 8),
             ],
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: AppColors.gold,
-              labelColor: AppColors.gold,
-              unselectedLabelColor: AppColors.textSecondary,
-              tabs: const [
-                Tab(text: 'المهام النشطة'),
-                Tab(text: 'سجل المهام'),
-              ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorColor: AppColors.gold,
+                    labelColor: AppColors.gold,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    tabs: const [
+                      Tab(text: 'المهام النشطة'),
+                      Tab(text: 'سجل المهام'),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
           body: RefreshIndicator(
@@ -115,75 +123,81 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
         : orders.where((o) => o.status == OrderStatus.completed || o.status == OrderStatus.cancelled).toList();
 
     final width = MediaQuery.of(context).size.width;
-    final sidePadding = width > 1200 ? (width - 1100) / 2 : AppSpacing.xl;
-    final crossAxisCount = width > 1100 ? 2 : 1;
+    const double maxContentWidth = 1000;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (isActive) ...[
-            _TechStatusCard(tech: tech),
-            const SizedBox(height: AppSpacing.lg),
-            _buildFinancialSummary(tech, width),
-            const SizedBox(height: AppSpacing.xxl),
-            Text(
-              isActive ? 'المهام المطلوبة منك (${filteredOrders.length})' : 'سجل المهام المنتهية',
-              style: AppTextStyles.headlineMed,
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
-          
-          if (filteredOrders.isEmpty)
-            _buildEmptyState(
-              isActive ? 'لا توجد مهام حالية' : 'سجل المهام فارغ', 
-              isActive ? Icons.task_alt : Icons.history
-            )
-          else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: AppSpacing.lg,
-                mainAxisSpacing: AppSpacing.lg,
-                mainAxisExtent: isActive ? 210 : 180,
-              ),
-              itemCount: filteredOrders.length,
-              itemBuilder: (context, index) => isActive 
-                  ? _TechOrderCard(order: filteredOrders[index])
-                  : _HistoryOrderCard(order: filteredOrders[index]),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(icon, size: 64, color: AppColors.textMuted.withValues(alpha: 0.2)),
-            const SizedBox(height: 16),
-            Text(message, style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
-          ],
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: maxContentWidth),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch, // تمدد العناصر لتملأ الـ ConstrainedBox فقط
+            children: [
+              if (isActive) ...[
+                _TechStatusCard(tech: tech),
+                const SizedBox(height: AppSpacing.lg),
+                _buildFinancialSummary(tech, width),
+                const SizedBox(height: AppSpacing.xxl),
+                Text(
+                  isActive ? 'المهام المطلوبة منك (${filteredOrders.length})' : 'سجل المهام المنتهية',
+                  style: AppTextStyles.headlineMed,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              
+              if (filteredOrders.isEmpty)
+                _buildEmptyState(
+                  isActive ? 'لا توجد مهام حالية' : 'سجل المهام فارغ', 
+                  isActive ? Icons.task_alt : Icons.history
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: width > 800 ? 2 : 1,
+                    crossAxisSpacing: AppSpacing.lg,
+                    mainAxisSpacing: AppSpacing.lg,
+                    mainAxisExtent: isActive ? 210 : 180,
+                  ),
+                  itemCount: filteredOrders.length,
+                  itemBuilder: (context, index) => isActive 
+                      ? _TechOrderCard(order: filteredOrders[index])
+                      : _HistoryOrderCard(order: filteredOrders[index]),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildEmptyState(String message, IconData icon) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 100),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 80, color: AppColors.textMuted.withOpacity(0.1)),
+          const SizedBox(height: 16),
+          Text(message, style: TextStyle(color: AppColors.textMuted, fontSize: 18)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFinancialSummary(Technician tech, double width) {
-    final isDesktop = width > 700;
+    final isWide = width > 600;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
               child: AppCard(
-                color: AppColors.success.withValues(alpha: 0.05),
+                color: AppColors.success.withOpacity(0.05),
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Row(
                   children: [
@@ -201,10 +215,10 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
               ),
             ),
             const SizedBox(width: AppSpacing.md),
-            if (isDesktop)
+            if (isWide)
               Expanded(
                 child: AppCard(
-                  color: tech.rankColor.withValues(alpha: 0.1),
+                  color: tech.rankColor.withOpacity(0.1),
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Row(
                     children: [
@@ -223,10 +237,10 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
               ),
           ],
         ),
-        if (!isDesktop) ...[
+        if (!isWide) ...[
           const SizedBox(height: AppSpacing.md),
           AppCard(
-            color: tech.rankColor.withValues(alpha: 0.1),
+            color: tech.rankColor.withOpacity(0.1),
             child: ListTile(
               leading: Icon(tech.rankIcon, color: tech.rankColor),
               title: Text(tech.rank, style: TextStyle(color: tech.rankColor, fontWeight: FontWeight.bold)),
@@ -236,7 +250,7 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen> with 
         ],
         const SizedBox(height: AppSpacing.md),
         AppCard(
-          color: AppColors.gold.withValues(alpha: 0.05),
+          color: AppColors.gold.withOpacity(0.05),
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -276,7 +290,7 @@ class _HistoryOrderCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (isCompleted ? AppColors.success : AppColors.error).withValues(alpha: 0.1),
+                  color: (isCompleted ? AppColors.success : AppColors.error).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -401,12 +415,12 @@ class _TechStatusCard extends ConsumerWidget {
     final isAvailable = tech.status == TechStatus.available;
 
     return AppCard(
-      color: isAvailable ? AppColors.gold.withValues(alpha: 0.05) : AppColors.surface2,
+      color: isAvailable ? AppColors.gold.withOpacity(0.05) : AppColors.surface2,
       child: Row(
         children: [
           CircleAvatar(
             radius: 25,
-            backgroundColor: isAvailable ? AppColors.success.withValues(alpha: 0.1) : AppColors.textMuted.withValues(alpha: 0.1),
+            backgroundColor: isAvailable ? AppColors.success.withOpacity(0.1) : AppColors.textMuted.withOpacity(0.1),
             child: Icon(
               isAvailable ? Icons.check_circle : Icons.pause_circle_filled,
               color: isAvailable ? AppColors.success : AppColors.textMuted,
@@ -522,7 +536,7 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color, size: 20),

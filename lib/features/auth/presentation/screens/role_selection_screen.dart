@@ -17,74 +17,71 @@ class RoleSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isDesktop = width > 900;
-
     return Scaffold(
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppColors.gold.withValues(alpha: 0.1),
+              AppColors.gold.withOpacity(0.1),
               AppColors.background,
             ],
           ),
         ),
         child: SafeArea(
-          child: Center( // تمركز المحتوى في منتصف الشاشة
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500), // تحديد عرض أقصى مريح للعين
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Spacer(),
-                    const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
-                    const SizedBox(height: AppSpacing.xl),
-                    Text(
-                      'أهلاً بك في حرفي', 
-                      style: AppTextStyles.displayMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'اختر نوع الحساب للمتابعة',
-                      style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.xxxl),
-                    
-                    _RoleCard(
-                      title: 'أنا عميل',
-                      subtitle: 'أبحث عن فني لإصلاح أعطال منزلي',
-                      icon: Icons.person_search_outlined,
-                      onTap: () => _setRole('client', context),
-                    ),
-                    
-                    const SizedBox(height: AppSpacing.lg),
-                    
-                    _RoleCard(
-                      title: 'أنا فني (حرفي)',
-                      subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
-                      icon: Icons.engineering_outlined,
-                      isPrimary: true,
-                      onTap: () => _setRole('tech', context),
-                    ),
-
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => context.push('/login'),
-                      child: const Text(
-                        'دخول الإدارة',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          child: Align( // استخدام Align لضمان التمركز الدقيق
+            alignment: Alignment.center,
+            child: SingleChildScrollView( // لتجنب مشاكل الشاشات الصغيرة أيضاً
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500), // العرض الأقصى 500 بكسل فقط
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min, // يأخذ أقل مساحة ممكنة طولياً
+                    children: [
+                      const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                      const SizedBox(height: AppSpacing.xl),
+                      Text(
+                        'أهلاً بك في حرفي', 
+                        style: AppTextStyles.displayMedium,
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'اختر نوع الحساب للمتابعة',
+                        style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.xxxl),
+                      
+                      _RoleCard(
+                        title: 'أنا عميل',
+                        subtitle: 'أبحث عن فني لإصلاح أعطال منزلي',
+                        icon: Icons.person_search_outlined,
+                        onTap: () => _setRole('client', context),
+                      ),
+                      
+                      const SizedBox(height: AppSpacing.lg),
+                      
+                      _RoleCard(
+                        title: 'أنا فني (حرفي)',
+                        subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
+                        icon: Icons.engineering_outlined,
+                        isPrimary: true,
+                        onTap: () => _setRole('tech', context),
+                      ),
+
+                      const SizedBox(height: AppSpacing.xxxl),
+                      TextButton(
+                        onPressed: () => context.push('/login'),
+                        child: const Text(
+                          'دخول الإدارة',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -115,16 +112,16 @@ class _RoleCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       color: isPrimary ? AppColors.surface3 : AppColors.surface2,
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.xl), // تكبير الحشوة الداخلية
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.1),
+              color: AppColors.gold.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: AppColors.gold, size: 32),
+            child: Icon(icon, color: AppColors.gold, size: 28),
           ),
           const SizedBox(width: AppSpacing.lg),
           Expanded(

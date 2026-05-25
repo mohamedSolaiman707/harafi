@@ -145,7 +145,11 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
             if (tech != null) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.gold.withValues(alpha: 0.2))),
+                decoration: BoxDecoration(
+                  color: AppColors.surface1, 
+                  borderRadius: BorderRadius.circular(16), 
+                  border: Border.all(color: AppColors.gold.withOpacity(0.2))
+                ),
                 child: Row(
                   children: [
                     CircleAvatar(radius: 25, backgroundColor: AppColors.surface2, child: Text(tech.spec.icon, style: const TextStyle(fontSize: 24))),
@@ -173,7 +177,11 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.gold.withValues(alpha: 0.3))),
+                decoration: BoxDecoration(
+                  color: AppColors.surface1, 
+                  borderRadius: BorderRadius.circular(12), 
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3))
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -203,41 +211,41 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('طلب خدمة منزلية'), centerTitle: width < 900),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: AppSpacing.xl),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildStepHeader('1', 'تأكيد نوع الخدمة'),
-              const SizedBox(height: AppSpacing.lg),
-              _buildServiceGrid(width),
-              const SizedBox(height: AppSpacing.xxxl),
-              _buildStepHeader('2', 'بيانات التواصل والعنوان'),
-              const SizedBox(height: AppSpacing.lg),
-              AppCard(
-                child: Column(
-                  children: [
-                    AppTextField(label: 'الاسم', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(label: 'رقم الهاتف (واتساب)', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android, validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(label: 'العنوان بالتفصيل', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(label: 'وصف المشكلة', controller: _descriptionController, hint: 'اشرح لنا المشكلة باختصار لنرسل الفني المناسب', maxLines: 3),
-                  ],
-                ),
+      body: Center( // ضمان التمركز في الشاشات العريضة
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildStepHeader('1', 'تأكيد نوع الخدمة'),
+                  const SizedBox(height: AppSpacing.lg),
+                  _buildServiceGrid(width),
+                  const SizedBox(height: AppSpacing.xxl),
+                  _buildStepHeader('2', 'بيانات التواصل والعنوان'),
+                  const SizedBox(height: AppSpacing.lg),
+                  AppCard(
+                    child: Column(
+                      children: [
+                        AppTextField(label: 'الاسم', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null),
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(label: 'رقم الهاتف (واتساب)', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android, validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null),
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(label: 'العنوان بالتفصيل', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
+                        const SizedBox(height: AppSpacing.md),
+                        AppTextField(label: 'وصف المشكلة', controller: _descriptionController, hint: 'اشرح لنا المشكلة باختصار لنرسل الفني المناسب', maxLines: 3),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxxl),
+                  AppButton(label: 'تأكيد طلب الخدمة', onTap: _submit, isLoading: _isLoading, icon: Icons.send_rounded),
+                  const SizedBox(height: AppSpacing.xxxl),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xxxl),
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: AppButton(label: 'تأكيد طلب الخدمة', onTap: _submit, isLoading: _isLoading, icon: Icons.send_rounded),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxxl),
-            ],
+            ),
           ),
         ),
       ),
@@ -280,7 +288,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.gold.withValues(alpha: 0.1) : AppColors.surface2,
+                color: isSelected ? AppColors.gold.withOpacity(0.1) : AppColors.surface2,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: isSelected ? AppColors.gold : AppColors.borderDefault, width: 2),
               ),
@@ -288,7 +296,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                 children: [
                   Text(type.icon, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(type.label, style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                  Expanded(child: Text(type.label, style: AppTextStyles.titleSmall.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
