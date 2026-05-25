@@ -187,6 +187,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null,
                         ),
                         const SizedBox(height: AppSpacing.md),
+                        AppTextField(
+                          label: 'كلمة المرور',
+                          controller: _passwordController,
+                          obscureText: true,
+                          prefixIcon: Icons.lock_outline,
+                          validator: (v) => v!.length < 6 ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : null,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
                         
                         // قسم رفع الهوية
                         InkWell(
