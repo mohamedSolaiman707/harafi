@@ -72,7 +72,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return services.isNotEmpty;
     }).toList();
 
-    // البحث عن الطلب النشط لإظهار البار
     final orders = ref.watch(ordersStreamProvider).valueOrNull ?? [];
     final activeOrder = _lastTrackedCode != null 
         ? orders.where((o) => o.trackingCode == _lastTrackedCode && 
@@ -104,12 +103,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   icon: const Icon(Icons.menu_rounded, color: AppColors.gold, size: 28),
                   onPressed: () => _scaffoldKey.currentState?.openDrawer(),
                 ),
-                actions: [
-                  Padding(
-                    padding: EdgeInsetsDirectional.only(end: horizontalPadding),
-                    child: _buildAdminAction(),
-                  ),
-                ],
                 flexibleSpace: FlexibleSpaceBar(
                   collapseMode: CollapseMode.parallax,
                   titlePadding: EdgeInsetsDirectional.only(
@@ -234,7 +227,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
           
-          // ويدجت الحالة الحية
           if (activeOrder != null)
             _LiveStatusFloatingBar(order: activeOrder, horizontalPadding: horizontalPadding),
         ],
@@ -266,24 +258,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildAdminAction() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface3.withValues(alpha: 0.5),
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        onPressed: () => context.push('/admin'),
-        icon: const Icon(
-          Icons.admin_panel_settings_outlined,
-          color: AppColors.gold,
-          size: 20,
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeaderBackground(double padding) {
     return Container(
       decoration: const BoxDecoration(
@@ -303,9 +277,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.1),
+                color: AppColors.gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+                border: Border.all(color: AppColors.gold.withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -417,7 +391,7 @@ class _LiveStatusFloatingBar extends StatelessWidget {
             color: AppColors.gold,
             borderRadius: BorderRadius.circular(AppRadius.xxl),
             boxShadow: [
-              BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5)),
+              BoxShadow(color: AppColors.gold.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5)),
             ],
           ),
           child: Row(
@@ -432,7 +406,7 @@ class _LiveStatusFloatingBar extends StatelessWidget {
                     Text('طلبك قيد التنفيذ', style: AppTextStyles.titleMed.copyWith(color: Colors.black)),
                     Text(
                       'الحالة: ${order.status.label}',
-                      style: AppTextStyles.bodyMed.copyWith(color: Colors.black.withValues(alpha: 0.7), fontWeight: FontWeight.bold),
+                      style: AppTextStyles.bodyMed.copyWith(color: Colors.black.withOpacity(0.7), fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -577,10 +551,10 @@ class _ServiceCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface2,
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: AppColors.surface3.withValues(alpha: 0.3), width: 1.5),
+            border: Border.all(color: AppColors.surface3.withOpacity(0.3), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               )
@@ -630,7 +604,7 @@ class _WhyTrustSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl, horizontal: AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface2.withValues(alpha: 0.4),
+        color: AppColors.surface2.withOpacity(0.4),
         borderRadius: BorderRadius.circular(32),
       ),
       child: Row(

@@ -30,17 +30,21 @@ class RoleSelectionScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Align( // استخدام Align لضمان التمركز الدقيق
+          child: Align(
             alignment: Alignment.center,
-            child: SingleChildScrollView( // لتجنب مشاكل الشاشات الصغيرة أيضاً
+            child: SingleChildScrollView(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500), // العرض الأقصى 500 بكسل فقط
+                constraints: const BoxConstraints(maxWidth: 500),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // يأخذ أقل مساحة ممكنة طولياً
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                      // دخول الإدارة سري عن طريق الضغط المطول هنا
+                      GestureDetector(
+                        onLongPress: () => context.push('/login'),
+                        child: const Icon(Icons.build_circle_outlined, size: 80, color: AppColors.gold),
+                      ),
                       const SizedBox(height: AppSpacing.xl),
                       Text(
                         'أهلاً بك في حرفي', 
@@ -73,13 +77,7 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
 
                       const SizedBox(height: AppSpacing.xxxl),
-                      TextButton(
-                        onPressed: () => context.push('/login'),
-                        child: const Text(
-                          'دخول الإدارة',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                        ),
-                      ),
+                      // تم حذف زر دخول الإدارة الظاهر
                     ],
                   ),
                 ),
@@ -112,7 +110,7 @@ class _RoleCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       color: isPrimary ? AppColors.surface3 : AppColors.surface2,
-      padding: const EdgeInsets.all(AppSpacing.xl), // تكبير الحشوة الداخلية
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Row(
         children: [
           Container(
