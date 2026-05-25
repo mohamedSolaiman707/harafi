@@ -296,7 +296,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                 children: [
                   Text(type.icon, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(type.label, style: AppTextStyles.titleSmall.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                  Expanded(child: Text(type.label, style: AppTextStyles.titleMed.copyWith(color: isSelected ? AppColors.gold : AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
