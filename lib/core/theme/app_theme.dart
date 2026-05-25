@@ -3,22 +3,32 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFFF0A500);
+  // Primary Gold/Amber - أكثر حيوية وفخامة
+  static const Color primary = Color(0xFFFFB300); 
   static const Color gold = primary;
-  static const Color primaryDark = Color(0xFFC8850A);
-  static const Color background = Color(0xFF09090D);
-  static const Color surface1 = Color(0xFF111118);
-  static const Color surface2 = Color(0xFF18181F);
-  static const Color surface3 = Color(0xFF1F1F28);
-  static const Color borderSubtle = Color(0x1FFFFFFF);
-  static const Color borderDefault = Color(0x24FFFFFF);
-  static const Color borderStrong = Color(0x38FFFFFF);
-  static const Color textPrimary = Color(0xFFEDEEF5);
-  static const Color textSecondary = Color(0xFF9898B0);
-  static const Color textMuted = Color(0xFF5A5A72);
-  static const Color success = Color(0xFF22C55E);
-  static const Color error = Color(0xFFEF4444);
-  static const Color info = Color(0xFF3B82F6);
+  static const Color primaryDark = Color(0xFFFFA000);
+  
+  // Backgrounds - درجات Slate الاحترافية
+  static const Color background = Color(0xFF0F172A); // Deep Slate
+  static const Color surface1 = Color(0xFF1E293B);   // Slate 800
+  static const Color surface2 = Color(0xFF334155);   // Slate 700
+  static const Color surface3 = Color(0xFF475569);   // Slate 600
+  
+  // Borders & Dividers
+  static const Color borderSubtle = Color(0x1E94A3B8);
+  static const Color borderDefault = Color(0x3394A3B8);
+  static const Color borderStrong = Color(0x4D94A3B8);
+  
+  // Text
+  static const Color textPrimary = Color(0xFFF8FAFC);  // Slate 50
+  static const Color textSecondary = Color(0xFFCBD5E1); // Slate 300
+  static const Color textMuted = Color(0xFF94A3B8);    // Slate 400
+  
+  // Status
+  static const Color success = Color(0xFF10B981); // Emerald 500
+  static const Color error = Color(0xFFEF4444);   // Red 500
+  static const Color info = Color(0xFF3B82F6);    // Blue 500
+  static const Color warning = Color(0xFFF59E0B); // Amber 500
 }
 
 class AppSpacing {
@@ -47,6 +57,7 @@ class AppTextStyles {
     fontSize: 40,
     fontWeight: FontWeight.w900,
     color: AppColors.textPrimary,
+    letterSpacing: -0.5,
   );
 
   static final displayMedium = _base.copyWith(
@@ -123,21 +134,17 @@ class AppAnimations {
 }
 
 class AppTheme {
-  static InputDecoration textFieldDecoration({
-    required String label,
-    String? hint,
-    IconData? prefixIcon,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-    );
-  }
-
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
+      primaryColor: AppColors.gold,
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.gold,
+        secondary: AppColors.gold,
+        surface: AppColors.surface1,
+        background: AppColors.background,
+        error: AppColors.error,
+      ),
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.background,
@@ -149,7 +156,7 @@ class AppTheme {
       ),
       appBarTheme: AppBarTheme(
         centerTitle: true,
-        backgroundColor: AppColors.surface2,
+        backgroundColor: AppColors.background,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         titleTextStyle: AppTextStyles.headlineMed,
@@ -157,10 +164,11 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.gold,
-          foregroundColor: AppColors.background,
+          foregroundColor: const Color(0xFF0F172A), // Dark text on gold button
           elevation: 0,
+          fontWeight: FontWeight.bold,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           padding: const EdgeInsets.symmetric(
             vertical: AppSpacing.lg,
@@ -197,11 +205,13 @@ class AppTheme {
         contentTextStyle: AppTextStyles.bodyLarge.copyWith(
           color: AppColors.textPrimary,
         ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
       ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: AppColors.surface2,
-        modalBackgroundColor: AppColors.surface2,
-        shape: const RoundedRectangleBorder(
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surface1,
+        modalBackgroundColor: AppColors.surface1,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppRadius.xxl),
           ),

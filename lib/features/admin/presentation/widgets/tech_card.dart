@@ -147,7 +147,10 @@ class TechCard extends StatelessWidget {
               foregroundColor: AppColors.textPrimary,
               side: const BorderSide(color: AppColors.borderDefault),
             ),
-            onPressed: () => launchUrl(WhatsAppUtils.buildUri(tech.phone, 'السلام عليكم يا بشمهندس ${tech.name}')),
+            onPressed: () => launchUrl(
+              WhatsAppUtils.buildUri(tech.phone, 'السلام عليكم يا بشمهندس ${tech.name}'),
+              mode: LaunchMode.externalApplication,
+            ),
             icon: const Icon(Icons.chat_bubble_outline),
             label: const Text('واتساب الفني'),
           ),

@@ -199,6 +199,13 @@ class AdminActions {
       
   Future<Either<Failure, Technician>> updateTechnician(String id, UpdateTechnicianDto dto) => 
       _ref.read(techsRepositoryProvider).updateTechnician(id, dto);
+
+  Future<Either<Failure, void>> deleteTechnician(String id) async {
+    final result = await _ref.read(techsRepositoryProvider).deleteTechnician(id);
+    _ref.invalidate(techsStreamProvider);
+    _ref.invalidate(techniciansProvider);
+    return result;
+  }
       
   Future<Either<Failure, Order>> addOrderNotes(String id, String notes) =>
       _ref.read(ordersRepositoryProvider).addAdminNotes(id, notes);

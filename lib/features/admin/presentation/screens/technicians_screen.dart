@@ -45,7 +45,10 @@ class TechniciansScreen extends ConsumerWidget {
           final pendingTechs = techs.where((t) => t.status == TechStatus.pending).toList();
           final approvedTechs = techs.where((t) => t.status != TechStatus.pending).toList();
           
+          final isMobile = width < 600;
           final crossAxisCount = width > 1400 ? 3 : (width > 800 ? 2 : 1);
+          // زيادة الارتفاع في الموبايل لتجنب خروج الأزرار عن حدود البطاقة
+          final cardHeight = isMobile ? 400.0 : 340.0;
 
           return CustomScrollView(
             slivers: [
@@ -64,7 +67,7 @@ class TechniciansScreen extends ConsumerWidget {
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: AppSpacing.lg,
                       mainAxisSpacing: AppSpacing.lg,
-                      mainAxisExtent: 340, // ارتفاع بطاقة الفني
+                      mainAxisExtent: cardHeight + 20, // زيادة بسيطة لطلبات الانضمام لوجود بادج إضافي
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => TechCard(
@@ -92,7 +95,7 @@ class TechniciansScreen extends ConsumerWidget {
                     crossAxisCount: crossAxisCount,
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
-                    mainAxisExtent: 320,
+                    mainAxisExtent: cardHeight,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => TechCard(
@@ -284,6 +287,14 @@ class TechniciansScreen extends ConsumerWidget {
                       child: Text(technician?.status == TechStatus.pending ? 'اعتماد الحساب وتفعيله' : 'تحديث البيانات'),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  if (technician != null)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                      onPressed: () => _confirmDelete(context, ref, technician),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('حذف الفني نهائياً'),
+                    ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -292,5 +303,36 @@ class TechniciansScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Technician tech) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف الفني'),
+        content: Text('هل أنت متأكد من حذف الفني "${tech.name}"؟ لا يمكن التراجع عن هذا الإجراء.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final result = await ref.read(adminActionsProvider).deleteTechnician(tech.id);
+      if (context.mounted) {
+        result.when(
+          left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+          right: (_) {
+            Navigator.pop(context); // Close form
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الفني بنجاح')));
+          },
+        );
+      }
+    }
   }
 }
