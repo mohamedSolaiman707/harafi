@@ -37,10 +37,36 @@ class AdminShell extends StatelessWidget {
                         const Icon(Icons.handyman_rounded, color: AppColors.gold, size: 32),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            'حرفي آدو',
-                            style: AppTextStyles.headlineLarge.copyWith(color: AppColors.gold),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'حرفي | Harafi',
+                                style: AppTextStyles.titleLarge.copyWith(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.gold.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+                                ),
+                                child: Text(
+                                  'لوحة الإدارة',
+                                  style: AppTextStyles.labelMed.copyWith(
+                                    color: AppColors.gold,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

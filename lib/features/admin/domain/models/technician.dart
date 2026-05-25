@@ -21,7 +21,7 @@ class Technician with _$Technician {
     @Default(0.0) double rating,
     @JsonKey(name: 'total_jobs') @Default(0) int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,
-    @JsonKey(name: 'identity_proof_url') String? identityProofUrl, // جديد: صورة إثبات الهوية
+    @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') @Default(0) int totalEarnings,
     @JsonKey(name: 'portfolio_images') @Default([]) List<String> portfolioImages,
@@ -30,37 +30,23 @@ class Technician with _$Technician {
   }) = _Technician;
 
   String get rank {
-    try {
-      final t = this as dynamic;
-      final int jobs = t.totalJobs ?? 0;
-      final double rat = t.rating ?? 0.0;
-      if (jobs >= 50 && rat >= 4.7) return 'حرفي بلاتيني';
-      if (jobs >= 30 && rat >= 4.5) return 'فني ذهبي';
-      if (jobs >= 10) return 'فني محترف';
-    } catch (_) {}
+    if (totalJobs >= 50 && rating >= 4.7) return 'حرفي بلاتيني';
+    if (totalJobs >= 30 && rating >= 4.5) return 'فني ذهبي';
+    if (totalJobs >= 10) return 'فني محترف';
     return 'فني صاعد';
   }
 
   Color get rankColor {
-    try {
-      final t = this as dynamic;
-      final int jobs = t.totalJobs ?? 0;
-      final double rat = t.rating ?? 0.0;
-      if (jobs >= 50 && rat >= 4.7) return const Color(0xFFE5E4E2);
-      if (jobs >= 30 && rat >= 4.5) return const Color(0xFFFFD700);
-      if (jobs >= 10) return const Color(0xFFC0C0C0);
-    } catch (_) {}
+    if (totalJobs >= 50 && rating >= 4.7) return const Color(0xFFE5E4E2);
+    if (totalJobs >= 30 && rating >= 4.5) return const Color(0xFFFFD700);
+    if (totalJobs >= 10) return const Color(0xFFC0C0C0);
     return const Color(0xFFCD7F32);
   }
 
   IconData get rankIcon {
-    try {
-      final t = this as dynamic;
-      final int jobs = t.totalJobs ?? 0;
-      if (jobs >= 50) return Icons.workspace_premium;
-      if (jobs >= 30) return Icons.military_tech;
-      if (jobs >= 10) return Icons.stars;
-    } catch (_) {}
+    if (totalJobs >= 50) return Icons.workspace_premium;
+    if (totalJobs >= 30) return Icons.military_tech;
+    if (totalJobs >= 10) return Icons.stars;
     return Icons.person_outline;
   }
 
@@ -94,7 +80,8 @@ class Technician with _$Technician {
         bio: json['bio']?.toString(),
         totalEarnings: _toInt(json['total_earnings']) ?? 0,
         portfolioImages: (json['portfolio_images'] as List?)?.map((e) => e.toString()).toList() ?? [],
-        isVerified: json['is_verified'] == true,
+        // تحسين التحقق من علامة التوثيق
+        isVerified: json['is_verified'] == true || json['is_verified'] == 1 || json['is_verified'] == 'true',
         createdAt: json['created_at'] != null
             ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
             : DateTime.now(),
@@ -114,7 +101,6 @@ class Technician with _$Technician {
   Map<String, dynamic> toJson() => technicianToJson(this);
 
   static Map<String, dynamic> technicianToJson(Technician tech) {
-    final t = tech as dynamic;
     return {
       'id': tech.id,
       'name': tech.name,
@@ -129,8 +115,8 @@ class Technician with _$Technician {
       'bio': tech.bio,
       'photo_url': tech.photoUrl,
       'identity_proof_url': tech.identityProofUrl,
-      'portfolio_images': t.portfolioImages ?? [],
-      'is_verified': t.isVerified ?? false,
+      'portfolio_images': tech.portfolioImages,
+      'is_verified': tech.isVerified,
       'created_at': tech.createdAt.toIso8601String(),
     };
   }

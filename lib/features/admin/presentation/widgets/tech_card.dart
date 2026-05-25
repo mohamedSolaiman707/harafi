@@ -49,14 +49,19 @@ class TechCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Text(tech.name, style: AppTextStyles.headlineMed),
+                    Text(
+                      tech.name, 
+                      style: AppTextStyles.headlineMed,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     Text(tech.spec.label, style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted)),
-                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.sm),
                     _buildRankBadge(),
                     const Spacer(),
-                    const Divider(color: AppColors.borderSubtle),
-                    const Spacer(),
+                    const Divider(color: AppColors.borderSubtle, height: 24),
                     _buildStatsGrid(),
+                    const SizedBox(height: 8), // مساحة إضافية لمنع التداخل مع الأزرار
                   ],
                 ),
               ),
@@ -91,17 +96,43 @@ class TechCard extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 2),
-      ),
-      child: CircleAvatar(
-        radius: 28,
-        backgroundColor: AppColors.surface2,
-        backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-        child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
-      ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 2),
+          ),
+          child: CircleAvatar(
+            radius: 28,
+            backgroundColor: AppColors.surface2,
+            backgroundImage: tech.photoUrl != null && tech.photoUrl!.isNotEmpty 
+                ? NetworkImage(tech.photoUrl!) 
+                : null,
+            child: (tech.photoUrl == null || tech.photoUrl!.isEmpty) 
+                ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) 
+                : null,
+          ),
+        ),
+        if (tech.isVerified)
+          Positioned(
+            bottom: -2,
+            right: -2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: AppColors.surface1,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.verified,
+                color: AppColors.info,
+                size: 20,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -119,22 +150,14 @@ class TechCard extends StatelessWidget {
 
   Widget _buildActionRow() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
       decoration: const BoxDecoration(
         color: AppColors.surface2,
         border: Border(top: BorderSide(color: AppColors.borderSubtle)),
       ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onEdit,
-            icon: Icon(
-              tech.status == TechStatus.pending ? Icons.how_to_reg : Icons.edit_note_rounded,
-              color: AppColors.textSecondary,
-            ),
-            tooltip: 'تعديل البيانات',
-          ),
-          const SizedBox(width: AppSpacing.xs),
+          const SizedBox(width: 8),
           Expanded(
             child: TextButton.icon(
               onPressed: () => launchUrl(
@@ -148,6 +171,15 @@ class TechCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onEdit,
+            icon: Icon(
+              tech.status == TechStatus.pending ? Icons.how_to_reg : Icons.edit_note_rounded,
+              color: AppColors.textSecondary,
+            ),
+            tooltip: 'تعديل البيانات',
           ),
         ],
       ),
