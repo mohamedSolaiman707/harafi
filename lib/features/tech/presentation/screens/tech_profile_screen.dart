@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -30,9 +32,8 @@ class _TechProfileScreenState extends ConsumerState<TechProfileScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              // إضافة تسجيل الخروج هنا
-            },
+            onPressed: () => _showLogoutDialog(context, ref),
+
           )
         ],
       ),
@@ -46,7 +47,31 @@ class _TechProfileScreenState extends ConsumerState<TechProfileScreen> {
     );
   }
 }
-
+void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('تسجيل الخروج'),
+      content: const Text('هل أنت متأكد أنك تريد الخروج من حسابك؟'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        TextButton(
+          onPressed: () async {
+            await Supabase.instance.client.auth.signOut();
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.clear();
+            await ref.read(currentTechnicianProvider.notifier).clearCache();
+            if (context.mounted) {
+              Navigator.pop(context);
+              context.go('/welcome');
+            }
+          },
+          child: const Text('خروج', style: TextStyle(color: AppColors.error)),
+        ),
+      ],
+    ),
+  );
+}
 class _ProfileContent extends ConsumerStatefulWidget {
   final Technician tech;
   final bool isDesktop;
