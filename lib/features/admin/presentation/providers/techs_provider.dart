@@ -134,7 +134,7 @@ final techStatsProvider = Provider<TechStats>((ref) {
     total: techs.length,
     available: techs.where((t) => t.status == TechStatus.available).length,
     busy: techs.where((t) => t.status == TechStatus.busy).length,
-    pending: techs.where((t) => t.length > 0 && t.status == TechStatus.pending).length, // Added safety check
+    pending: techs.where((t) =>  t.status == TechStatus.pending).length, // Added safety check
   );
 });
 
