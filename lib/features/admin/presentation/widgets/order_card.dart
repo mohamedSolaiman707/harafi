@@ -46,7 +46,7 @@ class OrderCard extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // الصف العلوي: الحالة والكود (نفس توزيع الصورة)
+                  // الصف العلوي: الحالة والكود
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -114,7 +114,7 @@ class OrderCard extends ConsumerWidget {
               ),
             ),
 
-            // شريط العميل (Footer) - مطابق للصورة
+            // شريط العميل (Footer)
             _buildClientFooter(),
 
             // شريط الأزرار التفاعلية
@@ -204,7 +204,6 @@ class OrderCard extends ConsumerWidget {
       color: AppColors.surface1,
       child: Row(
         children: [
-          // زر التواصل
           _ActionButton(
             onTap: () => _launchWhatsApp(order.clientPhone, tech),
             icon: Icons.message_outlined,
@@ -212,8 +211,8 @@ class OrderCard extends ConsumerWidget {
             color: AppColors.success,
           ),
           const SizedBox(width: 12),
-          // زر الاتصال
           IconButton(
+            tooltip: 'اتصال هاتفي',
             onPressed: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
             icon: const Icon(Icons.phone_in_talk_outlined, size: 20, color: AppColors.info),
           ),
@@ -221,21 +220,21 @@ class OrderCard extends ConsumerWidget {
           
           if (tech == null)
             IconButton(
+              tooltip: 'تعيين فني',
               onPressed: onAssignTech,
               icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.gold),
-              tooltip: 'تعيين فني',
             )
           else
             IconButton(
+              tooltip: 'تغيير الفني',
               onPressed: onAssignTech,
               icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
-              tooltip: 'تغيير الفني',
             ),
             
           IconButton(
+            tooltip: 'تحديث حالة الطلب',
             onPressed: onUpdateStatus,
-            icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary),
-            tooltip: 'الإجراءات',
+            icon: const Icon(Icons.settings_suggest_rounded, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -292,7 +291,7 @@ class _StatusBadge extends StatelessWidget {
       case OrderStatus.assigned: color = AppColors.info; break;
       case OrderStatus.onTheWay: color = Colors.orange; break;
       case OrderStatus.started: color = Colors.blue; break;
-      case OrderStatus.completed: color = const Color(0xFF00C853); break; // أخضر فسفوري مطابق للصورة
+      case OrderStatus.completed: color = const Color(0xFF00C853); break;
       case OrderStatus.cancelled: color = AppColors.error; break;
     }
     return Container(

@@ -1,84 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../../../shared/widgets/loading_widget.dart';
-import '../../../admin/presentation/providers/techs_provider.dart';
-import '../../../admin/domain/models/technician.dart';
 import '../../../admin/domain/dtos/technician_dtos.dart';
+import '../../../admin/domain/models/technician.dart';
+import '../../../admin/presentation/providers/techs_provider.dart';
 
-class TechProfileScreen extends ConsumerWidget {
+class TechProfileScreen extends ConsumerStatefulWidget {
   const TechProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TechProfileScreen> createState() => _TechProfileScreenState();
+}
+
+class _TechProfileScreenState extends ConsumerState<TechProfileScreen> {
+  @override
+  Widget build(BuildContext context) {
     final techAsync = ref.watch(currentTechnicianProvider);
-    final width = MediaQuery.of(context).size.width;
-    final isDesktop = width > 1000;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الملف الشخصي والمهني'),
-        centerTitle: !isDesktop,
+        title: const Text('الملف الشخصي'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
-            tooltip: 'تبديل نوع الحساب',
+            icon: const Icon(Icons.logout),
             onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.remove('user_role');
-              await ref.read(currentTechnicianProvider.notifier).clearCache();
-              if (context.mounted) context.go('/welcome');
+              // إضافة تسجيل الخروج هنا
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            onPressed: () => _showLogoutDialog(context, ref),
-          ),
-          const SizedBox(width: 8),
+          )
         ],
       ),
       body: techAsync.when(
-        data: (tech) {
-          if (tech == null) return const _NoProfileError();
-          return _ProfileContent(tech: tech, isDesktop: isDesktop);
-        },
-        loading: () => const LoadingWidget(),
-        error: (e, s) => Center(child: Text('خطأ في تحميل البيانات: $e')),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تسجيل الخروج'),
-        content: const Text('هل أنت متأكد أنك تريد الخروج من حسابك؟'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-          TextButton(
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              await ref.read(currentTechnicianProvider.notifier).clearCache();
-              if (context.mounted) {
-                Navigator.pop(context);
-                context.go('/welcome');
-              }
-            },
-            child: const Text('خروج', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
+        data: (tech) => tech == null 
+            ? const _NoProfileError() 
+            : _ProfileContent(tech: tech, isDesktop: MediaQuery.of(context).size.width > 900),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('خطأ: $e')),
       ),
     );
   }
@@ -103,6 +66,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   bool _isEditing = false;
   bool _isLoading = false;
   bool _isUploadingAvatar = false;
+  bool _isUploadingPortfolio = false;
   String? _selectedArea;
 
   @override
@@ -111,7 +75,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     _nameController = TextEditingController(text: widget.tech.name);
     _bioController = TextEditingController(text: widget.tech.bio);
     _visitPriceController = TextEditingController(text: widget.tech.visitPrice.toString());
-    _selectedArea = widget.tech.area ?? AppConstants.areas[1];
+    _selectedArea = widget.tech.area ?? (AppConstants.areas.isNotEmpty ? AppConstants.areas[1] : null);
   }
 
   @override
@@ -133,7 +97,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     );
 
     await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
-    ref.invalidate(techniciansProvider);
     ref.invalidate(currentTechnicianProvider);
     
     setState(() {
@@ -160,11 +123,11 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
       );
       if (url != null) {
         await ref.read(techsRepositoryProvider).update(widget.tech.id, {'photo_url': url});
-        ref.invalidate(techniciansProvider);
         ref.invalidate(currentTechnicianProvider);
       }
       setState(() => _isUploadingAvatar = false);
     } else {
+      setState(() => _isUploadingPortfolio = true);
       final url = await _storageService.uploadImage(
         image: image, 
         path: 'portfolios', 
@@ -173,9 +136,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
       if (url != null) {
         final newImages = [...widget.tech.portfolioImages, url];
         await ref.read(techsRepositoryProvider).update(widget.tech.id, {'portfolio_images': newImages});
-        ref.invalidate(techniciansProvider);
         ref.invalidate(currentTechnicianProvider);
       }
+      setState(() => _isUploadingPortfolio = false);
     }
   }
 
@@ -270,14 +233,15 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
                 child: CircleAvatar(
                   radius: 60,
                   backgroundColor: AppColors.surface2,
-                  backgroundImage: widget.tech.photoUrl != null ? NetworkImage(widget.tech.photoUrl!) : null,
-                  child: widget.tech.photoUrl == null 
+                  backgroundImage: widget.tech.photoUrl != null && widget.tech.photoUrl!.isNotEmpty 
+                      ? NetworkImage(widget.tech.photoUrl!) : null,
+                  child: widget.tech.photoUrl == null || widget.tech.photoUrl!.isEmpty
                       ? Text(widget.tech.spec.icon, style: const TextStyle(fontSize: 48))
                       : null,
                 ),
               ),
               if (_isUploadingAvatar)
-                const Positioned.fill(child: CircularProgressIndicator(color: AppColors.gold))
+                const Positioned.fill(child: Center(child: CircularProgressIndicator(color: AppColors.gold)))
               else
                 GestureDetector(
                   onTap: () => _showImageSourceSheet(true),
@@ -315,11 +279,13 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('معرض سابقة أعمالك', style: AppTextStyles.headlineMed),
-            FilledButton.icon(
-              onPressed: () => _showImageSourceSheet(false),
-              icon: const Icon(Icons.add_a_photo),
-              label: const Text('إضافة صورة'),
-            ),
+            _isUploadingPortfolio 
+              ? const CircularProgressIndicator(strokeWidth: 2)
+              : FilledButton.icon(
+                  onPressed: () => _showImageSourceSheet(false),
+                  icon: const Icon(Icons.add_a_photo),
+                  label: const Text('إضافة صورة'),
+                ),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -342,9 +308,24 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
             ),
             itemCount: widget.tech.portfolioImages.length,
             itemBuilder: (context, index) {
+              final imageUrl = widget.tech.portfolioImages[index];
               return ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(widget.tech.portfolioImages[index], fit: BoxFit.cover),
+                child: Image.network(
+                  imageUrl, 
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: AppColors.surface2,
+                    child: const Icon(Icons.broken_image, color: AppColors.textMuted),
+                  ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: AppColors.surface2,
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  },
+                ),
               );
             },
           ),
