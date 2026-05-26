@@ -55,21 +55,34 @@ class CurrentTechNotifier extends StateNotifier<AsyncValue<Technician?>> {
   Future<void> _init() async {
     await _loadFromCache();
 
+    // الاستماع للتغييرات مع تفعيل fireImmediately لضمان التقاط الحالة الحالية فوراً
     _ref.listen(techniciansProvider, (previous, next) {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        state = const AsyncValue.data(null);
-        return;
-      }
+      _updateFromTechs(next);
+    }, fireImmediately: true);
+  }
 
-      next.whenData((techs) {
-        final tech = techs.where((t) => t.id == user.id).firstOrNull;
-        if (tech != null) {
-          state = AsyncValue.data(tech);
-          _saveToCache(tech);
-        }
-      });
+  void _updateFromTechs(AsyncValue<List<Technician>> next) {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      state = const AsyncValue.data(null);
+      return;
+    }
+
+    next.whenData((techs) {
+      final tech = techs.where((t) => t.id == user.id).firstOrNull;
+      if (tech != null) {
+        state = AsyncValue.data(tech);
+        _saveToCache(tech);
+      }
     });
+  }
+
+  // تحديث حالة الفني يدوياً لتجنب الـ Loading المزعج
+  void updateTech(Technician tech) {
+    state = AsyncValue.data(tech);
+    _saveToCache(tech);
+    // نقوم أيضاً بعمل invalidate للمزود الرئيسي ليحدث بياناته من السيرفر في الخلفية
+    _ref.invalidate(techniciansProvider);
   }
 
   Future<void> _loadFromCache() async {
@@ -121,7 +134,7 @@ final techStatsProvider = Provider<TechStats>((ref) {
     total: techs.length,
     available: techs.where((t) => t.status == TechStatus.available).length,
     busy: techs.where((t) => t.status == TechStatus.busy).length,
-    pending: techs.where((t) => t.status == TechStatus.pending).length,
+    pending: techs.where((t) => t.length > 0 && t.status == TechStatus.pending).length, // Added safety check
   );
 });
 

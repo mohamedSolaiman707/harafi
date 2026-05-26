@@ -47,6 +47,7 @@ class _TechProfileScreenState extends ConsumerState<TechProfileScreen> {
     );
   }
 }
+
 void _showLogoutDialog(BuildContext context, WidgetRef ref) {
   showDialog(
     context: context,
@@ -72,6 +73,7 @@ void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     ),
   );
 }
+
 class _ProfileContent extends ConsumerStatefulWidget {
   final Technician tech;
   final bool isDesktop;
@@ -121,13 +123,22 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
       area: _selectedArea,
     );
 
-    await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
-    ref.invalidate(currentTechnicianProvider);
+    final result = await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
+    result.when(
+      left: (f) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: ${f.message}')));
+      },
+      right: (updatedTech) {
+        ref.read(currentTechnicianProvider.notifier).updateTech(updatedTech);
+      },
+    );
     
-    setState(() {
-      _isEditing = false;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isEditing = false;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _pickImage(ImageSource source, bool isAvatar) async {
@@ -147,10 +158,10 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
         fileName: widget.tech.id,
       );
       if (url != null) {
-        await ref.read(techsRepositoryProvider).update(widget.tech.id, {'photo_url': url});
-        ref.invalidate(currentTechnicianProvider);
+        final updatedTech = await ref.read(techsRepositoryProvider).update(widget.tech.id, {'photo_url': url});
+        ref.read(currentTechnicianProvider.notifier).updateTech(updatedTech);
       }
-      setState(() => _isUploadingAvatar = false);
+      if (mounted) setState(() => _isUploadingAvatar = false);
     } else {
       setState(() => _isUploadingPortfolio = true);
       final url = await _storageService.uploadImage(
@@ -160,10 +171,10 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
       );
       if (url != null) {
         final newImages = [...widget.tech.portfolioImages, url];
-        await ref.read(techsRepositoryProvider).update(widget.tech.id, {'portfolio_images': newImages});
-        ref.invalidate(currentTechnicianProvider);
+        final updatedTech = await ref.read(techsRepositoryProvider).update(widget.tech.id, {'portfolio_images': newImages});
+        ref.read(currentTechnicianProvider.notifier).updateTech(updatedTech);
       }
-      setState(() => _isUploadingPortfolio = false);
+      if (mounted) setState(() => _isUploadingPortfolio = false);
     }
   }
 
@@ -404,13 +415,19 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   Widget _buildQuickStats({required bool isRow}) {
     final stats = [
       _StatCard(label: 'إجمالي الأرباح', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success),
-      _StatCard(label: 'المهمات المنجزة', value: '${widget.tech.totalJobs}', icon: Icons.build_circle, color: AppColors.info),
-      _StatCard(label: 'تقييمك العام', value: widget.tech.rating.toStringAsFixed(1), icon: Icons.star, color: Colors.amber),
+      _StatCard(label: 'المهام المكتملة', value: '${widget.tech.totalJobs}', icon: Icons.task_alt, color: AppColors.info),
+      _StatCard(label: 'التقييم العام', value: '${widget.tech.rating}', icon: Icons.star, color: AppColors.gold),
     ];
 
-    if (isRow) return Row(children: stats.map((s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: s))).toList());
-    
-    return Column(children: stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: s)).toList());
+    if (isRow) {
+      return Row(
+        children: stats.map((s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: s))).toList(),
+      );
+    }
+
+    return Column(
+      children: stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: AppSpacing.md), child: s)).toList(),
+    );
   }
 }
 
@@ -424,12 +441,13 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      color: AppColors.surface2,
       child: Column(
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
-          Text(value, style: AppTextStyles.headlineLarge.copyWith(fontSize: 22)),
+          Text(value, style: AppTextStyles.headlineMed),
+          const SizedBox(height: 4),
           Text(label, style: AppTextStyles.labelMed, textAlign: TextAlign.center),
         ],
       ),
@@ -442,18 +460,15 @@ class _NoProfileError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 80, color: AppColors.error),
-            const SizedBox(height: 24),
-            const Text('لم نتمكن من العثور على بروفايل فني لهذا الحساب.', textAlign: TextAlign.center),
-            const SizedBox(height: 32),
-            AppButton(label: 'العودة للرئيسية', onTap: () => context.go('/')),
-          ],
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+          const SizedBox(height: 16),
+          const Text('لم يتم العثور على بيانات الفني'),
+          const SizedBox(height: 24),
+          AppButton(label: 'تسجيل الخروج', onTap: () => Supabase.instance.client.auth.signOut()),
+        ],
       ),
     );
   }
