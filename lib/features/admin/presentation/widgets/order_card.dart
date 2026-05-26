@@ -191,7 +191,7 @@ class OrderCard extends ConsumerWidget {
                 color: AppColors.gold.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(order.area!, style: AppTextStyles.labelSmall.copyWith(color: AppColors.gold)),
+              child: Text(order.area!, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
             ),
         ],
       ),
@@ -207,7 +207,7 @@ class OrderCard extends ConsumerWidget {
           // زر التواصل
           _ActionButton(
             onTap: () => _launchWhatsApp(order.clientPhone, tech),
-            icon: Icons.whatsapp,
+            icon: Icons.message_outlined,
             label: 'تواصل',
             color: AppColors.success,
           ),
