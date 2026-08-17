@@ -46,7 +46,9 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
           .select()
           .order('name', ascending: true);
       return (data as List).map((e) => Technician.fromJson(e)).toList();
-    } catch (e) {
+    } catch (e, stack) {
+      // debugPrint error
+      print('Error in getAll technicians: $e\n$stack');
       return [];
     }
   }
@@ -225,7 +227,11 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   @override
   Future<Either<Failure, Technician>> updateRating(String id, double rating) async {
     try {
-      final List response = await _client.from('technicians').update({'rating': rating}).eq('id', id).select();
+      List response = await _client.from('technicians').update({'rating': rating}).eq('id', id).select();
+      if (response.isEmpty) {
+        response = await _client.from('technicians').update({'rating': rating}).eq('phone', id).select();
+      }
+      if (response.isEmpty) return Left(DatabaseFailure('الفني غير موجود لتحديث تقييمه'));
       return Right(Technician.fromJson(response.first));
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));

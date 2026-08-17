@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../providers/admin_actions_provider.dart';
+import '../providers/admin_ui_providers.dart';
 import '../providers/techs_provider.dart';
 import '../widgets/tech_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
@@ -12,19 +14,14 @@ import '../../domain/enums/service_type.dart';
 import '../../domain/enums/tech_status.dart';
 import '../../domain/models/technician.dart';
 
-class TechniciansScreen extends ConsumerStatefulWidget {
+class TechniciansScreen extends ConsumerWidget {
   const TechniciansScreen({super.key});
 
   @override
-  ConsumerState<TechniciansScreen> createState() => _TechniciansScreenState();
-}
-
-class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
-  String _searchQuery = '';
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final techsAsync = ref.watch(techsStreamProvider);
+    final searchQuery = ref.watch(adminTechSearchQueryProvider);
+    final filter = ref.watch(adminTechFilterProvider);
     final width = MediaQuery.of(context).size.width;
     final sidePadding = width > 1200 ? AppSpacing.xl : AppSpacing.lg;
 
@@ -44,10 +41,15 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
       ),
       body: techsAsync.when(
         data: (allTechs) {
-          final techs = allTechs.where((t) => 
-            t.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            t.phone.contains(_searchQuery)
-          ).toList();
+          final techs = allTechs.where((t) {
+            final matchesSearch = t.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                t.phone.contains(searchQuery);
+            if (!matchesSearch) return false;
+
+            if (filter == 'verified') return t.isVerified;
+            if (filter == 'low_balance') return t.walletBalance < AppConstants.platformFee;
+            return true;
+          }).toList();
 
           if (allTechs.isEmpty) {
             return const Center(child: Text('لا يوجد فنيين مسجلين حالياً'));
@@ -59,18 +61,35 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
           return CustomScrollView(
             slivers: [
               SliverPadding(
-                padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 24),
+                padding: EdgeInsets.fromLTRB(sidePadding, 16, sidePadding, 12),
                 sliver: SliverToBoxAdapter(
-                  child: SearchBar(
-                    hintText: 'بحث باسم الفني أو رقم الهاتف...',
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    leading: const Icon(Icons.search, color: AppColors.textMuted),
-                    backgroundColor: MaterialStateProperty.all(AppColors.surface1),
-                    elevation: MaterialStateProperty.all(0),
-                    shape: MaterialStateProperty.all(RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: AppColors.borderDefault),
-                    )),
+                  child: Column(
+                    children: [
+                      SearchBar(
+                        hintText: 'بحث باسم الفني أو رقم الهاتف...',
+                        onChanged: (v) => ref.read(adminTechSearchQueryProvider.notifier).state = v,
+                        leading: const Icon(Icons.search, color: AppColors.textMuted),
+                        backgroundColor: WidgetStateProperty.all(AppColors.surface1),
+                        elevation: WidgetStateProperty.all(0),
+                        shape: WidgetStateProperty.all(RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: AppColors.borderDefault),
+                        )),
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _filterChip(ref, 'الكل', 'all', allTechs.length),
+                            const SizedBox(width: 8),
+                            _filterChip(ref, 'الموثقين ⚡', 'verified', allTechs.where((t) => t.isVerified).length),
+                            const SizedBox(width: 8),
+                            _filterChip(ref, 'رصيد منخفض ⚠️', 'low_balance', allTechs.where((t) => t.walletBalance < AppConstants.platformFee).length, isAlert: true),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -95,6 +114,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                       (context, index) => TechCard(
                         tech: pendingTechs[index],
                         onEdit: () => _showTechnicianForm(context, ref, technician: pendingTechs[index]),
+                        onRecharge: () => _showRechargeDialog(context, ref, pendingTechs[index]),
                       ),
                       childCount: pendingTechs.length,
                     ),
@@ -122,6 +142,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                     (context, index) => TechCard(
                       tech: approvedTechs[index],
                       onEdit: () => _showTechnicianForm(context, ref, technician: approvedTechs[index]),
+                      onRecharge: () => _showRechargeDialog(context, ref, approvedTechs[index]),
                     ),
                     childCount: approvedTechs.length,
                   ),
@@ -141,11 +162,102 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
     );
   }
 
+  Widget _filterChip(WidgetRef ref, String label, String value, int count, {bool isAlert = false}) {
+    final currentFilter = ref.watch(adminTechFilterProvider);
+    final isSelected = currentFilter == value;
+    final color = isAlert ? AppColors.error : AppColors.gold;
+
+    return ChoiceChip(
+      label: Text('$label ($count)'),
+      selected: isSelected,
+      onSelected: (_) => ref.read(adminTechFilterProvider.notifier).state = value,
+      selectedColor: color,
+      backgroundColor: AppColors.surface1,
+      labelStyle: TextStyle(
+        color: isSelected ? const Color(0xFF090D16) : AppColors.textPrimary,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  void _showRechargeDialog(BuildContext context, WidgetRef ref, Technician tech) {
+    final amountController = TextEditingController(text: '100');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface1,
+        title: Row(
+          children: [
+            const Icon(Icons.add_card_rounded, color: AppColors.gold),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'شحن محفظة: ${tech.name}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'الرصيد الحالي: ${tech.walletBalance} ج.م',
+              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'مبلغ الشحن (ج.م)',
+                prefixIcon: Icon(Icons.payments_outlined),
+                hintText: 'مثال: 100',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [50, 100, 200, 500].map((amt) => ChoiceChip(
+                label: Text('+$amt ج.م'),
+                selected: amountController.text == amt.toString(),
+                onSelected: (_) => amountController.text = amt.toString(),
+              )).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.gold),
+            onPressed: () async {
+              final amt = int.tryParse(amountController.text);
+              if (amt == null || amt <= 0) return;
+              Navigator.pop(ctx);
+
+              final result = await ref.read(adminActionsProvider).rechargeTechWallet(tech.id, amt);
+              if (context.mounted) {
+                result.when(
+                  left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+                  right: (updatedTech) => ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('تم شحن محفظة ${tech.name} بمبلغ $amt ج.م بنجاح! الرصيد الجديد: ${updatedTech.walletBalance} ج.م⚡')),
+                  ),
+                );
+              }
+            },
+            child: const Text('تأكيد الشحن', style: TextStyle(color: Color(0xFF090D16), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, int count, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
         border: Border(right: BorderSide(color: color, width: 4)),
       ),
@@ -169,7 +281,16 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
     final phoneController = TextEditingController(text: technician?.phone);
     final bioController = TextEditingController(text: technician?.bio);
     final visitPriceController = TextEditingController(text: technician?.visitPrice.toString() ?? '50');
-    final areaController = TextEditingController(text: technician?.area);
+    
+    String selectedGov = 'الغربية';
+    String selectedCity = (technician?.area != null && technician!.area!.isNotEmpty) ? technician.area! : 'كفر الزيات';
+
+    for (var entry in AppConstants.governoratesAndCities.entries) {
+      if (entry.value.contains(technician?.area)) {
+        selectedGov = entry.key;
+        break;
+      }
+    }
     
     ServiceType selectedSpec = technician?.spec ?? ServiceType.plumbing;
     TechStatus selectedStatus = (technician?.status == TechStatus.pending) ? TechStatus.available : (technician?.status ?? TechStatus.available);
@@ -268,9 +389,45 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: areaController,
-                    decoration: const InputDecoration(labelText: 'منطقة التغطية', prefixIcon: Icon(Icons.map_outlined)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selectedGov,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'المحافظة', prefixIcon: Icon(Icons.map_outlined)),
+                          dropdownColor: AppColors.surface2,
+                          items: AppConstants.governoratesAndCities.keys
+                              .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setModalState(() {
+                                selectedGov = val;
+                                selectedCity = AppConstants.governoratesAndCities[val]!.first;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: AppConstants.governoratesAndCities[selectedGov]!.contains(selectedCity)
+                              ? selectedCity
+                              : AppConstants.governoratesAndCities[selectedGov]!.first,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'المدينة / منطقة التغطية', prefixIcon: Icon(Icons.location_city_outlined)),
+                          dropdownColor: AppColors.surface2,
+                          items: (AppConstants.governoratesAndCities[selectedGov] ?? [])
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) setModalState(() => selectedCity = val);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -288,10 +445,10 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                           name: nameController.text.trim(),
                           spec: selectedSpec,
                           visitPrice: int.tryParse(visitPriceController.text),
-                          area: areaController.text.trim(),
+                          area: selectedCity,
                           bio: bioController.text.trim(),
                           status: selectedStatus,
-                          isVerified: isVerified, // الحفظ يتم هنا في خطوة واحدة
+                          isVerified: isVerified,
                         );
 
                         final result = technician == null 
@@ -301,7 +458,7 @@ class _TechniciansScreenState extends ConsumerState<TechniciansScreen> {
                               spec: selectedSpec,
                               bio: bioController.text.trim(),
                               visitPrice: int.tryParse(visitPriceController.text) ?? 50,
-                              area: areaController.text.trim(),
+                              area: selectedCity,
                               isVerified: isVerified,
                             ))
                           : await ref.read(adminActionsProvider).updateTechnician(technician.id, dto);

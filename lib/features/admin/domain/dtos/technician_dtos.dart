@@ -38,7 +38,8 @@ class CreateTechnicianDto {
       if (photoUrl != null) 'photo_url': photoUrl,
       if (bio != null) 'bio': bio,
       'is_verified': isVerified,
-      'status': TechStatus.pending.label,
+      'status': TechStatus.available.label, // متاح مباشرةً بعد التسجيل
+      'wallet_balance': 100,               // رصيد ترحيبي 100 ج.م
       'total_earnings': 0,
       'total_jobs': 0,
       'rating': 0.0,

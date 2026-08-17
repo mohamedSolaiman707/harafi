@@ -7,12 +7,17 @@ class WhatsAppUtils {
     String n = phone.replaceAll(RegExp(r'[^0-9]'), '');
     if (n.startsWith('0')) n = '2$n';
     if (n.startsWith('1')) n = '20$n';
+    if (!n.startsWith('2')) n = '2$n'; 
     return n;
   }
 
   static Uri buildUri(String phone, String message) {
     final formatted = formatPhone(phone);
-    return Uri.parse('$_baseUrl$formatted?text=${Uri.encodeComponent(message)}');
+    final encodedMsg = Uri.encodeComponent(message);
+    
+    // الرابط العالمي wa.me هو الأفضل والأكثر احترافية لأنه يفتح التطبيق 
+    // إذا كان موجوداً، أو يفتح صفحة ويب إذا لم يكن موجوداً (Fallback).
+    return Uri.parse('$_baseUrl$formatted?text=$encodedMsg');
   }
 
   // الرسائل

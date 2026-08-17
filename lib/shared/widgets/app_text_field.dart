@@ -11,7 +11,7 @@ class AppTextField extends StatefulWidget {
   final int maxLines;
   final bool autofocus;
   final bool isPassword;
-  final bool enabled; // إضافة خاصية enabled
+  final bool enabled;
 
   const AppTextField({
     super.key,
@@ -24,7 +24,7 @@ class AppTextField extends StatefulWidget {
     this.maxLines = 1,
     this.autofocus = false,
     this.isPassword = false,
-    this.enabled = true, // القيمة الافتراضية true
+    this.enabled = true,
   });
 
   @override
@@ -43,20 +43,23 @@ class _AppTextFieldState extends State<AppTextField> {
       maxLines: widget.isPassword ? 1 : widget.maxLines,
       autofocus: widget.autofocus,
       obscureText: widget.isPassword ? _obscureText : false,
-      enabled: widget.enabled, // ربط الخاصية بـ TextFormField
+      enabled: widget.enabled,
       style: AppTextStyles.bodyLarge.copyWith(
         color: widget.enabled ? AppColors.textPrimary : AppColors.textMuted,
+        fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
+        filled: true,
+        fillColor: widget.enabled ? AppColors.surface2 : AppColors.surface1,
         prefixIcon: widget.prefixIcon != null
-            ? Icon(widget.prefixIcon, color: AppColors.textMuted)
+            ? Icon(widget.prefixIcon, color: AppColors.gold, size: 20)
             : null,
         suffixIcon: widget.isPassword
             ? IconButton(
                 icon: Icon(
-                  _obscureText ? Icons.visibility_off : Icons.visibility,
+                  _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                   color: AppColors.textMuted,
                   size: 20,
                 ),

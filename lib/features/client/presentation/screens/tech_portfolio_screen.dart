@@ -25,34 +25,25 @@ class TechPortfolioScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('الملف الشخصي للفني'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            onPressed: () {
-              final url = Uri.base.toString(); 
-              Clipboard.setData(ClipboardData(text: url));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم نسخ رابط البروفايل للمشاركة')),
-              );
-            },
-            tooltip: 'مشاركة البروفايل',
-          ),
-        ],
       ),
-      body: techsAsync.when(
-        data: (techs) {
-          final tech = techs.where((t) => t.id == techId).firstOrNull;
-          if (tech == null) return const Center(child: Text('تعذر العثور على بيانات الفني'));
-          
-          return techOrdersAsync.when(
-            data: (orders) => _PortfolioBody(tech: tech, orders: orders),
-            loading: () => const LoadingWidget(),
-            error: (e, s) => _PortfolioBody(tech: tech, orders: const []),
-          );
-        },
-        loading: () => const LoadingWidget(),
-        error: (e, s) => Center(child: Text('خطأ: $e')),
-      ),
+      body: Builder(builder: (context) {
+        final techs = techsAsync.valueOrNull;
+
+        if (techs == null && techsAsync.isLoading) {
+          return const LoadingWidget();
+        }
+        if (techs == null) {
+          return Center(child: Text('خطأ: ${techsAsync.error}'));
+        }
+
+        final tech = techs.where((t) => t.id == techId).firstOrNull;
+        if (tech == null) return const Center(child: Text('تعذر العثور على بيانات الفني'));
+
+        final orders = techOrdersAsync.valueOrNull ?? const [];
+        final isOrdersLoading = techOrdersAsync.isLoading;
+
+        return _PortfolioBody(tech: tech, orders: orders, isOrdersLoading: isOrdersLoading);
+      }),
     );
   }
 }
@@ -60,7 +51,12 @@ class TechPortfolioScreen extends ConsumerWidget {
 class _PortfolioBody extends StatelessWidget {
   final Technician tech;
   final List<Order> orders;
-  const _PortfolioBody({required this.tech, required this.orders});
+  final bool isOrdersLoading;
+  const _PortfolioBody({
+    required this.tech, 
+    required this.orders, 
+    this.isOrdersLoading = false
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +64,7 @@ class _PortfolioBody extends StatelessWidget {
     final reviews = orders.where((o) => o.rating != null && o.rating! > 0).toList();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
@@ -76,27 +72,34 @@ class _PortfolioBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeader(),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.lg), // تقليل المسافة
               _buildStatsRow(),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.md),
+              _buildTrustBadges(),
+              const SizedBox(height: AppSpacing.lg), // تقليل المسافة
               _buildBioSection(),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.lg),
               
               if (tech.portfolioImages.isNotEmpty) ...[
                 _buildSectionHeader('سابق أعمالنا'),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.md),
                 _buildPortfolioGallery(context),
-                const SizedBox(height: AppSpacing.xxl),
+                const SizedBox(height: AppSpacing.lg),
               ],
 
-              if (reviews.isNotEmpty) ...[
-                _buildSectionHeader('آراء العملاء (${reviews.length})'),
-                const SizedBox(height: AppSpacing.lg),
+              _buildSectionHeader('آراء العملاء'),
+              const SizedBox(height: AppSpacing.md),
+              if (isOrdersLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))),
+                )
+              else if (reviews.isEmpty)
+                Text('لا توجد تقييمات لهذا الفني بعد.', style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted))
+              else
                 ...reviews.take(3).map((r) => _ReviewItem(order: r)),
-                if (reviews.length > 3)
-                  TextButton(onPressed: () {}, child: const Text('عرض الكل')),
-                const SizedBox(height: AppSpacing.xxl),
-              ],
+              
+              const SizedBox(height: AppSpacing.xl),
 
               AppButton(
                 label: isAvailable ? 'أطلب هذا الفني الآن' : 'الفني مشغول حالياً',
@@ -104,13 +107,14 @@ class _PortfolioBody extends StatelessWidget {
                 variant: isAvailable ? ButtonVariant.primary : ButtonVariant.ghost,
                 onTap: isAvailable ? () => context.push('/request', extra: {'service': tech.spec, 'techId': tech.id}) : null,
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               AppButton(
                 label: 'اتصال مباشر بالفني',
                 icon: Icons.phone,
                 variant: ButtonVariant.success,
                 onTap: () => launchUrl(Uri.parse('tel:${tech.phone}')),
               ),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -121,8 +125,8 @@ class _PortfolioBody extends StatelessWidget {
   Widget _buildSectionHeader(String title) {
     return Row(
       children: [
-        Container(width: 4, height: 18, decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(2))),
-        const SizedBox(width: 12),
+        Container(width: 4, height: 16, decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 8),
         Text(title, style: AppTextStyles.headlineMed),
       ],
     );
@@ -136,68 +140,66 @@ class _PortfolioBody extends StatelessWidget {
           children: [
             Hero(
               tag: 'tech-avatar-${tech.id}',
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: AppColors.gold.withValues(alpha: 0.1),
-                backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-                child: tech.photoUrl == null 
-                    ? Text(tech.spec.icon, style: const TextStyle(fontSize: 48))
-                    : null,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: tech.rankColor.withOpacity(0.5), width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 45, // تصغير من 60
+                  backgroundColor: AppColors.gold.withOpacity(0.1),
+                  backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
+                  child: tech.photoUrl == null 
+                      ? Text(tech.spec.icon, style: const TextStyle(fontSize: 32))
+                      : null,
+                ),
               ),
             ),
-            // بادج التوثيق فوق الصورة
             if (tech.isVerified)
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(2),
                 decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
-                child: const Icon(Icons.verified, color: AppColors.info, size: 24),
+                child: const Icon(Icons.verified, color: AppColors.info, size: 20),
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: 8),
         
-        // رتبة الفني (Rank Badge)
+        // Rank Badge
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: tech.rankColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: tech.rankColor.withValues(alpha: 0.3)),
+            color: tech.rankColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(tech.rankIcon, color: tech.rankColor, size: 14),
-              const SizedBox(width: 6),
+              Icon(tech.rankIcon, color: tech.rankColor, size: 12),
+              const SizedBox(width: 4),
               Text(
                 tech.rank,
-                style: AppTextStyles.labelLarge.copyWith(color: tech.rankColor, fontWeight: FontWeight.bold),
+                style: AppTextStyles.labelLarge.copyWith(color: tech.rankColor, fontWeight: FontWeight.bold, fontSize: 10),
               ),
             ],
           ),
         ),
         
-        const SizedBox(height: 12),
-        Text(tech.name, style: AppTextStyles.displayMedium),
         const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.gold.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            tech.spec.label,
-            style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 8),
+        Text(tech.name, style: AppTextStyles.headlineLarge), // تصغير الخط من displayMedium
+        
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
-            const SizedBox(width: 4),
-            Text(tech.area ?? 'كفر الزيات', style: AppTextStyles.bodyMed),
+            Text(
+              tech.spec.label,
+              style: AppTextStyles.bodyMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textMuted),
+            const SizedBox(width: 2),
+            Text(tech.area ?? 'كفر الزيات', style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted)),
           ],
         ),
       ],
@@ -215,22 +217,50 @@ class _PortfolioBody extends StatelessWidget {
     );
   }
 
+  Widget _buildTrustBadges() {
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          _TrustBadge(
+            icon: Icons.verified_rounded,
+            label: tech.isVerified ? 'فني موثق' : 'قيد التوثيق',
+            color: tech.isVerified ? AppColors.info : AppColors.textMuted,
+          ),
+          const _TrustBadge(
+            icon: Icons.shield_outlined,
+            label: 'ضمان 30 يوم',
+            color: AppColors.success,
+          ),
+          const _TrustBadge(
+            icon: Icons.speed_rounded,
+            label: 'استجابة سريعة',
+            color: AppColors.gold,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBioSection() {
     return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: AppColors.gold, size: 20),
+              const Icon(Icons.info_outline, color: AppColors.gold, size: 18),
               const SizedBox(width: 8),
-              Text('عن الفني وخبراته', style: AppTextStyles.titleLarge),
+              Text('عن الفني وخبراته', style: AppTextStyles.titleMed),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Text(
             tech.bio ?? 'هذا الفني خبير معتمد في شبكة حرفي، يلتزم بتقديم أفضل جودة وأسرع استجابة لعملائنا.',
-            style: AppTextStyles.bodyLarge.copyWith(height: 1.6),
+            style: AppTextStyles.bodyMed.copyWith(height: 1.4),
           ),
         ],
       ),
@@ -239,7 +269,7 @@ class _PortfolioBody extends StatelessWidget {
 
   Widget _buildPortfolioGallery(BuildContext context) {
     return SizedBox(
-      height: 180,
+      height: 140, // تصغير الارتفاع
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: tech.portfolioImages.length,
@@ -248,18 +278,15 @@ class _PortfolioBody extends StatelessWidget {
           return GestureDetector(
             onTap: () => _showFullScreenImage(context, imageUrl),
             child: Container(
-              width: 240,
+              width: 180,
               margin: const EdgeInsets.only(left: 12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 image: DecorationImage(
                   image: NetworkImage(imageUrl),
                   fit: BoxFit.cover,
                 ),
                 border: Border.all(color: AppColors.borderDefault),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
-                ],
               ),
             ),
           );
@@ -300,11 +327,11 @@ class _ReviewItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.borderDefault),
       ),
       child: Column(
@@ -318,16 +345,16 @@ class _ReviewItem extends StatelessWidget {
                 children: List.generate(5, (index) => Icon(
                   index < (order.rating ?? 0) ? Icons.star : Icons.star_border,
                   color: AppColors.gold,
-                  size: 14,
+                  size: 12,
                 )),
               ),
             ],
           ),
           if (order.ratingComment != null && order.ratingComment!.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               order.ratingComment!,
-              style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary, fontSize: 12),
             ),
           ],
         ],
@@ -347,11 +374,45 @@ class _StatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(height: 8),
-        Text(value, style: AppTextStyles.headlineMed),
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 4),
+        Text(value, style: AppTextStyles.titleMed),
         Text(label, style: AppTextStyles.labelMed, textAlign: TextAlign.center),
       ],
+    );
+  }
+}
+
+class _TrustBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _TrustBadge({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 10),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTextStyles.labelMed.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 9,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

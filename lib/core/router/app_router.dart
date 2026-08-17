@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +12,7 @@ import '../../../features/client/presentation/screens/service_techs_screen.dart'
 import '../../../features/client/presentation/screens/tech_portfolio_screen.dart';
 import '../../../features/client/presentation/screens/client_orders_screen.dart';
 import '../../../features/client/presentation/screens/favorites_screen.dart';
+import '../../../features/client/presentation/screens/about_screen.dart';
 import '../../../features/admin/presentation/screens/dashboard_screen.dart';
 import '../../../features/admin/presentation/screens/orders_screen.dart';
 import '../../../features/admin/presentation/screens/technicians_screen.dart';
@@ -23,6 +23,7 @@ import '../../../features/tech/presentation/screens/tech_dashboard_screen.dart';
 import '../../../features/tech/presentation/screens/tech_order_detail_screen.dart';
 import '../../../features/tech/presentation/screens/tech_register_screen.dart';
 import '../../../features/tech/presentation/screens/tech_profile_screen.dart';
+import '../../../features/tech/presentation/screens/tech_wallet_screen.dart';
 import '../../../features/admin/domain/enums/service_type.dart';
 
 final appRouter = GoRouter(
@@ -49,7 +50,7 @@ final appRouter = GoRouter(
       return userRole == 'client' ? '/' : '/tech/dashboard';
     }
 
-    final isTechRoute = location.startsWith('/tech') && !isAuthRoute;
+    final isTechRoute = location.startsWith('/tech') && !isAuthRoute && !location.startsWith('/tech/portfolio');
 
     // 3. حماية مسارات الأدمن والفني
     if ((isAdminRoute || isTechRoute) && !isLoggedIn) {
@@ -74,14 +75,27 @@ final appRouter = GoRouter(
           AppAnimations.fadeSlide(child: const HomeScreen()),
     ),
     GoRoute(
+      path: '/about',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const AboutScreen()),
+    ),
+    GoRoute(
       path: '/services',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const ServicesScreen()),
     ),
     GoRoute(
+      path: '/all-techs',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const ServiceTechsScreen(service: null)),
+    ),
+    GoRoute(
       path: '/service/:type',
       pageBuilder: (context, state) {
         final typeStr = state.pathParameters['type']!;
+        if (typeStr == 'all') {
+          return AppAnimations.fadeSlide(child: const ServiceTechsScreen(service: null));
+        }
         final service = ServiceType.values.firstWhere((e) => e.name == typeStr);
         return AppAnimations.fadeSlide(child: ServiceTechsScreen(service: service));
       },
@@ -146,6 +160,11 @@ final appRouter = GoRouter(
       path: '/tech/profile',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const TechProfileScreen()),
+    ),
+    GoRoute(
+      path: '/tech/wallet',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const TechWalletScreen()),
     ),
 
     ShellRoute(

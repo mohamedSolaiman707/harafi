@@ -25,7 +25,6 @@ class OrderCard extends ConsumerWidget {
     final assignedTech = techs.where((t) => t.id == order.techId).firstOrNull;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(28),
@@ -43,7 +42,7 @@ class OrderCard extends ConsumerWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
                   // الصف العلوي: الحالة والكود
@@ -54,7 +53,7 @@ class OrderCard extends ConsumerWidget {
                       _buildTrackingTag(),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
                   
                   // المحتوى الأوسط: الخدمة والأيقونة
                   Row(
@@ -67,12 +66,12 @@ class OrderCard extends ConsumerWidget {
                             Text(
                               order.service.label,
                               style: AppTextStyles.headlineMed.copyWith(
-                                fontSize: 26, 
+                                fontSize: 24, 
                                 fontWeight: FontWeight.w900,
                                 color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             Row(
                               children: [
                                 Container(
@@ -89,25 +88,25 @@ class OrderCard extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       // أيقونة الخدمة في مربع فخم
                       Container(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: AppColors.surface2,
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(18),
                           border: Border.all(color: AppColors.borderSubtle),
                           boxShadow: [
                             BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)
                           ]
                         ),
-                        child: Text(order.service.icon, style: const TextStyle(fontSize: 36)),
+                        child: Text(order.service.icon, style: const TextStyle(fontSize: 30)),
                       ),
                     ],
                   ),
                   
                   if (assignedTech != null || order.finalPrice != null) ...[
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                     _buildExtraDetails(assignedTech),
                   ],
                 ],
@@ -171,7 +170,7 @@ class OrderCard extends ConsumerWidget {
 
   Widget _buildClientFooter() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.25),
         border: const Border(top: BorderSide(color: AppColors.borderSubtle, width: 0.5)),

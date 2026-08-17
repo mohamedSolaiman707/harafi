@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/orders_provider.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class StatsWidget extends ConsumerWidget {
@@ -22,7 +23,7 @@ class StatsWidget extends ConsumerWidget {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
-          itemCount: 7,
+          itemCount: 8,
           itemBuilder: (context, index) {
             final cards = [
               _StatItem(
@@ -51,11 +52,18 @@ class StatsWidget extends ConsumerWidget {
                 color: AppColors.success,
               ),
               _StatItem(
-                title: 'إجمالي الإيرادات',
+                title: 'إجمالي الخدمات',
                 value: stats['revenue'].toString(),
                 suffix: ' ج.م',
                 icon: Icons.payments_rounded,
                 color: AppColors.success,
+              ),
+              _StatItem(
+                title: 'دخل المنصة (${AppConstants.platformFee}ج)',
+                value: (stats['platformRevenue'] ?? 0).toString(),
+                suffix: ' ج.م',
+                icon: Icons.account_balance_rounded,
+                color: AppColors.gold,
               ),
               _StatItem(
                 title: 'إجمالي الفنيين',

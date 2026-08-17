@@ -13,6 +13,7 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../../../admin/domain/dtos/technician_dtos.dart';
 import '../../../admin/domain/models/technician.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
+import '../providers/tech_screen_providers.dart';
 
 class TechProfileScreen extends ConsumerStatefulWidget {
   const TechProfileScreen({super.key});
@@ -89,12 +90,6 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   late TextEditingController _visitPriceController;
   final _storageService = StorageService();
   final _picker = ImagePicker();
-  
-  bool _isEditing = false;
-  bool _isLoading = false;
-  bool _isUploadingAvatar = false;
-  bool _isUploadingPortfolio = false;
-  String? _selectedArea;
 
   @override
   void initState() {
@@ -102,7 +97,29 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     _nameController = TextEditingController(text: widget.tech.name);
     _bioController = TextEditingController(text: widget.tech.bio);
     _visitPriceController = TextEditingController(text: widget.tech.visitPrice.toString());
-    _selectedArea = widget.tech.area ?? (AppConstants.areas.isNotEmpty ? AppConstants.areas[1] : null);
+
+    // تحديد المحافظة تلقائياً من المدينة المحفوظة للفني
+    String? selectedGov;
+    String? selectedArea;
+    final savedArea = widget.tech.area;
+    if (savedArea != null) {
+      for (final entry in AppConstants.governoratesAndCities.entries) {
+        if (entry.value.contains(savedArea)) {
+          selectedGov = entry.key;
+          selectedArea = savedArea;
+          break;
+        }
+      }
+    }
+    selectedGov ??= AppConstants.governoratesAndCities.keys.first;
+    selectedArea ??= AppConstants.governoratesAndCities[selectedGov]!.first;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(techProfileGovProvider.notifier).state = selectedGov;
+        ref.read(techProfileAreaProvider.notifier).state = selectedArea;
+      }
+    });
   }
 
   @override
@@ -114,13 +131,14 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   }
 
   Future<void> _updateProfile() async {
-    setState(() => _isLoading = true);
+    ref.read(techProfileLoadingProvider.notifier).state = true;
+    final selectedArea = ref.read(techProfileAreaProvider);
     
     final dto = UpdateTechnicianDto(
       name: _nameController.text.trim(),
       bio: _bioController.text.trim(),
       visitPrice: int.tryParse(_visitPriceController.text),
-      area: _selectedArea,
+      area: selectedArea,
     );
 
     final result = await ref.read(techsRepositoryProvider).updateTechnician(widget.tech.id, dto);
@@ -134,10 +152,8 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     );
     
     if (mounted) {
-      setState(() {
-        _isEditing = false;
-        _isLoading = false;
-      });
+      ref.read(techProfileEditingProvider.notifier).state = false;
+      ref.read(techProfileLoadingProvider.notifier).state = false;
     }
   }
 
@@ -151,7 +167,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     if (image == null) return;
 
     if (isAvatar) {
-      setState(() => _isUploadingAvatar = true);
+      ref.read(techProfileAvatarUploadingProvider.notifier).state = true;
       final url = await _storageService.uploadImage(
         image: image, 
         path: 'avatars', 
@@ -161,9 +177,9 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
         final updatedTech = await ref.read(techsRepositoryProvider).update(widget.tech.id, {'photo_url': url});
         ref.read(currentTechnicianProvider.notifier).updateTech(updatedTech);
       }
-      if (mounted) setState(() => _isUploadingAvatar = false);
+      if (mounted) ref.read(techProfileAvatarUploadingProvider.notifier).state = false;
     } else {
-      setState(() => _isUploadingPortfolio = true);
+      ref.read(techProfilePortfolioUploadingProvider.notifier).state = true;
       final url = await _storageService.uploadImage(
         image: image, 
         path: 'portfolios', 
@@ -174,7 +190,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
         final updatedTech = await ref.read(techsRepositoryProvider).update(widget.tech.id, {'portfolio_images': newImages});
         ref.read(currentTechnicianProvider.notifier).updateTech(updatedTech);
       }
-      if (mounted) setState(() => _isUploadingPortfolio = false);
+      if (mounted) ref.read(techProfilePortfolioUploadingProvider.notifier).state = false;
     }
   }
 
@@ -207,7 +223,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final horizontalPadding = width > 1200 ? (width - 1100) / 2 : AppSpacing.xl;
+    final horizontalPadding = width > 1200 ? (width - 1100) / 2 : 16.0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: AppSpacing.xl),
@@ -254,6 +270,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   }
 
   Widget _buildHeader() {
+    final isUploadingAvatar = ref.watch(techProfileAvatarUploadingProvider);
     return AppCard(
       child: Column(
         children: [
@@ -276,7 +293,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
                       : null,
                 ),
               ),
-              if (_isUploadingAvatar)
+              if (isUploadingAvatar)
                 const Positioned.fill(child: Center(child: CircularProgressIndicator(color: AppColors.gold)))
               else
                 GestureDetector(
@@ -302,12 +319,94 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
               ],
             ],
           ),
+          const SizedBox(height: AppSpacing.lg),
+          // شارة الرتبة
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [widget.tech.rankColor.withValues(alpha: 0.25), widget.tech.rankColor.withValues(alpha: 0.08)],
+              ),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: widget.tech.rankColor.withValues(alpha: 0.6)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(widget.tech.rankEmoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Text(
+                  widget.tech.rank,
+                  style: TextStyle(
+                    color: widget.tech.rankColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (widget.tech.isVerified) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.verified, color: AppColors.info, size: 16),
+                  SizedBox(width: 6),
+                  Text('فني موثق', style: TextStyle(color: AppColors.info, fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+          // شريط التقدم نحو الرتبة التالية
+          if (widget.tech.jobsToNextRank > 0) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'تبقى ${widget.tech.jobsToNextRank} طلب',
+                        style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                      ),
+                      Text(
+                        widget.tech.nextRankTitle,
+                        style: TextStyle(color: widget.tech.rankColor, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: widget.tech.nextRankProgress.clamp(0.0, 1.0),
+                      minHeight: 8,
+                      backgroundColor: AppColors.surface3,
+                      valueColor: AlwaysStoppedAnimation<Color>(widget.tech.rankColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildGallerySection() {
+    final isUploadingPortfolio = ref.watch(techProfilePortfolioUploadingProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -315,7 +414,7 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('معرض سابقة أعمالك', style: AppTextStyles.headlineMed),
-            _isUploadingPortfolio 
+            isUploadingPortfolio 
               ? const CircularProgressIndicator(strokeWidth: 2)
               : FilledButton.icon(
                   onPressed: () => _showImageSourceSheet(false),
@@ -370,6 +469,11 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
   }
 
   Widget _buildInfoForm() {
+    final isEditing = ref.watch(techProfileEditingProvider);
+    final isLoading = ref.watch(techProfileLoadingProvider);
+    final selectedGov = ref.watch(techProfileGovProvider) ?? AppConstants.governoratesAndCities.keys.first;
+    final selectedArea = ref.watch(techProfileAreaProvider) ?? AppConstants.governoratesAndCities[selectedGov]?.first;
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,35 +482,77 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('البيانات المهنية', style: AppTextStyles.headlineMed),
-              _isLoading 
+              isLoading 
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : TextButton.icon(
-                    onPressed: () => _isEditing ? _updateProfile() : setState(() => _isEditing = true),
-                    icon: Icon(_isEditing ? Icons.check : Icons.edit),
-                    label: Text(_isEditing ? 'حفظ التغييرات' : 'تعديل البيانات'),
+                    onPressed: () => isEditing ? _updateProfile() : ref.read(techProfileEditingProvider.notifier).state = true,
+                    icon: Icon(isEditing ? Icons.check : Icons.edit),
+                    label: Text(isEditing ? 'حفظ التغييرات' : 'تعديل البيانات'),
                   ),
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          AppTextField(label: 'الاسم الميداني', controller: _nameController, enabled: _isEditing, prefixIcon: Icons.person_outline),
+          AppTextField(label: 'الاسم الميداني', controller: _nameController, enabled: isEditing, prefixIcon: Icons.person_outline),
+          const SizedBox(height: AppSpacing.lg),
+          AppTextField(
+            label: 'سعر الزيارة (ج.م)',
+            controller: _visitPriceController,
+            enabled: isEditing,
+            keyboardType: TextInputType.number,
+            prefixIcon: Icons.payments_outlined,
+          ),
           const SizedBox(height: AppSpacing.lg),
           Row(
             children: [
-              Expanded(child: AppTextField(label: 'سعر الزيارة (ج.م)', controller: _visitPriceController, enabled: _isEditing, keyboardType: TextInputType.number, prefixIcon: Icons.payments_outlined)),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: selectedGov,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'المحافظة',
+                    prefixIcon: Icon(Icons.map_outlined),
+                  ),
+                  dropdownColor: AppColors.surface2,
+                  items: AppConstants.governoratesAndCities.keys
+                      .map((gov) => DropdownMenuItem(value: gov, child: Text(gov, overflow: TextOverflow.ellipsis)))
+                      .toList(),
+                  onChanged: isEditing
+                      ? (val) {
+                          if (val != null) {
+                            ref.read(techProfileGovProvider.notifier).state = val;
+                            ref.read(techProfileAreaProvider.notifier).state =
+                                AppConstants.governoratesAndCities[val]!.first;
+                          }
+                        }
+                      : null,
+                ),
+              ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedArea,
-                  decoration: const InputDecoration(labelText: 'منطقة العمل'),
+                  value: (AppConstants.governoratesAndCities[selectedGov] ?? []).contains(selectedArea)
+                      ? selectedArea
+                      : AppConstants.governoratesAndCities[selectedGov]?.first,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'المدينة / منطقة العمل',
+                    prefixIcon: Icon(Icons.location_city_outlined),
+                  ),
                   dropdownColor: AppColors.surface2,
-                  items: AppConstants.areas.where((a) => a != 'الكل').map((area) => DropdownMenuItem(value: area, child: Text(area))).toList(),
-                  onChanged: _isEditing ? (val) => setState(() => _selectedArea = val) : null,
+                  items: (AppConstants.governoratesAndCities[selectedGov] ?? [])
+                      .map((city) => DropdownMenuItem(value: city, child: Text(city, overflow: TextOverflow.ellipsis)))
+                      .toList(),
+                  onChanged: isEditing
+                      ? (val) {
+                          if (val != null) ref.read(techProfileAreaProvider.notifier).state = val;
+                        }
+                      : null,
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          AppTextField(label: 'نبذة عن خبرتك', controller: _bioController, enabled: _isEditing, prefixIcon: Icons.history_edu_outlined, maxLines: 5),
+          AppTextField(label: 'نبذة عن خبرتك', controller: _bioController, enabled: isEditing, prefixIcon: Icons.history_edu_outlined, maxLines: 5),
         ],
       ),
     );
@@ -414,19 +560,32 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
 
   Widget _buildQuickStats({required bool isRow}) {
     final stats = [
-      _StatCard(label: 'إجمالي الأرباح', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments, color: AppColors.success),
-      _StatCard(label: 'المهام المكتملة', value: '${widget.tech.totalJobs}', icon: Icons.task_alt, color: AppColors.info),
-      _StatCard(label: 'التقييم العام', value: '${widget.tech.rating}', icon: Icons.star, color: AppColors.gold),
+      _StatCard(label: 'إجمالي الأرباح', value: '${widget.tech.totalEarnings} ج.م', icon: Icons.payments_rounded, color: AppColors.success),
+      _StatCard(label: 'مهام مكتملة', value: '${widget.tech.totalJobs}', icon: Icons.task_alt_rounded, color: AppColors.info),
+      _StatCard(label: 'التقييم العام', value: '${widget.tech.rating.toStringAsFixed(1)} ★', icon: Icons.star_rounded, color: AppColors.gold),
+      _StatCard(label: 'رصيد المحفظة', value: '${widget.tech.walletBalance} ج.م', icon: Icons.account_balance_wallet_rounded, color: AppColors.primary),
     ];
 
+    // شبكة 2×2 تعمل على الموبايل وعمود 4 على الديسكتوب
     if (isRow) {
-      return Row(
-        children: stats.map((s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: s))).toList(),
+      return GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.6,
+        children: stats,
       );
     }
 
-    return Column(
-      children: stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: AppSpacing.md), child: s)).toList(),
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 1,
+      mainAxisSpacing: AppSpacing.md,
+      childAspectRatio: 3.5,
+      children: stats,
     );
   }
 }
@@ -440,15 +599,32 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      color: AppColors.surface2,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(value, style: AppTextStyles.headlineMed),
-          const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.labelMed, textAlign: TextAlign.center),
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(value, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ],
+          ),
         ],
       ),
     );

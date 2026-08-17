@@ -1,53 +1,125 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../admin/domain/enums/service_type.dart';
 
-class ServicesScreen extends StatelessWidget {
+final selectedCategoryProvider = StateProvider<ServiceCategory?>((ref) => null);
+
+class ServicesScreen extends ConsumerWidget {
   const ServicesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedCategory = ref.watch(selectedCategoryProvider);
     final width = MediaQuery.of(context).size.width;
-    
-    // حساب عدد الأعمدة ديناميكياً
-    int crossAxisCount = 2;
-    if (width > 1200) crossAxisCount = 5;
-    else if (width > 900) crossAxisCount = 4;
-    else if (width > 600) crossAxisCount = 3;
 
-    // حساب نسبة الطول للعرض لتجنب التمدد القبيح
-    double aspectRatio = 0.8;
-    if (width > 900) aspectRatio = 0.9;
-    if (width > 1200) aspectRatio = 1.0;
+    final filteredServices = ServiceType.values.where((s) {
+      if (selectedCategory == null) return true;
+      return s.category == selectedCategory;
+    }).toList();
+
+    int crossAxisCount = width > 900 ? 4 : 2;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('كل الخدمات'),
-        backgroundColor: AppColors.surface2,
-        elevation: 0,
+        title: const Text('الخدمات المتاحة'),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => context.pop(),
+        ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200), // تحجيم المحتوى في المنتصف
-          child: GridView.builder(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: AppSpacing.lg,
-              crossAxisSpacing: AppSpacing.lg,
-              childAspectRatio: aspectRatio,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Organic Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 42,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _FilterTab(
+                          label: 'الكل',
+                          isSelected: selectedCategory == null,
+                          onTap: () => ref.read(selectedCategoryProvider.notifier).state = null,
+                        ),
+                        ...ServiceCategory.values.map((cat) => _FilterTab(
+                          label: cat.label,
+                          isSelected: selectedCategory == cat,
+                          onTap: () => ref.read(selectedCategoryProvider.notifier).state = cat,
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            itemCount: ServiceType.values.length,
-            itemBuilder: (context, index) {
-              final type = ServiceType.values[index];
-              return _ServiceItem(
-                type: type,
-                onTap: () => context.push('/service/${type.name}'),
-              );
-            },
+          ),
+          
+          // Organic Grid with Local Photos
+          SliverPadding(
+            padding: const EdgeInsets.all(24),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.85,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _ServicePhotoCard(type: filteredServices[index]),
+                childCount: filteredServices.length,
+              ),
+            ),
+          ),
+          
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterTab extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterTab({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.gold : AppColors.surface1,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.05),
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.labelLarge.copyWith(
+              color: isSelected ? Colors.black : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -55,63 +127,106 @@ class ServicesScreen extends StatelessWidget {
   }
 }
 
-class _ServiceItem extends StatelessWidget {
+class _ServicePhotoCard extends StatelessWidget {
   final ServiceType type;
-  final VoidCallback onTap;
+  const _ServicePhotoCard({required this.type});
 
-  const _ServiceItem({required this.type, required this.onTap});
+  // ماب للصور الحقيقية من المجلد المحلي
+  String _getAssetPath(ServiceType type) {
+    const path = 'assets/images/';
+    return switch (type) {
+      ServiceType.plumbing => '${path}sbak.jpg',
+      ServiceType.electrical => '${path}khrba.jpg',
+      ServiceType.carpentry => '${path}negara.jpg',
+      ServiceType.ac => '${path}takyeefat.jpg',
+      ServiceType.refrigerators => '${path}fridge.jpg',
+      ServiceType.washingMachines => '${path}washing.jpg',
+      ServiceType.screens => '${path}tv.jpg',
+      ServiceType.stoves => '${path}gas.jpg',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: MouseRegion( // إضافة تأثير الماوس للويب
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface2,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: AppColors.surface3.withOpacity(0.3), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              )
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.push('/service/${type.name}'),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface1,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.gold.withOpacity(0.1),
-                        blurRadius: 15,
-                        spreadRadius: -5,
-                      )
+                // Top: Local Photo
+                Expanded(
+                  flex: 3,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        _getAssetPath(type),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppColors.surface2,
+                          child: Center(child: Text(type.icon, style: const TextStyle(fontSize: 40))),
+                        ),
+                      ),
+                      // Subtle gradient overlay for better text contrast
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.5),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  child: Text(type.icon, style: const TextStyle(fontSize: 40)),
                 ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  type.label,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'تصفح الفنيين',
-                  style: AppTextStyles.labelMed.copyWith(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.bold,
+                // Bottom: Info
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          type.label,
+                          style: AppTextStyles.titleLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          type.priceRange,
+                          style: AppTextStyles.labelMed.copyWith(
+                            color: AppColors.gold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

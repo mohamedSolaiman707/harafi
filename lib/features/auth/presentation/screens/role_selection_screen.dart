@@ -1,19 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../shared/widgets/app_card.dart';
+import '../providers/auth_screen_providers.dart';
 
-class RoleSelectionScreen extends StatefulWidget {
+class RoleSelectionScreen extends ConsumerStatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
-  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+  ConsumerState<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
 }
 
-class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
-  int _adminTapCount = 0;
+class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
   Timer? _adminTapTimer;
 
   Future<void> _setRole(String role, BuildContext context) async {
@@ -27,25 +27,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   Future<void> _handleAdminAccess() async {
     _adminTapTimer?.cancel(); 
     
-    setState(() {
-      _adminTapCount++;
-    });
+    final currentCount = ref.read(adminTapCountProvider) + 1;
+    ref.read(adminTapCountProvider.notifier).state = currentCount;
 
-    if (_adminTapCount >= 5) {
-      _adminTapCount = 0;
-      
-      // حل مشكلة الـ Rebuild: نحفظ الدور كأدمن فوراً قبل الانتقال
+    if (currentCount >= 5) {
+      ref.read(adminTapCountProvider.notifier).state = 0;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', 'admin');
-      
       if (mounted) {
         context.push('/login');
       }
     } else {
-      // إعادة التصفير لو توقف عن الضغط لمدة ثانية (وقت كافي للماوس)
       _adminTapTimer = Timer(const Duration(milliseconds: 1000), () {
         if (mounted) {
-          setState(() => _adminTapCount = 0);
+          ref.read(adminTapCountProvider.notifier).state = 0;
         }
       });
     }
@@ -59,84 +54,83 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final adminTapCount = ref.watch(adminTapCountProvider);
+
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.gold.withOpacity(0.1),
-              AppColors.background,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Align(
-            alignment: Alignment.center,
-            child: SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 500),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // استخدام Material و InkWell لضمان استجابة الماوس في الويب
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _handleAdminAccess,
-                          borderRadius: BorderRadius.circular(50),
-                          splashColor: AppColors.gold.withOpacity(0.1),
-                          highlightColor: Colors.transparent,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Icon(
-                                Icons.build_circle_outlined, 
-                                size: 80, 
-                                color: _adminTapCount > 0 ? AppColors.gold : AppColors.gold.withOpacity(0.8)
-                              ),
-                            ),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Hidden Admin Trigger
+                    GestureDetector(
+                      onTap: _handleAdminAccess,
+                      child: Container(
+                        height: 120,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.surface1,
+                          border: Border.all(
+                            color: adminTapCount > 0 ? AppColors.gold : AppColors.borderSubtle,
+                            width: 2,
                           ),
                         ),
+                        child: Icon(
+                          Icons.engineering, 
+                          size: 60, 
+                          color: adminTapCount > 0 ? AppColors.gold : AppColors.textPrimary,
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text(
-                        'أهلاً بك في حرفي', 
-                        style: AppTextStyles.displayMedium,
-                        textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    
+                    Text(
+                      'أهلاً بك في حرفي',
+                      style: AppTextStyles.displayMedium.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'اختر نوع الحساب للمتابعة',
-                        style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary),
-                        textAlign: TextAlign.center,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'اختر كيف تريد استخدام التطبيق اليوم',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 16,
                       ),
-                      const SizedBox(height: AppSpacing.xxxl),
-                      
-                      _RoleCard(
-                        title: 'أنا عميل',
-                        subtitle: 'أبحث عن فني لإصلاح أعطال منزلي',
-                        icon: Icons.person_search_outlined,
-                        onTap: () => _setRole('client', context),
-                      ),
-                      
-                      const SizedBox(height: AppSpacing.lg),
-                      
-                      _RoleCard(
-                        title: 'أنا فني (حرفي)',
-                        subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
-                        icon: Icons.engineering_outlined,
-                        isPrimary: true,
-                        onTap: () => _setRole('tech', context),
-                      ),
-
-                      const SizedBox(height: AppSpacing.xxxl),
-                    ],
-                  ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: AppSpacing.xxxl),
+                    
+                    _UberRoleCard(
+                      title: 'أنا عميل',
+                      subtitle: 'أبحث عن فني لإصلاح أعطال منزلي',
+                      icon: Icons.person_search,
+                      onTap: () => _setRole('client', context),
+                    ),
+                    
+                    const SizedBox(height: AppSpacing.lg),
+                    
+                    _UberRoleCard(
+                      title: 'أنا فني (حرفي)',
+                      subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي',
+                      icon: Icons.construction,
+                      isHighlight: true,
+                      onTap: () => _setRole('tech', context),
+                    ),
+                    
+                    const SizedBox(height: AppSpacing.xxxl),
+                  ],
                 ),
               ),
             ),
@@ -147,53 +141,81 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   }
 }
 
-class _RoleCard extends StatelessWidget {
+class _UberRoleCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
-  final bool isPrimary;
+  final bool isHighlight;
 
-  const _RoleCard({
+  const _UberRoleCard({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.onTap,
-    this.isPrimary = false,
+    this.isHighlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      color: isPrimary ? AppColors.surface3 : AppColors.surface2,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.gold.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppColors.gold, size: 28),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.xl,
           ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.titleLarge),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+          decoration: BoxDecoration(
+            color: isHighlight ? AppColors.surface2 : AppColors.surface1,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: isHighlight ? AppColors.gold.withOpacity(0.5) : AppColors.borderSubtle,
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.headlineMed.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.bodyMed.copyWith(
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppSpacing.lg),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isHighlight ? AppColors.gold : AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: isHighlight ? Colors.black : AppColors.gold,
+                  size: 32,
+                ),
+              ),
+            ],
           ),
-          const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
-        ],
+        ),
       ),
     );
   }

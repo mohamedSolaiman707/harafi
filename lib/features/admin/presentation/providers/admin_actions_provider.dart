@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/failures.dart';
 import '../../domain/business/admin_business_rules.dart';
 import '../../domain/dtos/technician_dtos.dart';
 import '../../domain/enums/order_status.dart';
@@ -9,7 +10,8 @@ import '../../domain/models/technician.dart';
 import 'orders_provider.dart';
 import 'techs_provider.dart';
 import '../../../../core/either.dart';
-import '../../../../core/failures.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/services/whatsapp_otp_service.dart';
 
 final adminActionsProvider = Provider<AdminActions>((ref) {
   return AdminActions(ref);
@@ -70,10 +72,13 @@ class AdminActions {
                 debugPrint('فشل جلب الفني لتحديث إحصائياته: ${f.message}');
               },
               right: (tech) async {
+                final fee = AppConstants.platformFee;
+                final newWalletBalance = (tech.walletBalance - fee) >= 0 ? (tech.walletBalance - fee) : 0;
                 await _ref.read(techsRepositoryProvider).update(techId, {
                   'status': TechStatus.available.label,
                   'total_jobs': tech.totalJobs + 1,
                   'total_earnings': tech.totalEarnings + (finalPrice ?? 0),
+                  'wallet_balance': newWalletBalance,
                   'phone': tech.phone,
                 });
 
@@ -103,6 +108,28 @@ class AdminActions {
     }
   }
 
+  /// شحن محفظة الفني بمبلغ محدد بواسطة الأدمن
+  Future<Either<Failure, Technician>> rechargeTechWallet(String techId, int amount) async {
+    try {
+      final techResult = await _ref.read(techsRepositoryProvider).getTechnicianById(techId);
+      
+      return await techResult.when(
+        left: (f) => Left(f),
+        right: (tech) async {
+          final newBalance = tech.walletBalance + amount;
+          final updatedTech = await _ref.read(techsRepositoryProvider).update(techId, {
+            'wallet_balance': newBalance,
+          });
+          _ref.invalidate(techsStreamProvider);
+          _ref.invalidate(techniciansProvider);
+          return Right(updatedTech);
+        },
+      );
+    } catch (e) {
+      return Left(DatabaseFailure(e.toString()));
+    }
+  }
+
   /// وظيفة تقييم الطلب وتحديث متوسط تقييم الفني
   Future<Either<Failure, Order>> rateOrder(String orderId, int rating, {String? comment}) async {
     final result = await _ref.read(ordersRepositoryProvider).rateOrder(orderId, rating, comment: comment);
@@ -125,6 +152,8 @@ class AdminActions {
                   final double averageRating = totalRating / ratedOrders.length;
                   await _ref.read(techsRepositoryProvider).updateRating(techId, averageRating);
                   _ref.invalidate(techsStreamProvider);
+                  _ref.invalidate(techniciansProvider);
+                  _ref.invalidate(currentTechnicianProvider);
                 }
               },
             );
@@ -133,6 +162,7 @@ class AdminActions {
           }
         }
         _ref.invalidate(ordersStreamProvider);
+        _ref.invalidate(techniciansProvider);
         return Right(updatedOrder);
       },
     );
@@ -151,6 +181,10 @@ class AdminActions {
       left: (failure) => Left(failure),
       right: (updatedOrder) async {
         await _ref.read(techsRepositoryProvider).updateTechStatus(tech.id, TechStatus.busy);
+        
+        // إرسال إشعار بالفني عبر الواتساب فور تعيينه للطلب
+        WhatsAppOtpService.sendTechAssignmentNotification(tech: tech, order: updatedOrder);
+
         _ref.invalidate(techsStreamProvider);
         _ref.invalidate(ordersStreamProvider);
         return Right(updatedOrder);
@@ -170,6 +204,49 @@ class AdminActions {
           await _ref.read(techsRepositoryProvider).updateTechStatus(order.techId!, TechStatus.available);
           _ref.invalidate(techsStreamProvider);
         }
+        _ref.invalidate(ordersStreamProvider);
+        return Right(updatedOrder);
+      },
+    );
+  }
+
+  /// رفض/اعتذار الفني عن الطلب مع إدراج سبب اختياري وإبلاغ العميل بواتساب
+  Future<Either<Failure, Order>> rejectOrderByTech(
+    Order order, {
+    String? reason,
+  }) async {
+    final String cleanReason = reason?.trim() ?? '';
+    final String logMessage = cleanReason.isNotEmpty
+        ? 'اعتذر الفني عن استقبال الطلب. السبب: $cleanReason'
+        : 'اعتذر الفني عن استقبال الطلب';
+
+    final statusResult = await _ref
+        .read(ordersRepositoryProvider)
+        .updateOrderStatus(
+          order.id,
+          OrderStatus.cancelled,
+          techNotes: cleanReason.isNotEmpty ? 'سبب اعتذار الفني: $cleanReason' : 'اعتذر الفني عن استقبال الطلب',
+          logMessage: logMessage,
+        );
+
+    return await statusResult.when(
+      left: (failure) => Left(failure),
+      right: (updatedOrder) async {
+        if (order.techId != null && order.techId!.isNotEmpty) {
+          await _ref
+              .read(techsRepositoryProvider)
+              .updateTechStatus(order.techId!, TechStatus.available);
+          _ref.invalidate(techsStreamProvider);
+          _ref.invalidate(techniciansProvider);
+          _ref.invalidate(currentTechnicianProvider);
+        }
+
+        // إرسال إشعار اعتذار للعميل عبر الواتساب
+        WhatsAppOtpService.sendOrderRejectionNotificationToClient(
+          order: updatedOrder,
+          reason: cleanReason.isNotEmpty ? cleanReason : null,
+        );
+
         _ref.invalidate(ordersStreamProvider);
         return Right(updatedOrder);
       },

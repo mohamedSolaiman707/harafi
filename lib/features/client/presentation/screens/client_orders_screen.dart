@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -12,6 +13,8 @@ import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/enums/order_status.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 
+import '../providers/client_screen_providers.dart';
+
 class ClientOrdersScreen extends ConsumerStatefulWidget {
   const ClientOrdersScreen({super.key});
 
@@ -21,7 +24,24 @@ class ClientOrdersScreen extends ConsumerStatefulWidget {
 
 class _ClientOrdersScreenState extends ConsumerState<ClientOrdersScreen> {
   final _phoneController = TextEditingController();
-  String? _submittedPhone;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoLoadPhone();
+  }
+
+  Future<void> _autoLoadPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPhone = prefs.getString('client_phone') ?? '';
+    if (savedPhone.isNotEmpty) {
+      _phoneController.text = savedPhone;
+      // جلب الطلبات مباشرة بدون ما يضغط العميل على البحث
+      if (mounted) {
+        ref.read(clientOrdersSearchPhoneProvider.notifier).state = savedPhone;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -31,9 +51,7 @@ class _ClientOrdersScreenState extends ConsumerState<ClientOrdersScreen> {
 
   void _search() {
     if (_phoneController.text.isNotEmpty) {
-      setState(() {
-        _submittedPhone = _phoneController.text.trim();
-      });
+      ref.read(clientOrdersSearchPhoneProvider.notifier).state = _phoneController.text.trim();
     }
   }
 
@@ -41,6 +59,7 @@ class _ClientOrdersScreenState extends ConsumerState<ClientOrdersScreen> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width > 900;
+    final submittedPhone = ref.watch(clientOrdersSearchPhoneProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -93,8 +112,8 @@ class _ClientOrdersScreenState extends ConsumerState<ClientOrdersScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xxxl),
-                if (_submittedPhone != null)
-                  ref.watch(clientOrdersProvider(_submittedPhone!)).when(
+                if (submittedPhone != null)
+                  ref.watch(clientOrdersProvider(submittedPhone)).when(
                         data: (orders) => _OrdersList(orders: orders),
                         loading: () => const LoadingWidget(),
                         error: (e, s) => AppErrorWidget(

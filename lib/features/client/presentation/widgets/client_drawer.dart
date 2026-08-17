@@ -16,113 +16,192 @@ class ClientDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // الحصول على المسار الحالي لتحديد العنصر النشط
+    final location = GoRouterState.of(context).uri.path;
+
     return Drawer(
-      backgroundColor: AppColors.surface1,
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildMenuItem(
-                  icon: Icons.home_outlined,
-                  title: 'الرئيسية',
-                  onTap: () => context.go('/'),
-                ),
-                _buildMenuItem(
-                  icon: Icons.history,
-                  title: 'سجل طلباتي',
-                  onTap: () => context.push('/my-orders'),
-                ),
-                _buildMenuItem(
-                  icon: Icons.favorite_border_rounded,
-                  title: 'الفنيين المفضلين',
-                  onTap: () => context.push('/favorites'),
-                ),
-                _buildMenuItem(
-                  icon: Icons.build_circle_outlined,
-                  title: 'كل الخدمات',
-                  onTap: () => context.push('/services'),
-                ),
-                const Divider(color: AppColors.borderDefault, height: 32, indent: 20, endIndent: 20),
-                _buildMenuItem(
-                  icon: Icons.swap_horiz_rounded,
-                  title: 'تبديل نوع الحساب',
-                  onTap: () => _switchRole(context),
-                ),
-                _buildMenuItem(
-                  icon: Icons.info_outline_rounded,
-                  title: 'عن حرفي',
-                  onTap: () {
-                    // يمكن إضافة شاشة معلومات لاحقاً
-                  },
-                ),
-              ],
+      backgroundColor: AppColors.background,
+      elevation: 0,
+      width: MediaQuery.of(context).size.width * 0.75,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: Colors.white.withOpacity(0.05), width: 1)),
+        ),
+        child: Column(
+          children: [
+            _buildHeader(),
+            const SizedBox(height: AppSpacing.md), // تقليل المسافة من xl إلى md
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                children: [
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.home_rounded,
+                    title: 'الرئيسية',
+                    isActive: location == '/',
+                    onTap: () => context.go('/'),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.business_center_rounded,
+                    title: 'سجل طلباتي',
+                    isActive: location == '/my-orders',
+                    onTap: () => context.push('/my-orders'),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.handyman_rounded,
+                    title: 'الفنيين المفضلين',
+                    isActive: location == '/favorites',
+                    onTap: () => context.push('/favorites'),
+                  ),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm), // تقليل المسافة حول الخط الفاصل
+                    child: Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  ),
+
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.grid_view_rounded,
+                    title: 'كل الخدمات',
+                    isActive: location == '/services',
+                    onTap: () => context.push('/services'),
+                  ),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.swap_horiz_rounded,
+                    title: 'تبديل نوع الحساب',
+                    onTap: () => _switchRole(context),
+                  ),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm), // تقليل المسافة حول الخط الفاصل
+                    child: Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  ),
+
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.info_outline_rounded,
+                    title: 'عن حرفي',
+                    isActive: location == '/about',
+                    onTap: () => context.push('/about'),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _buildFooter(),
-        ],
+            _buildFooter(),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-      decoration: const BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32)),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24), // تقليل الـ bottom padding
+      decoration: BoxDecoration(
+        color: AppColors.surface1.withOpacity(0.2),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.build_circle_rounded, color: AppColors.gold, size: 40),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppConstants.appName,
-                style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900),
-              ),
-              const Text('خدمات منزلية في كفر الزيات', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-            ],
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+            ),
+            child: const CircleAvatar(
+              radius: 42, // تصغير بسيط
+              backgroundColor: Color(0xFF131B2A),
+              backgroundImage: AssetImage('assets/images/logo1.png'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'حرفي | Harafi',
+            style: AppTextStyles.headlineLarge.copyWith(
+              color: AppColors.gold,
+              fontWeight: FontWeight.w900,
+              fontSize: 22, // تصغير بسيط
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'خدمات منزلية في الغربية',
+            style: AppTextStyles.labelLarge.copyWith(
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+              fontSize: 11,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItem({
+  Widget _buildMenuItem(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    bool isActive = false,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary, size: 22),
-      title: Text(title, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary)),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      horizontalTitleGap: 0,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6), // تقليل المسافة السفلية من 12 إلى 6
+      decoration: BoxDecoration(
+        color: isActive ? AppColors.gold : Colors.transparent,
+        borderRadius: BorderRadius.circular(16), // تقليل الزوايا قليلاً لتناسب الحجم الأصغر
+      ),
+      child: ListTile(
+        onTap: () {
+          Navigator.pop(context);
+          onTap();
+        },
+        dense: true, // جعل العنصر أكثر تكدساً
+        trailing: Icon(
+          icon,
+          color: isActive ? const Color(0xFF090D16) : AppColors.textSecondary,
+          size: 20, // تصغير الأيقونة قليلاً
+        ),
+        title: Text(
+          title,
+          textAlign: TextAlign.right,
+          style: AppTextStyles.bodyLarge.copyWith(
+            color: isActive ? const Color(0xFF090D16) : AppColors.textPrimary,
+            fontWeight: isActive ? FontWeight.w900 : FontWeight.w500,
+            fontSize: 15, // تصغير الخط قليلاً
+          ),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      ),
     );
   }
 
   Widget _buildFooter() {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg), // تقليل الهوامش
       child: Column(
         children: [
-          const Text(
-            'الإصدار 1.0.0',
-            style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+          Text(
+            'الإصدار 1.1.2',
+            style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'صنع بكل ❤️ في كفر الزيات',
-                style: TextStyle(fontSize: 10, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                'صنع بكل ',
+                style: AppTextStyles.labelMed.copyWith(color: AppColors.textSecondary),
+              ),
+              const Icon(Icons.favorite_rounded, color: Colors.red, size: 12),
+              Text(
+                ' في كفر الزيات',
+                style: AppTextStyles.labelMed.copyWith(color: AppColors.textSecondary),
               ),
             ],
           ),

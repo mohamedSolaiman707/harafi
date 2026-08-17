@@ -78,6 +78,7 @@ final statsProvider = Provider((ref) {
     'active': stats.activeOrders,
     'completed': stats.completedOrders,
     'revenue': stats.totalRevenue,
+    'platformRevenue': stats.completedOrders * AppConstants.platformFee, // صافي دخل المنصة من عمولة الـ 30 ج.م الثابتة
     'techTotal': stats.totalTechs,
     'techAvailable': stats.availableTechs,
     'techPending': stats.pendingTechs,

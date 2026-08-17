@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/whatsapp_otp_service.dart';
 import '../../../../shared/widgets/app_button.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../admin/domain/enums/service_type.dart';
+import '../../../admin/domain/enums/tech_status.dart';
 import '../../../admin/domain/enums/order_status.dart';
 import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/models/technician.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/presentation/providers/admin_actions_provider.dart';
+import '../providers/client_screen_providers.dart';
 
 class RequestScreen extends ConsumerStatefulWidget {
   const RequestScreen({super.key});
@@ -27,10 +28,8 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   final _phoneController = TextEditingController();
   final _areaController = TextEditingController();
   final _descriptionController = TextEditingController();
-  ServiceType? _selectedService;
   String? _preSelectedTechId;
   bool _isInitialized = false;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -39,20 +38,12 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   }
 
   Future<void> _loadSavedClientData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
+    try {
+      final prefs = await SharedPreferences.getInstance();
       _nameController.text = prefs.getString('client_name') ?? '';
       _phoneController.text = prefs.getString('client_phone') ?? '';
       _areaController.text = prefs.getString('client_area') ?? '';
-    });
-  }
-
-  Future<void> _saveClientData(String trackingCode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('client_name', _nameController.text.trim());
-    await prefs.setString('client_phone', _phoneController.text.trim());
-    await prefs.setString('client_area', _areaController.text.trim());
-    await prefs.setString('last_tracked_code', trackingCode);
+    } catch (_) {}
   }
 
   @override
@@ -61,10 +52,17 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     if (!_isInitialized) {
       final extra = GoRouterState.of(context).extra;
       if (extra is ServiceType) {
-        _selectedService = extra;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(requestSelectedServiceProvider.notifier).state = extra;
+        });
       } else if (extra is Map<String, dynamic>) {
-        _selectedService = extra['service'] as ServiceType?;
+        final service = extra['service'] as ServiceType?;
         _preSelectedTechId = extra['techId'] as String?;
+        if (service != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(requestSelectedServiceProvider.notifier).state = service;
+          });
+        }
       }
       _isInitialized = true;
     }
@@ -80,143 +78,79 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   }
 
   Future<void> _submit() async {
-    if (_selectedService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى اختيار نوع الخدمة أولاً')));
+    final selectedService = ref.read(requestSelectedServiceProvider);
+    if (selectedService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى اختيار نوع الخدمة')));
       return;
     }
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    final phone = _phoneController.text.trim();
+    ref.read(requestLoadingProvider.notifier).state = true;
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // حفظ بيانات العميل للسهولة مستقبلاً
+      await prefs.setString('client_name', _nameController.text.trim());
+      await prefs.setString('client_phone', phone);
+      await prefs.setString('client_area', _areaController.text.trim());
+
+      if (prefs.getString('verified_phone') != phone) {
+        final otp = WhatsAppOtpService.generateOtp();
+        await WhatsAppOtpService.sendOtpViaWhatsApp(phone, otp);
+        if (!mounted) return;
+        final isVerified = await WhatsAppOtpService.showOtpVerificationDialog(context: context, phone: phone, generatedOtp: otp);
+        if (!isVerified) return;
+        await prefs.setString('verified_phone', phone);
+      }
+
       final order = Order(
-        id: '',
-        trackingCode: '',
+        id: '', trackingCode: '',
         clientName: _nameController.text.trim(),
-        clientPhone: _phoneController.text.trim(),
-        service: _selectedService!,
+        clientPhone: phone,
+        service: selectedService,
         area: _areaController.text.trim(),
         description: _descriptionController.text.trim(),
         techId: _preSelectedTechId,
         status: _preSelectedTechId != null ? OrderStatus.assigned : OrderStatus.pending,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: DateTime.now(), updatedAt: DateTime.now(),
       );
 
       final result = await ref.read(adminActionsProvider).createOrder(order);
-
       result.when(
-        left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ: ${f.message}'))),
-        right: (createdOrder) async {
-          await _saveClientData(createdOrder.trackingCode);
+        left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: ${f.message}'))),
+        right: (createdOrder) {
+          WhatsAppOtpService.sendOrderConfirmationToClient(createdOrder);
           if (mounted) _showSuccessDialog(createdOrder);
         },
       );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ غير متوقع: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ غير متوقع')));
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) ref.read(requestLoadingProvider.notifier).state = false;
     }
   }
 
   void _showSuccessDialog(Order result) {
-    Technician? tech;
-    if (_preSelectedTechId != null) {
-      final techs = ref.read(techniciansProvider).valueOrNull ?? [];
-      tech = techs.where((t) => t.id == _preSelectedTechId).firstOrNull;
-    }
-
-    final width = MediaQuery.of(context).size.width;
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface1,
-        insetPadding: EdgeInsets.symmetric(horizontal: width > 600 ? (width - 500) / 2 : 20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          side: const BorderSide(color: AppColors.gold, width: 0.5)
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: AppColors.success, size: 80),
-            const SizedBox(height: 20),
-            Text('تم استلام طلبك بنجاح!', style: AppTextStyles.headlineLarge.copyWith(color: AppColors.textPrimary)),
-            const SizedBox(height: 24),
-            if (tech != null) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2, 
-                  borderRadius: BorderRadius.circular(16), 
-                  border: Border.all(color: AppColors.gold.withOpacity(0.2))
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(radius: 25, backgroundColor: AppColors.surface3, child: Text(tech.spec.icon, style: const TextStyle(fontSize: 24))),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('الفني المختار:', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
-                          Text(tech.name, style: AppTextStyles.titleLarge),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            Text('كود التتبع الخاص بك:', style: AppTextStyles.labelLarge),
+            const Icon(Icons.check_circle, color: AppColors.success, size: 70),
+            const SizedBox(height: 16),
+            Text('تم طلب الخدمة بنجاح!', style: AppTextStyles.headlineLarge),
             const SizedBox(height: 12),
-            InkWell(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: result.trackingCode));
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ الكود')));
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.background, 
-                  borderRadius: BorderRadius.circular(12), 
-                  border: Border.all(color: AppColors.gold.withOpacity(0.5))
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(result.trackingCode, style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold, fontSize: 28, letterSpacing: 3)),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.copy, size: 20, color: AppColors.gold),
-                  ],
-                ),
-              ),
-            ),
+            Text('كود التتبع: ${result.trackingCode}', style: AppTextStyles.titleLarge.copyWith(color: AppColors.gold)),
             const SizedBox(height: 24),
-            Text(
-              tech != null ? 'الفني سيتواصل معك قريباً لتأكيد الموعد.' : 'سنقوم بتعيين أفضل فني متاح والتواصل معك عبر الواتساب.', 
-              textAlign: TextAlign.center, 
-              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary)
-            ),
+            AppButton(label: 'تتبع الطلب', onTap: () => context.go('/track/${result.trackingCode}')),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => context.go('/'), 
-            child: Text('الرئيسية', style: TextStyle(color: AppColors.textMuted))
-          ),
-          SizedBox(
-            width: 140,
-            child: AppButton(
-              label: 'تتبع الطلب', 
-              size: ButtonSize.sm, 
-              onTap: () => context.go('/track/${result.trackingCode}')
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -224,67 +158,50 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    Technician? selectedTech;
-    if (_preSelectedTechId != null) {
-      selectedTech = ref.watch(techniciansProvider).valueOrNull?.where((t) => t.id == _preSelectedTechId).firstOrNull;
-    }
+    final selectedService = ref.watch(requestSelectedServiceProvider);
+    final isLoading = ref.watch(requestLoadingProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('طلب خدمة منزلية'), 
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('طلب خدمة منزلية'), backgroundColor: Colors.transparent),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: Form(
               key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (selectedTech != null) _buildSelectedTechHeader(selectedTech),
-                  
+                  _buildOrganicBanner(),
+                  const SizedBox(height: 24),
+
                   _buildStepHeader('1', 'تأكيد نوع الخدمة'),
-                  _buildConnectingLine(),
-                  _buildServiceGrid(width),
-                  
-                  const SizedBox(height: AppSpacing.xxl),
-                  
-                  _buildStepHeader('2', 'بيانات التواصل والعنوان'),
-                  _buildConnectingLine(),
-                  AppCard(
-                    child: Column(
-                      children: [
-                        AppTextField(label: 'الاسم الكامل', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null),
-                        const SizedBox(height: AppSpacing.lg),
-                        AppTextField(label: 'رقم الهاتف (واتساب)', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android_outlined, validator: (v) => v!.length < 11 ? 'يرجى إدخال رقم صحيح' : null),
-                        const SizedBox(height: AppSpacing.lg),
-                        AppTextField(label: 'العنوان بالتفصيل (المنطقة والشارع)', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
-                        const SizedBox(height: AppSpacing.lg),
-                        AppTextField(label: 'وصف المشكلة (اختياري)', controller: _descriptionController, hint: 'اشرح لنا المشكلة باختصار لنساعدك بشكل أفضل', maxLines: 3),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xxxl),
-                  AppButton(
-                    label: 'إرسال طلب الخدمة الآن', 
-                    onTap: _submit, 
-                    isLoading: _isLoading, 
-                    icon: Icons.send_rounded
-                  ),
                   const SizedBox(height: 16),
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.security_rounded, size: 14, color: AppColors.success),
-                        const SizedBox(width: 6),
-                        Text('بياناتك آمنة ولن يتم مشاركتها مع أي جهة خارجية', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
-                      ],
-                    ),
+                  _buildOrganicServiceGrid(width),
+
+                  // عرض الفنيين المتاحين عند اختيار الخدمة
+                  if (selectedService != null) ...[
+                    const SizedBox(height: 32),
+                    _buildStepHeader('👤', _preSelectedTechId == null ? 'الفنيين المقترحين' : 'الفني المختار'),
+                    const SizedBox(height: 16),
+                    _preSelectedTechId == null
+                        ? _buildAvailableTechsList(selectedService)
+                        : _buildSelectedTechCard(),
+                  ],
+
+                  const SizedBox(height: 32),
+                  _buildStepHeader('2', 'بيانات التواصل والعنوان'),
+                  const SizedBox(height: 16),
+                  _buildContactForm(),
+
+                  const SizedBox(height: 40),
+                  AppButton(
+                    label: 'تأكيد وإرسال الطلب',
+                    onTap: _submit,
+                    isLoading: isLoading,
+                    icon: Icons.check_circle_outline,
                   ),
                   const SizedBox(height: 40),
                 ],
@@ -296,45 +213,28 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     );
   }
 
-  Widget _buildSelectedTechHeader(Technician tech) {
+  Widget _buildOrganicBanner() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.gold.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+        color: AppColors.success.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.success.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: AppColors.gold.withOpacity(0.1), child: Text(tech.spec.icon)),
+          const Icon(Icons.shield_rounded, color: AppColors.success, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('طلب خدمة من الفني:', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
-                Text(tech.name, style: AppTextStyles.titleLarge),
+                Text('طلبك محمي بضمان حرفي لمدة شهر 🛡️', style: AppTextStyles.titleMed.copyWith(color: AppColors.success, fontWeight: FontWeight.bold)),
+                Text('تأكيد الخدمة من التطبيق يُفعّل لك الضمان تلقائياً.', style: AppTextStyles.labelMed.copyWith(color: AppColors.textSecondary)),
               ],
             ),
           ),
-          IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.close, size: 18))
         ],
-      ),
-    );
-  }
-
-  Widget _buildConnectingLine() {
-    return Container(
-      margin: const EdgeInsets.only(right: 15),
-      width: 2,
-      height: 20,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.gold.withOpacity(0.5), Colors.transparent],
-        ),
       ),
     );
   }
@@ -343,73 +243,248 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     return Row(
       children: [
         Container(
-          width: 32, 
-          height: 32, 
-          decoration: BoxDecoration(
-            color: AppColors.gold, 
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(color: AppColors.gold.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))
-            ]
-          ), 
-          child: Center(child: Text(step, style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold)))
+          width: 32, height: 32,
+          decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(10)),
+          child: Center(child: Text(step, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold))),
         ),
-        const SizedBox(width: 16),
-        Text(title, style: AppTextStyles.headlineMed.copyWith(letterSpacing: -0.5)),
+        const SizedBox(width: 12),
+        Text(title, style: AppTextStyles.headlineMed.copyWith(fontWeight: FontWeight.w900)),
       ],
     );
   }
 
-  Widget _buildServiceGrid(double width) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: width > 600 ? 3 : 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        mainAxisExtent: 70,
-      ),
-      itemCount: ServiceType.values.length,
-      itemBuilder: (context, index) {
-        final type = ServiceType.values[index];
-        final isSelected = _selectedService == type;
-        final isEnabled = _preSelectedTechId == null;
-        
-        return InkWell(
-          onTap: isEnabled ? () => setState(() => _selectedService = type) : null,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.gold.withOpacity(0.08) : AppColors.surface1,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: isSelected ? AppColors.gold : AppColors.borderDefault, 
-                width: isSelected ? 2 : 1
+  Widget _buildOrganicServiceGrid(double width) {
+    final selectedService = ref.watch(requestSelectedServiceProvider);
+    return SizedBox(
+      height: 140,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: ServiceType.values.length,
+        itemBuilder: (context, index) {
+          final type = ServiceType.values[index];
+          final isSelected = selectedService == type;
+          return Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: SizedBox(
+              width: 120,
+              child: _OrganicServiceItem(
+                type: type,
+                isSelected: isSelected,
+                onTap: () {
+                  ref.read(requestSelectedServiceProvider.notifier).state = type;
+                  setState(() => _preSelectedTechId = null);
+                },
               ),
             ),
-            child: Row(
-              children: [
-                Text(type.icon, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    type.label, 
-                    style: AppTextStyles.titleMed.copyWith(
-                      color: isSelected ? AppColors.gold : AppColors.textPrimary,
-                    ), 
-                    overflow: TextOverflow.ellipsis
-                  )
-                ),
-                if (!isEnabled && !isSelected) 
-                   Icon(Icons.lock_outline, size: 14, color: AppColors.textMuted.withOpacity(0.5)),
-              ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAvailableTechsList(ServiceType service) {
+    final techsAsync = ref.watch(techniciansProvider);
+    
+    // استخدام skipLoadingOnRefresh لمنع اختفاء الداتا عند التحديث الدوري
+    return techsAsync.when(
+      skipLoadingOnRefresh: true,
+      data: (techs) {
+        final filtered = techs.where((t) => t.spec == service && t.status == TechStatus.available).toList();
+        if (filtered.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(16)),
+            child: Text('سيتم تعيين أفضل فني متاح لك فور إرسال الطلب.', style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted)),
+          );
+        }
+        return SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: filtered.length,
+            clipBehavior: Clip.none,
+            itemBuilder: (context, index) => _TechOrganicMiniCard(
+              tech: filtered[index],
+              onSelect: () => setState(() => _preSelectedTechId = filtered[index].id),
             ),
           ),
         );
       },
+      loading: () => const Center(child: Padding(
+        padding: EdgeInsets.all(20),
+        child: CircularProgressIndicator(),
+      )),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildSelectedTechCard() {
+    final tech = ref.watch(techniciansProvider).valueOrNull?.firstWhere((t) => t.id == _preSelectedTechId, orElse: () => throw Exception('Not found'));
+    if (tech == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: AppColors.surface3,
+            backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
+            child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(tech.name, style: AppTextStyles.titleLarge),
+              Text(tech.rank, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
+            ]),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _preSelectedTechId = null),
+            child: const Text('تغيير الفني', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactForm() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          AppTextField(label: 'الاسم بالكامل', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null),
+          const SizedBox(height: 16),
+          AppTextField(label: 'رقم الواتساب', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android_rounded, validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null),
+          const SizedBox(height: 16),
+          AppTextField(label: 'العنوان (المنطقة والشارع)', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
+          const SizedBox(height: 16),
+          AppTextField(label: 'وصف العطل باختصار', controller: _descriptionController, hint: 'مثال: حنفية المطبخ بتسرب ميه', maxLines: 2),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrganicServiceItem extends StatelessWidget {
+  final ServiceType type;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _OrganicServiceItem({required this.type, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? AppColors.gold : Colors.white.withOpacity(0.05), width: 2),
+          boxShadow: isSelected ? [BoxShadow(color: AppColors.gold.withOpacity(0.2), blurRadius: 10)] : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset('assets/images/${_getAsset(type)}', fit: BoxFit.cover),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withOpacity(isSelected ? 0.4 : 0.7)],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(type.label, style: AppTextStyles.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              if (isSelected) const Positioned(top: 8, right: 8, child: Icon(Icons.check_circle, color: AppColors.gold, size: 20)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getAsset(ServiceType t) => switch(t) {
+    ServiceType.plumbing => 'sbak.jpg',
+    ServiceType.electrical => 'khrba.jpg',
+    ServiceType.carpentry => 'negara.jpg',
+    ServiceType.ac => 'takyeefat.jpg',
+    ServiceType.refrigerators => 'fridge.jpg',
+    ServiceType.washingMachines => 'washing.jpg',
+    ServiceType.screens => 'tv.jpg',
+    ServiceType.stoves => 'gas.jpg',
+  };
+}
+
+class _TechOrganicMiniCard extends StatelessWidget {
+  final Technician tech;
+  final VoidCallback onSelect;
+
+  const _TechOrganicMiniCard({required this.tech, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onSelect,
+      child: Container(
+        width: 100,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderSubtle),
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 25,
+                  backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
+                  child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
+                ),
+                Positioned(
+                  top: 0, right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.check_circle, color: AppColors.gold, size: 14),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(tech.name.split(' ').first, style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(tech.rating.toStringAsFixed(1), style: AppTextStyles.labelMed),
+                const Icon(Icons.star, color: AppColors.gold, size: 10),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

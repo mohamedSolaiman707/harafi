@@ -13,6 +13,7 @@ import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/presentation/providers/admin_actions_provider.dart';
 import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/enums/order_status.dart';
+import '../providers/client_screen_providers.dart';
 
 class TrackScreen extends ConsumerWidget {
   final String code;
@@ -63,6 +64,53 @@ class TrackScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               _StatusCard(status: order.status),
               const SizedBox(height: AppSpacing.xl),
+
+              // كارت ضمان الصيانة 7 أيام المفعّل
+              if (order.status == OrderStatus.completed) ...[
+                _WarrantyBadgeCard(order: order),
+                const SizedBox(height: AppSpacing.xl),
+              ],
+
+              // كارت توضيح سبب اعتذار الفني للعميل
+              if (order.status == OrderStatus.cancelled && order.techNotes != null && order.techNotes!.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: AppColors.error, size: 28),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'اعتذر الفني عن قبول الطلب ❌',
+                              style: AppTextStyles.titleLarge.copyWith(color: AppColors.error, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              order.techNotes!,
+                              style: AppTextStyles.bodyMed.copyWith(color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'يمكنك اختيار فني آخر أو تقديم طلب جديد عبر التطبيق.',
+                              style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+              ],
               
               // عرض صور الإنجاز للعميل
               if (order.completionImages.isNotEmpty) ...[
@@ -278,19 +326,16 @@ class _OrderLogsSection extends StatelessWidget {
   }
 }
 
-class _RatingCard extends StatefulWidget {
+class _RatingCard extends ConsumerStatefulWidget {
   final Order order;
   const _RatingCard({required this.order});
 
   @override
-  State<_RatingCard> createState() => _RatingCardState();
+  ConsumerState<_RatingCard> createState() => _RatingCardState();
 }
 
-class _RatingCardState extends State<_RatingCard> {
-  int _selectedRating = 0;
+class _RatingCardState extends ConsumerState<_RatingCard> {
   final _commentController = TextEditingController();
-  final List<String> _selectedReasons = [];
-  bool _isSubmitting = false;
 
   final List<String> _lowRatingReasons = [
     'تأخير عن الموعد',
@@ -301,7 +346,17 @@ class _RatingCardState extends State<_RatingCard> {
   ];
 
   @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final selectedRating = ref.watch(ratingSelectedStarsProvider);
+    final isSubmitting = ref.watch(ratingSubmittingProvider);
+    final selectedReasons = ref.watch(ratingSelectedReasonsProvider);
+
     return AppCard(
       color: AppColors.gold.withValues(alpha: 0.1),
       child: Column(
@@ -313,19 +368,19 @@ class _RatingCardState extends State<_RatingCard> {
             children: List.generate(5, (index) {
               return IconButton(
                 icon: Icon(
-                  index < _selectedRating ? Icons.star : Icons.star_border,
+                  index < selectedRating ? Icons.star : Icons.star_border,
                   color: AppColors.gold,
                   size: 32,
                 ),
-                onPressed: () => setState(() {
-                  _selectedRating = index + 1;
-                  if (_selectedRating > 3) _selectedReasons.clear();
-                }),
+                onPressed: () {
+                  ref.read(ratingSelectedStarsProvider.notifier).state = index + 1;
+                  if (index + 1 > 3) ref.read(ratingSelectedReasonsProvider.notifier).state = [];
+                },
               );
             }),
           ),
           
-          if (_selectedRating > 0 && _selectedRating <= 3) ...[
+          if (selectedRating > 0 && selectedRating <= 3) ...[
             const SizedBox(height: 16),
             const Text('ما الذي لم يعجبك؟', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 12),
@@ -334,14 +389,16 @@ class _RatingCardState extends State<_RatingCard> {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: _lowRatingReasons.map((reason) {
-                final isSelected = _selectedReasons.contains(reason);
+                final isSelected = selectedReasons.contains(reason);
                 return ChoiceChip(
                   label: Text(reason),
                   selected: isSelected,
                   onSelected: (val) {
-                    setState(() {
-                      val ? _selectedReasons.add(reason) : _selectedReasons.remove(reason);
-                    });
+                    if (val) {
+                      ref.read(ratingSelectedReasonsProvider.notifier).state = [...selectedReasons, reason];
+                    } else {
+                      ref.read(ratingSelectedReasonsProvider.notifier).state = selectedReasons.where((r) => r != reason).toList();
+                    }
                   },
                   selectedColor: AppColors.gold.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
@@ -353,7 +410,7 @@ class _RatingCardState extends State<_RatingCard> {
             ),
           ],
 
-          if (_selectedRating > 0) ...[
+          if (selectedRating > 0) ...[
             const SizedBox(height: 16),
             TextField(
               controller: _commentController,
@@ -364,31 +421,31 @@ class _RatingCardState extends State<_RatingCard> {
               maxLines: 2,
             ),
             const SizedBox(height: 16),
-            Consumer(builder: (context, ref, child) {
-              return AppButton(
-                label: 'إرسال التقييم',
-                isLoading: _isSubmitting,
-                onTap: () async {
-                  setState(() => _isSubmitting = true);
-                  String finalComment = _commentController.text.trim();
-                  if (_selectedReasons.isNotEmpty) {
-                    finalComment = '[${_selectedReasons.join(" - ")}] $finalComment';
-                  }
+            AppButton(
+              label: 'إرسال التقييم',
+              isLoading: isSubmitting,
+              onTap: () async {
+                ref.read(ratingSubmittingProvider.notifier).state = true;
+                String finalComment = _commentController.text.trim();
+                if (selectedReasons.isNotEmpty) {
+                  finalComment = '[${selectedReasons.join(" - ")}] $finalComment';
+                }
 
-                  await ref.read(adminActionsProvider).rateOrder(
-                    widget.order.id, 
-                    _selectedRating,
-                    comment: finalComment,
+                final messenger = ScaffoldMessenger.of(context);
+                await ref.read(adminActionsProvider).rateOrder(
+                  widget.order.id, 
+                  selectedRating,
+                  comment: finalComment,
+                );
+                
+                if (mounted) {
+                  ref.read(ratingSubmittingProvider.notifier).state = false;
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('شكراً لتقييمك! نحن نهتم برأيك جداً')),
                   );
-                  
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('شكراً لتقييمك! نحن نهتم برأيك جداً')),
-                    );
-                  }
-                },
-              );
-            }),
+                }
+              },
+            ),
           ],
         ],
       ),
@@ -407,11 +464,135 @@ class _StatusCard extends StatelessWidget {
       child: Column(
         children: [
           Text('حالة طلبك الآن', style: AppTextStyles.bodyMed),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             status.label,
             style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold),
           ),
+          const SizedBox(height: 16),
+          // شريط المراحل اللحظية
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _stepItem('تم الاستلام', Icons.assignment_turned_in_outlined, status == OrderStatus.pending || status == OrderStatus.assigned || status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
+              _stepLine(status == OrderStatus.assigned || status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
+              _stepItem('في الطريق', Icons.directions_run_outlined, status == OrderStatus.assigned || status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
+              _stepLine(status == OrderStatus.started || status == OrderStatus.completed),
+              _stepItem('جاري التنفيذ', Icons.build_outlined, status == OrderStatus.started || status == OrderStatus.completed),
+              _stepLine(status == OrderStatus.completed),
+              _stepItem('مكتمل 🛡️', Icons.verified_user_outlined, status == OrderStatus.completed),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepItem(String label, IconData icon, bool isActive) {
+    return Column(
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.gold.withValues(alpha: 0.2) : AppColors.surface2,
+            shape: BoxShape.circle,
+            border: Border.all(color: isActive ? AppColors.gold : AppColors.borderSubtle, width: 1.5),
+          ),
+          child: Icon(icon, size: 18, color: isActive ? AppColors.gold : AppColors.textMuted),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: isActive ? AppColors.gold : AppColors.textMuted,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stepLine(bool isActive) {
+    return Expanded(
+      child: Container(
+        height: 2,
+        margin: const EdgeInsets.only(bottom: 16),
+        color: isActive ? AppColors.gold : AppColors.borderSubtle,
+      ),
+    );
+  }
+}
+
+class _WarrantyBadgeCard extends StatelessWidget {
+  final Order order;
+  const _WarrantyBadgeCard({required this.order});
+
+  void _openWarrantyComplaintWhatsApp() {
+    final message = Uri.encodeComponent(
+      'مرحباً فريق دعم حرفي 🛡️\nأريد تقديم استفسار / شكوى حول ضمان الصيانة للطلب رقم: *${order.trackingCode}*\nالخدمة: ${order.service.label}\nاسم العميل: ${order.clientName}'
+    );
+    final url = Uri.parse('https://wa.me/201014250577?text=$message');
+    launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = order.isWarrantyActive;
+    final remainingDays = order.warrantyRemainingDays;
+
+    return AppCard(
+      color: isActive ? AppColors.success.withValues(alpha: 0.1) : AppColors.surface2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isActive ? AppColors.success.withValues(alpha: 0.2) : AppColors.surface3,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isActive ? Icons.shield_rounded : Icons.shield_outlined,
+                  color: isActive ? AppColors.success : AppColors.textMuted,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isActive ? 'ضمان الصيانة 30 يوم مفعّل 🛡️' : 'فترة الضمان انتهت 🛡️',
+                      style: AppTextStyles.titleLarge.copyWith(
+                        color: isActive ? AppColors.success : AppColors.textMuted,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      isActive 
+                        ? 'متبقي $remainingDays يوم في ضمان الصيانة ضد عيوب التصليح.'
+                        : 'انتهت فترة الضمان لهذه الخدمة (كانت سارية لمدة 30 يوم).',
+                      style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (isActive) ...[
+            const SizedBox(height: 16),
+            AppButton(
+              label: 'تقديم شكوى / طلب ضمان عبر واتساب 🛡️',
+              icon: Icons.chat_rounded,
+              variant: ButtonVariant.success,
+              onTap: _openWarrantyComplaintWhatsApp,
+            ),
+          ],
         ],
       ),
     );

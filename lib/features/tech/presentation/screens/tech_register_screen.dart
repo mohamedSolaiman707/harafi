@@ -4,15 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../../admin/domain/dtos/technician_dtos.dart';
 import '../../../admin/domain/enums/service_type.dart';
 import '../../../admin/domain/enums/tech_status.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
+import '../providers/tech_screen_providers.dart';
 
 class TechRegisterScreen extends ConsumerStatefulWidget {
   final String? initialPhone;
@@ -29,11 +30,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   final _passwordController = TextEditingController();
   final _bioController = TextEditingController();
   final _visitPriceController = TextEditingController(text: '50');
-  final _areaController = TextEditingController();
 
-  ServiceType? _selectedSpec;
-  XFile? _idProofImage;
-  bool _isLoading = false;
   final _picker = ImagePicker();
   final _storageService = StorageService();
 
@@ -51,7 +48,6 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     _passwordController.dispose();
     _bioController.dispose();
     _visitPriceController.dispose();
-    _areaController.dispose();
     super.dispose();
   }
 
@@ -61,7 +57,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
       imageQuality: 50,
     );
     if (image != null) {
-      setState(() => _idProofImage = image);
+      ref.read(techRegisterIdProofProvider.notifier).state = image;
     }
   }
 
@@ -113,20 +109,24 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _selectedSpec == null) {
+    final selectedSpec = ref.read(techRegisterSpecProvider);
+    final idProofImage = ref.read(techRegisterIdProofProvider);
+    final selectedCity = ref.read(techRegisterCityProvider);
+
+    if (!_formKey.currentState!.validate() || selectedSpec == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع البيانات')));
       return;
     }
-    if (_idProofImage == null) {
+    if (idProofImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('يرجى رفع صورة إثبات الهوية للتوثيق')),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    ref.read(techRegisterLoadingProvider.notifier).state = true;
     try {
       final phone = _phoneController.text.trim();
       final dummyEmail = '$phone@harafi.com';
@@ -142,7 +142,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
       // 2. رفع صورة إثبات الهوية
       final imageUrl = await _storageService.uploadImage(
-        image: _idProofImage!,
+        image: idProofImage,
         path: 'tech_photos',
         fileName: userId,
       );
@@ -152,15 +152,16 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'id': userId,
         'name': _nameController.text.trim(),
         'phone': phone,
-        'spec': _selectedSpec!.label,
+        'spec': selectedSpec.label,
         'bio': _bioController.text.trim(),
         'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
-        'area': _areaController.text.trim(),
+        'area': selectedCity,
         'photo_url': imageUrl,
-        'status': TechStatus.pending.label, // "قيد الانتظار"
+        'status': TechStatus.available.label, // متاح فور التسجيل
         'is_verified': false,
         'total_earnings': 0,
         'total_jobs': 0,
+        'wallet_balance': 100, // هدية انضمام 100 ج.م فور التسجيل
         'rating': 0.0,
         'created_at': DateTime.now().toIso8601String(),
       };
@@ -175,16 +176,22 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         context.go('/tech/dashboard');
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('خطأ في التسجيل: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('خطأ في التسجيل: $e')));
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) ref.read(techRegisterLoadingProvider.notifier).state = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(techRegisterLoadingProvider);
+    final selectedGov = ref.watch(techRegisterGovProvider);
+    final selectedCity = ref.watch(techRegisterCityProvider);
+    final idProofImage = ref.watch(techRegisterIdProofProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('انضم لفريق المحترفين')),
       body: Center(
@@ -244,7 +251,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                               color: AppColors.surface1,
                               borderRadius: BorderRadius.circular(AppRadius.md),
                               border: Border.all(
-                                color: _idProofImage != null
+                                color: idProofImage != null
                                     ? AppColors.success
                                     : AppColors.borderDefault,
                               ),
@@ -252,17 +259,17 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  _idProofImage != null
+                                  idProofImage != null
                                       ? Icons.check_circle
                                       : Icons.badge_outlined,
-                                  color: _idProofImage != null
+                                  color: idProofImage != null
                                       ? AppColors.success
                                       : AppColors.gold,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    _idProofImage != null
+                                    idProofImage != null
                                         ? 'تم اختيار صورة الهوية'
                                         : 'ارفع صورة البطاقة أو كارنيه المهنة',
                                   ),
@@ -289,25 +296,63 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                               )
                               .toList(),
                           onChanged: (val) =>
-                              setState(() => _selectedSpec = val),
+                              ref.read(techRegisterSpecProvider.notifier).state = val,
                           validator: (v) =>
                               v == null ? 'يرجى اختيار التخصص' : null,
                         ),
                         const SizedBox(height: AppSpacing.md),
+                        AppTextField(
+                          label: 'سعر الزيارة (ج.م)',
+                          controller: _visitPriceController,
+                          keyboardType: TextInputType.number,
+                          prefixIcon: Icons.monetization_on_outlined,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+
+                        // اختيار المحافظة والمدينة
                         Row(
                           children: [
                             Expanded(
-                              child: AppTextField(
-                                label: 'سعر الزيارة',
-                                controller: _visitPriceController,
-                                keyboardType: TextInputType.number,
+                              child: DropdownButtonFormField<String>(
+                                value: selectedGov,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'المحافظة',
+                                  prefixIcon: Icon(Icons.map_outlined),
+                                ),
+                                dropdownColor: AppColors.surface2,
+                                items: AppConstants.governoratesAndCities.keys
+                                    .map((gov) => DropdownMenuItem(value: gov, child: Text(gov, overflow: TextOverflow.ellipsis)))
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    ref.read(techRegisterGovProvider.notifier).state = val;
+                                    ref.read(techRegisterCityProvider.notifier).state =
+                                        AppConstants.governoratesAndCities[val]!.first;
+                                  }
+                                },
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
-                              child: AppTextField(
-                                label: 'منطقة العمل',
-                                controller: _areaController,
+                              child: DropdownButtonFormField<String>(
+                                value: AppConstants.governoratesAndCities[selectedGov]!.contains(selectedCity)
+                                    ? selectedCity
+                                    : AppConstants.governoratesAndCities[selectedGov]!.first,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                  labelText: 'المدينة / منطقة العمل',
+                                  prefixIcon: Icon(Icons.location_city_outlined),
+                                ),
+                                dropdownColor: AppColors.surface2,
+                                items: (AppConstants.governoratesAndCities[selectedGov] ?? [])
+                                    .map((city) => DropdownMenuItem(value: city, child: Text(city, overflow: TextOverflow.ellipsis)))
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    ref.read(techRegisterCityProvider.notifier).state = val;
+                                  }
+                                },
                               ),
                             ),
                           ],
@@ -316,7 +361,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         AppButton(
                           label: 'إنشاء الحساب والبدء',
                           onTap: _submit,
-                          isLoading: _isLoading,
+                          isLoading: isLoading,
                         ),
                       ],
                     ),

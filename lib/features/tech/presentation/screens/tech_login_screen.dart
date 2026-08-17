@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../auth/presentation/providers/auth_screen_providers.dart';
 
 class TechLoginScreen extends ConsumerStatefulWidget {
   const TechLoginScreen({super.key});
@@ -18,7 +19,6 @@ class TechLoginScreen extends ConsumerStatefulWidget {
 class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -35,7 +35,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
       return;
     }
     
-    setState(() => _isLoading = true);
+    ref.read(techLoginLoadingProvider.notifier).state = true;
     try {
       final dummyEmail = '${_phoneController.text.trim()}@harafi.com';
 
@@ -56,12 +56,14 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) ref.read(techLoginLoadingProvider.notifier).state = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(techLoginLoadingProvider);
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -98,7 +100,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                       AppButton(
                         label: 'دخول',
                         onTap: _login,
-                        isLoading: _isLoading,
+                        isLoading: isLoading,
                       ),
                     ],
                   ),
@@ -117,7 +119,11 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                   ],
                 ),
                 TextButton(
-                  onPressed: () => context.go('/welcome'),
+                  onPressed: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('user_role');
+                    if (context.mounted) context.go('/welcome');
+                  },
                   child: const Text('العودة لاختيار الدور'),
                 ),
               ],

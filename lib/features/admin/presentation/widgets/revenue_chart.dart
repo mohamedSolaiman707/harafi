@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart' as intl;
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/order.dart';
 import '../../domain/enums/order_status.dart';
@@ -69,7 +68,7 @@ class RevenueChart extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
-                            intl.DateFormat('E', 'ar').format(last7Days[index]),
+                            _getArabicDayName(last7Days[index]),
                             style: AppTextStyles.labelMed,
                           ),
                         );
@@ -110,5 +109,18 @@ class RevenueChart extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _getArabicDayName(DateTime date) {
+    switch (date.weekday) {
+      case DateTime.saturday: return 'السبت';
+      case DateTime.sunday: return 'الأحد';
+      case DateTime.monday: return 'الإثنين';
+      case DateTime.tuesday: return 'الثلاثاء';
+      case DateTime.wednesday: return 'الأربعاء';
+      case DateTime.thursday: return 'الخميس';
+      case DateTime.friday: return 'الجمعة';
+      default: return '';
+    }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../enums/service_type.dart';
@@ -24,6 +26,7 @@ class Technician with _$Technician {
     @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') @Default(0) int totalEarnings,
+    @JsonKey(name: 'wallet_balance') @Default(100) int walletBalance,
     @JsonKey(name: 'portfolio_images') @Default([]) List<String> portfolioImages,
     @JsonKey(name: 'is_verified') @Default(false) bool isVerified,
     @JsonKey(name: 'created_at') required DateTime createdAt,
@@ -34,6 +37,13 @@ class Technician with _$Technician {
     if (totalJobs >= 30 && rating >= 4.5) return 'فني ذهبي';
     if (totalJobs >= 10) return 'فني محترف';
     return 'فني صاعد';
+  }
+
+  String get rankEmoji {
+    if (totalJobs >= 50 && rating >= 4.7) return '💎';
+    if (totalJobs >= 30 && rating >= 4.5) return '🥇';
+    if (totalJobs >= 10) return '🥈';
+    return '🥉';
   }
 
   Color get rankColor {
@@ -48,6 +58,30 @@ class Technician with _$Technician {
     if (totalJobs >= 30) return Icons.military_tech;
     if (totalJobs >= 10) return Icons.stars;
     return Icons.person_outline;
+  }
+
+  /// نسبة التقدم نحو الرتبة التالية (0.0 → 1.0)
+  double get nextRankProgress {
+    if (totalJobs >= 50 && rating >= 4.7) return 1.0; // الرتبة القصوى
+    if (totalJobs >= 30 && rating >= 4.5) return (totalJobs - 30) / (50 - 30);
+    if (totalJobs >= 10) return (totalJobs - 10) / (30 - 10);
+    return totalJobs / 10;
+  }
+
+  /// عنوان الرتبة التالية
+  String get nextRankTitle {
+    if (totalJobs >= 50 && rating >= 4.7) return 'أنت في القمة! 💎';
+    if (totalJobs >= 30 && rating >= 4.5) return 'حرفي بلاتيني 💎';
+    if (totalJobs >= 10) return 'فني ذهبي 🥇';
+    return 'فني محترف 🥈';
+  }
+
+  /// الطلبات المتبقية للوصول للرتبة التالية
+  int get jobsToNextRank {
+    if (totalJobs >= 50 && rating >= 4.7) return 0;
+    if (totalJobs >= 30 && rating >= 4.5) return 50 - totalJobs;
+    if (totalJobs >= 10) return 30 - totalJobs;
+    return 10 - totalJobs;
   }
 
   factory Technician.fromJson(Map<String, dynamic> json) {
@@ -71,7 +105,7 @@ class Technician with _$Technician {
         spec: spec,
         priceRange: json['price_range']?.toString(),
         visitPrice: _toInt(json['visit_price']) ?? 50,
-        area: json['area']?.toString(),
+        area: json['area']?.toString().trim(),
         status: status,
         rating: _toDouble(json['rating']) ?? 0.0,
         totalJobs: _toInt(json['total_jobs']) ?? 0,
@@ -79,14 +113,16 @@ class Technician with _$Technician {
         identityProofUrl: json['identity_proof_url']?.toString(),
         bio: json['bio']?.toString(),
         totalEarnings: _toInt(json['total_earnings']) ?? 0,
-        portfolioImages: (json['portfolio_images'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        walletBalance: _toInt(json['wallet_balance']) ?? 100,
+        portfolioImages: _parseList(json['portfolio_images']),
         // تحسين التحقق من علامة التوثيق
         isVerified: json['is_verified'] == true || json['is_verified'] == 1 || json['is_verified'] == 'true',
         createdAt: json['created_at'] != null
             ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
             : DateTime.now(),
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Error parsing Technician JSON ($e):\n$stack');
       return Technician(
         id: json['id']?.toString() ?? '',
         name: 'خطأ في بيانات: ${json['name']}',
@@ -96,6 +132,18 @@ class Technician with _$Technician {
         status: TechStatus.pending,
       );
     }
+  }
+
+  static List<String> _parseList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) return value.map((e) => e.toString()).toList();
+    if (value is String && value.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) return decoded.map((e) => e.toString()).toList();
+      } catch (_) {}
+    }
+    return [];
   }
 
   Map<String, dynamic> toJson() => technicianToJson(this);
@@ -112,6 +160,7 @@ class Technician with _$Technician {
       'rating': tech.rating,
       'total_jobs': tech.totalJobs,
       'total_earnings': tech.totalEarnings,
+      'wallet_balance': tech.walletBalance,
       'bio': tech.bio,
       'photo_url': tech.photoUrl,
       'identity_proof_url': tech.identityProofUrl,

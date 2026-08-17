@@ -12,8 +12,6 @@ class NotificationOverlay extends ConsumerWidget {
 
     if (latest == null) return const SizedBox.shrink();
 
-    final width = MediaQuery.of(context).size.width;
-
     return Positioned(
       top: MediaQuery.of(context).padding.top + 20,
       left: 0,

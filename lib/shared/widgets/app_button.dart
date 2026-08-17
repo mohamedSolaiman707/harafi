@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
-enum ButtonVariant { primary, ghost, danger, whatsapp, success }
+enum ButtonVariant { primary, ghost, danger, whatsapp, success, secondary }
 
 enum ButtonSize { sm, md, lg }
 
-class AppButton extends StatelessWidget {
+class AppButton extends StatefulWidget {
   final String label;
   final VoidCallback? onTap;
   final ButtonVariant variant;
@@ -23,10 +23,45 @@ class AppButton extends StatelessWidget {
     this.icon,
   });
 
+  @override
+  State<AppButton> createState() => _AppButtonState();
+}
+
+class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Gradient? get _gradient {
+    if (widget.variant == ButtonVariant.primary) {
+      return AppGradients.goldButton;
+    }
+    return null;
+  }
+
   Color get _background {
-    switch (variant) {
+    switch (widget.variant) {
       case ButtonVariant.ghost:
         return Colors.transparent;
+      case ButtonVariant.secondary:
+        return AppColors.surface2;
       case ButtonVariant.danger:
         return AppColors.error;
       case ButtonVariant.whatsapp:
@@ -39,24 +74,25 @@ class AppButton extends StatelessWidget {
   }
 
   Color get _foreground {
-    switch (variant) {
+    switch (widget.variant) {
       case ButtonVariant.ghost:
+      case ButtonVariant.secondary:
         return AppColors.textPrimary;
       case ButtonVariant.danger:
       case ButtonVariant.whatsapp:
       case ButtonVariant.success:
         return Colors.white;
       case ButtonVariant.primary:
-        return AppColors.background;
+        return const Color(0xFF090D16); // Dark Obsidian text on Gold
     }
   }
 
   double get _height {
-    switch (size) {
+    switch (widget.size) {
       case ButtonSize.sm:
-        return 44;
+        return 42;
       case ButtonSize.md:
-        return 52;
+        return 50;
       case ButtonSize.lg:
         return 56;
     }
@@ -64,48 +100,71 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final buttonChild = isLoading
-        ? const SizedBox(
-            width: 18,
-            height: 18,
+    final bool isEnabled = widget.onTap != null && !widget.isLoading;
+
+    final buttonChild = widget.isLoading
+        ? SizedBox(
+            width: 20,
+            height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2.2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor: AlwaysStoppedAnimation<Color>(_foreground),
             ),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 20),
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 20, color: _foreground),
                 const SizedBox(width: AppSpacing.sm),
               ],
-              Text(
-                label,
-                style: AppTextStyles.titleLarge.copyWith(color: _foreground),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.titleLarge.copyWith(
+                    color: _foreground,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           );
 
-    return SizedBox(
-      width: double.infinity,
-      height: _height,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _background,
-          foregroundColor: _foreground,
-          elevation: 0,
-          side: variant == ButtonVariant.ghost
-              ? const BorderSide(color: AppColors.borderDefault)
-              : BorderSide.none,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.xl),
+    return GestureDetector(
+      onTapDown: isEnabled ? (_) => _controller.forward() : null,
+      onTapUp: isEnabled ? (_) => _controller.reverse() : null,
+      onTapCancel: isEnabled ? () => _controller.reverse() : null,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          width: double.infinity,
+          height: _height,
+          decoration: BoxDecoration(
+            color: _gradient == null ? _background : null,
+            gradient: _gradient,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: widget.variant == ButtonVariant.ghost
+                ? Border.all(color: AppColors.borderDefault)
+                : widget.variant == ButtonVariant.secondary
+                    ? Border.all(color: AppColors.borderSubtle)
+                    : null,
+            boxShadow: widget.variant == ButtonVariant.primary
+                ? AppShadows.goldGlow
+                : null,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: InkWell(
+              onTap: isEnabled ? widget.onTap : null,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Center(child: buttonChild),
+            ),
+          ),
         ),
-        child: buttonChild,
       ),
     );
   }

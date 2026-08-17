@@ -47,6 +47,24 @@ class Order {
     required this.updatedAt,
   });
 
+  /// تاريخ انتهاء ضمان الصيانة (7 أيام من تاريخ إكمال الخدمة أو الإنشاء)
+  DateTime get warrantyUntil {
+    final base = completedAt ?? createdAt;
+    return base.add(const Duration(days: 7));
+  }
+
+  /// هل الضمان الـ 7 أيام سارٍ حالياً؟
+  bool get isWarrantyActive {
+    return status == OrderStatus.completed && DateTime.now().isBefore(warrantyUntil);
+  }
+
+  /// عدد الأيام المتبقية في الضمان
+  int get warrantyRemainingDays {
+    if (!isWarrantyActive) return 0;
+    final diff = warrantyUntil.difference(DateTime.now()).inDays;
+    return diff < 0 ? 0 : diff + 1;
+  }
+
   factory Order.fromJson(Map<String, dynamic> json) {
     final serviceValue = json['service']?.toString() ?? '';
     final service = ServiceType.values.firstWhere(

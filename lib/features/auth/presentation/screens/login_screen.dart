@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../providers/auth_screen_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,8 +20,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -32,7 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    ref.read(loginLoadingProvider.notifier).state = true;
 
     try {
       await Supabase.instance.client.auth.signInWithPassword(
@@ -52,18 +51,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) ref.read(loginLoadingProvider.notifier).state = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(loginLoadingProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('دخول الإدارة'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/welcome'),
+          onPressed: () async {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('user_role');
+            if (context.mounted) context.go('/welcome');
+          },
         ),
       ),
       body: Center(
@@ -102,21 +107,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           value == null || value.isEmpty ? 'يرجى إدخال البريد الإلكتروني' : null,
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    TextFormField(
+                    AppTextField(
+                      label: 'كلمة المرور',
                       controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      style: AppTextStyles.bodyLarge,
-                      decoration: InputDecoration(
-                        labelText: 'كلمة المرور',
-                        prefixIcon: const Icon(Icons.lock_outlined, color: AppColors.textMuted),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: AppColors.textMuted,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                      ),
+                      isPassword: true,
+                      prefixIcon: Icons.lock_outlined,
                       validator: (value) =>
                           value == null || value.isEmpty ? 'يرجى إدخال كلمة المرور' : null,
                     ),
@@ -124,7 +119,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     AppButton(
                       label: 'تسجيل الدخول',
                       onTap: _login,
-                      isLoading: _isLoading,
+                      isLoading: isLoading,
                     ),
                   ],
                 ),

@@ -54,20 +54,6 @@ class AdminShell extends StatelessWidget {
     final isUltraWide = width > 1400;
 
     return Scaffold(
-      appBar: isWide ? null : AppBar(
-        title: const Text('لوحة التحكم'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => _showNotifications(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            onPressed: () => _logout(context),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: Row(
         children: [
           if (isWide)

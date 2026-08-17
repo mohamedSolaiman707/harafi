@@ -124,7 +124,7 @@ class _OrdersList extends ConsumerWidget {
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: AppSpacing.lg,
         mainAxisSpacing: AppSpacing.md,
-        mainAxisExtent: 200, // تحديد طول الكارت لضمان التناسق
+        mainAxisExtent: 430, // زيادة الطول الكافي لمنع الـ Overflow على كافة الأجهزة
       ),
       itemCount: orders.length,
       itemBuilder: (context, index) {
