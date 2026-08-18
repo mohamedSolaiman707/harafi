@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/whatsapp_otp_service.dart';
+import '../../../../core/utils/error_handler.dart';
+import '../../../../core/providers/location_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../admin/domain/enums/service_type.dart';
@@ -42,7 +44,16 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       final prefs = await SharedPreferences.getInstance();
       _nameController.text = prefs.getString('client_name') ?? '';
       _phoneController.text = prefs.getString('client_phone') ?? '';
-      _areaController.text = prefs.getString('client_area') ?? '';
+      
+      // مزامنة الموقع المختار في الهوم مع شاشة الطلب
+      final savedArea = prefs.getString('client_area');
+      if (savedArea != null && savedArea.isNotEmpty) {
+        _areaController.text = savedArea;
+      } else {
+        // لو مفيش عنوان محفوظ، نسحب الموقع المختار حالياً من الـ provider
+        final currentLocation = ref.read(userLocationProvider);
+        _areaController.text = currentLocation.fullLocation;
+      }
     } catch (_) {}
   }
 
@@ -57,11 +68,16 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
         });
       } else if (extra is Map<String, dynamic>) {
         final service = extra['service'] as ServiceType?;
+        final description = extra['description'] as String?;
         _preSelectedTechId = extra['techId'] as String?;
+        
         if (service != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ref.read(requestSelectedServiceProvider.notifier).state = service;
           });
+        }
+        if (description != null) {
+          _descriptionController.text = description;
         }
       }
       _isInitialized = true;
@@ -85,13 +101,22 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     }
     if (!_formKey.currentState!.validate()) return;
 
+    if (_preSelectedTechId != null) {
+      final techs = ref.read(techniciansProvider).valueOrNull ?? [];
+      final tech = techs.where((t) => t.id == _preSelectedTechId).firstOrNull;
+      
+      if (tech == null || !tech.canAcceptOrders) {
+        _showTechUnavailableDialog();
+        return;
+      }
+    }
+
     final phone = _phoneController.text.trim();
     ref.read(requestLoadingProvider.notifier).state = true;
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      
-      // حفظ بيانات العميل للسهولة مستقبلاً
+
       await prefs.setString('client_name', _nameController.text.trim());
       await prefs.setString('client_phone', phone);
       await prefs.setString('client_area', _areaController.text.trim());
@@ -119,17 +144,41 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
 
       final result = await ref.read(adminActionsProvider).createOrder(order);
       result.when(
-        left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: ${f.message}'))),
+        left: (f) => AppErrorHandler.showSnackBar(context, f.message),
         right: (createdOrder) {
           WhatsAppOtpService.sendOrderConfirmationToClient(createdOrder);
           if (mounted) _showSuccessDialog(createdOrder);
         },
       );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ غير متوقع')));
+      if (mounted) AppErrorHandler.showSnackBar(context, e);
     } finally {
       if (mounted) ref.read(requestLoadingProvider.notifier).state = false;
     }
+  }
+
+  void _showTechUnavailableDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface1,
+        title: const Text('الفني غير متاح حالياً ⚠️'),
+        content: const Text('عذراً، الفني الذي اخترته لم يعد متاحاً لاستقبال طلبات في هذه اللحظة. يمكنك إرسال الطلب كـ "طلب عام" وسيقوم أفضل فني متاح في منطقتك بالتواصل معك.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('رجوع لتغيير الفني'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() => _preSelectedTechId = null);
+              Navigator.pop(context);
+            },
+            child: const Text('إرسال كطلب عام'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSuccessDialog(Order result) {
@@ -181,14 +230,11 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                   const SizedBox(height: 16),
                   _buildOrganicServiceGrid(width),
 
-                  // عرض الفنيين المتاحين عند اختيار الخدمة
                   if (selectedService != null) ...[
                     const SizedBox(height: 32),
                     _buildStepHeader('👤', _preSelectedTechId == null ? 'الفنيين المقترحين' : 'الفني المختار'),
                     const SizedBox(height: 16),
-                    _preSelectedTechId == null
-                        ? _buildAvailableTechsList(selectedService)
-                        : _buildSelectedTechCard(),
+                    _buildAvailableTechsList(selectedService),
                   ],
 
                   const SizedBox(height: 32),
@@ -283,13 +329,15 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   }
 
   Widget _buildAvailableTechsList(ServiceType service) {
+    if (_preSelectedTechId != null) return _buildSelectedTechCard();
+
     final techsAsync = ref.watch(techniciansProvider);
-    
-    // استخدام skipLoadingOnRefresh لمنع اختفاء الداتا عند التحديث الدوري
+
     return techsAsync.when(
       skipLoadingOnRefresh: true,
       data: (techs) {
-        final filtered = techs.where((t) => t.spec == service && t.status == TechStatus.available).toList();
+        final filtered = techs.where((t) => t.spec == service && t.canAcceptOrders).toList();
+        
         if (filtered.isEmpty) {
           return Container(
             padding: const EdgeInsets.all(16),
@@ -310,10 +358,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
           ),
         );
       },
-      loading: () => const Center(child: Padding(
-        padding: EdgeInsets.all(20),
-        child: CircularProgressIndicator(),
-      )),
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
       error: (_, __) => const SizedBox.shrink(),
     );
   }
@@ -321,32 +366,47 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   Widget _buildSelectedTechCard() {
     final tech = ref.watch(techniciansProvider).valueOrNull?.firstWhere((t) => t.id == _preSelectedTechId, orElse: () => throw Exception('Not found'));
     if (tech == null) return const SizedBox.shrink();
+
+    final bool isEligible = tech.canAcceptOrders;
+    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.gold.withOpacity(0.08),
+        color: isEligible ? AppColors.gold.withOpacity(0.08) : AppColors.error.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.gold.withOpacity(0.2)),
+        border: Border.all(color: isEligible ? AppColors.gold.withOpacity(0.2) : AppColors.error.withOpacity(0.2)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.surface3,
-            backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-            child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.surface3,
+                backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
+                child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(tech.name, style: AppTextStyles.titleLarge),
+                  Text(isEligible ? tech.rank : 'غير متاح حالياً', style: AppTextStyles.labelMed.copyWith(color: isEligible ? AppColors.gold : AppColors.error)),
+                ]),
+              ),
+              TextButton(
+                onPressed: () => setState(() => _preSelectedTechId = null),
+                child: const Text('تغيير الفني', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(tech.name, style: AppTextStyles.titleLarge),
-              Text(tech.rank, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
-            ]),
-          ),
-          TextButton(
-            onPressed: () => setState(() => _preSelectedTechId = null),
-            child: const Text('تغيير الفني', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
-          ),
+          if (!isEligible)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '⚠️ هذا الفني غير متاح لاستلام طلبات الآن، سيتم تحويل طلبك لطلب عام.',
+                style: AppTextStyles.labelMed.copyWith(color: AppColors.error),
+              ),
+            ),
         ],
       ),
     );
@@ -362,7 +422,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       ),
       child: Column(
         children: [
-          AppTextField(label: 'الاسم بالكامل', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخال الاسم' : null),
+          AppTextField(label: 'الاسم بالكامل', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخل الاسم' : null),
           const SizedBox(height: 16),
           AppTextField(label: 'رقم الواتساب', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android_rounded, validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null),
           const SizedBox(height: 16),
@@ -398,7 +458,7 @@ class _OrganicServiceItem extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset('assets/images/${_getAsset(type)}', fit: BoxFit.cover),
+              Image.asset('assets/images/${_getAsset(type)}', fit: BoxFit.cover, errorBuilder: (c,e,s) => Container(color: AppColors.surface2)),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -460,6 +520,7 @@ class _TechOrganicMiniCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 25,
+                  backgroundColor: AppColors.surface3,
                   backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
                   child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
                 ),

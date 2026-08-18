@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/error_handler.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -44,16 +45,13 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // حفظ دور الفني لضمان التوجيه الصحيح مستقبلاً
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_role', 'tech');
 
       if (mounted) context.go('/tech/dashboard');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('خطأ في الدخول: تأكد من البيانات أو اضغط على انضم كفني إذا لم يكن لديك حساب')),
-        );
+        AppErrorHandler.showSnackBar(context, e);
       }
     } finally {
       if (mounted) ref.read(techLoginLoadingProvider.notifier).state = false;

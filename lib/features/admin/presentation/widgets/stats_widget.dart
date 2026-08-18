@@ -13,14 +13,14 @@ class StatsWidget extends ConsumerWidget {
     
     return LayoutBuilder(
       builder: (context, constraints) {
-        // استخدام MaxCrossAxisExtent لضمان توزيع احترافي للكروت حسب عرض الشاشة
         return GridView.builder(
+          padding: EdgeInsets.zero, // إزالة المسافات الافتراضية
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: constraints.maxWidth > 1200 ? 250 : 200,
-            mainAxisExtent: 100, // ارتفاع ثابت ومريح للكارت
-            crossAxisSpacing: 16,
+            maxCrossAxisExtent: constraints.maxWidth > 1200 ? 300 : 250,
+            mainAxisExtent: 110, 
+            crossAxisSpacing: 16, // تقليل المسافات بين الكروت
             mainAxisSpacing: 16,
           ),
           itemCount: 8,
@@ -33,48 +33,48 @@ class StatsWidget extends ConsumerWidget {
                 color: AppColors.info,
               ),
               _StatItem(
-                title: 'طلبات جديدة',
+                title: 'طلبات معلقة',
                 value: stats['pending'].toString(),
-                icon: Icons.auto_awesome_rounded,
+                icon: Icons.pending_actions_rounded,
                 color: AppColors.gold,
                 isAlert: (stats['pending'] as int) > 0,
               ),
               _StatItem(
                 title: 'قيد التنفيذ',
                 value: stats['active'].toString(),
-                icon: Icons.run_circle_rounded,
-                color: Colors.orange,
+                icon: Icons.running_with_errors_rounded,
+                color: Colors.orangeAccent,
               ),
               _StatItem(
                 title: 'طلبات مكتملة',
                 value: stats['completed'].toString(),
-                icon: Icons.check_circle_rounded,
+                icon: Icons.task_alt_rounded,
                 color: AppColors.success,
               ),
               _StatItem(
-                title: 'إجمالي الخدمات',
+                title: 'إجمالي العمليات',
                 value: stats['revenue'].toString(),
                 suffix: ' ج.م',
-                icon: Icons.payments_rounded,
+                icon: Icons.account_balance_wallet_rounded,
                 color: AppColors.success,
               ),
               _StatItem(
-                title: 'دخل المنصة (${AppConstants.platformFee}ج)',
+                title: 'عمولة المنصة',
                 value: (stats['platformRevenue'] ?? 0).toString(),
                 suffix: ' ج.م',
-                icon: Icons.account_balance_rounded,
+                icon: Icons.pie_chart_rounded,
                 color: AppColors.gold,
               ),
               _StatItem(
                 title: 'إجمالي الفنيين',
                 value: stats['techTotal'].toString(),
-                icon: Icons.people_alt_rounded,
-                color: Colors.purpleAccent,
+                icon: Icons.engineering_rounded,
+                color: Colors.indigoAccent,
               ),
               _StatItem(
-                title: 'طلبات انضمام',
+                title: 'طلبات التوظيف',
                 value: stats['techPending'].toString(),
-                icon: Icons.person_add_rounded,
+                icon: Icons.how_to_reg_rounded,
                 color: AppColors.gold,
                 isAlert: (stats['techPending'] as int) > 0,
               ),
@@ -109,18 +109,11 @@ class _StatItem extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16), // تقليل نصف القطر قليلاً لشكل أكثر حدة واحترافية
         border: Border.all(
-          color: isAlert ? color.withOpacity(0.5) : AppColors.borderSubtle,
-          width: isAlert ? 1.5 : 1,
+          color: isAlert ? color.withOpacity(0.3) : AppColors.borderSubtle,
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -130,9 +123,9 @@ class _StatItem extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -142,7 +135,10 @@ class _StatItem extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                    style: AppTextStyles.labelMed.copyWith(
+                      color: AppColors.textMuted,
+                      fontSize: 11,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -153,18 +149,21 @@ class _StatItem extends StatelessWidget {
                     children: [
                       Text(
                         value,
-                        style: AppTextStyles.titleLarge.copyWith(
+                        style: AppTextStyles.headlineMed.copyWith(
                           fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: isAlert ? color : AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       if (suffix != null)
-                        Text(
-                          suffix!,
-                          style: AppTextStyles.labelMed.copyWith(
-                            color: AppColors.textMuted,
-                            fontSize: 10,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 2),
+                          child: Text(
+                            suffix!,
+                            style: AppTextStyles.labelMed.copyWith(
+                              color: AppColors.textMuted,
+                              fontSize: 10,
+                            ),
                           ),
                         ),
                     ],

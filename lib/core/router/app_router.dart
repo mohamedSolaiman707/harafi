@@ -25,6 +25,7 @@ import '../../../features/tech/presentation/screens/tech_register_screen.dart';
 import '../../../features/tech/presentation/screens/tech_profile_screen.dart';
 import '../../../features/tech/presentation/screens/tech_wallet_screen.dart';
 import '../../../features/admin/domain/enums/service_type.dart';
+import '../../../features/smart_assistant/presentation/screens/smart_assistant_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/welcome',
@@ -73,6 +74,11 @@ final appRouter = GoRouter(
       path: '/',
       pageBuilder: (context, state) =>
           AppAnimations.fadeSlide(child: const HomeScreen()),
+    ),
+    GoRoute(
+      path: '/smart-assistant',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const SmartAssistantScreen()),
     ),
     GoRoute(
       path: '/about',

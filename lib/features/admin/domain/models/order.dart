@@ -47,13 +47,13 @@ class Order {
     required this.updatedAt,
   });
 
-  /// تاريخ انتهاء ضمان الصيانة (7 أيام من تاريخ إكمال الخدمة أو الإنشاء)
+  /// تاريخ انتهاء ضمان الصيانة (30 يوماً من تاريخ إكمال الخدمة أو الإنشاء)
   DateTime get warrantyUntil {
     final base = completedAt ?? createdAt;
-    return base.add(const Duration(days: 7));
+    return base.add(const Duration(days: 30));
   }
 
-  /// هل الضمان الـ 7 أيام سارٍ حالياً؟
+  /// هل الضمان الـ 30 يوماً سارٍ حالياً؟
   bool get isWarrantyActive {
     return status == OrderStatus.completed && DateTime.now().isBefore(warrantyUntil);
   }

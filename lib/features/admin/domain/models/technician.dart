@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../enums/service_type.dart';
 import '../enums/tech_status.dart';
+import '../../../../core/constants/app_constants.dart';
 
 part 'technician.freezed.dart';
 
@@ -31,6 +32,12 @@ class Technician with _$Technician {
     @JsonKey(name: 'is_verified') @Default(false) bool isVerified,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _Technician;
+
+  // المنطق الجوكر: هل الفني مسموح له باستقبال طلبات؟
+  bool get canAcceptOrders {
+    final hasEnoughBalance = walletBalance >= AppConstants.platformFee;
+    return status != TechStatus.pending && status != TechStatus.onLeave && hasEnoughBalance;
+  }
 
   String get rank {
     if (totalJobs >= 50 && rating >= 4.7) return 'حرفي بلاتيني';
@@ -84,6 +91,7 @@ class Technician with _$Technician {
     return 10 - totalJobs;
   }
 
+
   factory Technician.fromJson(Map<String, dynamic> json) {
     try {
       final specValue = json['spec']?.toString().trim() ?? '';
@@ -115,7 +123,6 @@ class Technician with _$Technician {
         totalEarnings: _toInt(json['total_earnings']) ?? 0,
         walletBalance: _toInt(json['wallet_balance']) ?? 100,
         portfolioImages: _parseList(json['portfolio_images']),
-        // تحسين التحقق من علامة التوثيق
         isVerified: json['is_verified'] == true || json['is_verified'] == 1 || json['is_verified'] == 'true',
         createdAt: json['created_at'] != null
             ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' as intl;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
+import '../../../../core/utils/error_handler.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/error_widget.dart';
@@ -31,12 +32,12 @@ class AdminOrderDetailScreen extends ConsumerWidget {
       ),
       body: orderAsync.when(
         data: (order) {
-          if (order == null) return const Center(child: Text('الطلب غير موجود'));
+          if (order == null) return const Center(child: Text('الطلب غير موجود ⚠️'));
           return _buildBody(context, ref, order);
         },
         loading: () => const LoadingWidget(),
         error: (e, s) => AppErrorWidget(
-          message: 'خطأ في تحميل التفاصيل',
+          message: AppErrorHandler.translate(e),
           error: e,
           onRetry: () => ref.invalidate(ordersStreamProvider),
         ),
@@ -59,7 +60,6 @@ class AdminOrderDetailScreen extends ConsumerWidget {
               _buildMainInfo(context, order, assignedTech),
               const SizedBox(height: AppSpacing.xl),
               
-              // عرض صور إثبات الإنجاز للأدمن
               if (order.completionImages.isNotEmpty) ...[
                 _buildCompletionGallery(context, order.completionImages),
                 const SizedBox(height: AppSpacing.xl),
@@ -86,7 +86,7 @@ class AdminOrderDetailScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.camera_alt_outlined, color: AppColors.success, size: 20),
               const SizedBox(width: 8),
-              Text('صور إثبات الإنجاز (قبل/بعد)', style: AppTextStyles.titleLarge),
+              Text('صور إثبات الإنجاز', style: AppTextStyles.titleLarge),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -102,8 +102,16 @@ class AdminOrderDetailScreen extends ConsumerWidget {
                   margin: const EdgeInsets.only(left: 12),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    image: DecorationImage(image: NetworkImage(images[index]), fit: BoxFit.cover),
+                    color: AppColors.surface2,
                     border: Border.all(color: AppColors.borderDefault),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      images[index],
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => const Center(child: Icon(Icons.broken_image_outlined, color: AppColors.textMuted)),
+                    ),
                   ),
                 ),
               ),
@@ -119,7 +127,13 @@ class AdminOrderDetailScreen extends ConsumerWidget {
       context: context,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        child: InteractiveViewer(child: Image.network(url)),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(child: Image.network(url, errorBuilder: (c,e,s) => const Center(child: Text('فشل تحميل الصورة')))),
+            IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 30), onPressed: () => Navigator.pop(context)),
+          ],
+        ),
       ),
     );
   }
@@ -185,7 +199,8 @@ class AdminOrderDetailScreen extends ConsumerWidget {
         children: [
           Text('سجل الأحداث (Logs)', style: AppTextStyles.titleLarge),
           const SizedBox(height: AppSpacing.xl),
-          ListView.builder(
+          if (logs.isEmpty) const Text('لا يوجد سجل أحداث متاح')
+          else ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: logs.length,
@@ -277,7 +292,11 @@ class AdminOrderDetailScreen extends ConsumerWidget {
     );
 
     if (confirm == true) {
-      await ref.read(adminActionsProvider).cancelOrder(order, logMessage: 'تم الإلغاء من قبل الإدارة');
+      final result = await ref.read(adminActionsProvider).cancelOrder(order, logMessage: 'تم الإلغاء من قبل الإدارة');
+      result.when(
+        left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+        right: (_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الطلب بنجاح ✅')))
+      );
     }
   }
 

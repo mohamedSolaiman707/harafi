@@ -12,6 +12,8 @@ class AppTextField extends StatefulWidget {
   final bool autofocus;
   final bool isPassword;
   final bool enabled;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
 
   const AppTextField({
     super.key,
@@ -25,6 +27,8 @@ class AppTextField extends StatefulWidget {
     this.autofocus = false,
     this.isPassword = false,
     this.enabled = true,
+    this.onChanged,
+    this.onSubmitted,
   });
 
   @override
@@ -44,6 +48,8 @@ class _AppTextFieldState extends State<AppTextField> {
       autofocus: widget.autofocus,
       obscureText: widget.isPassword ? _obscureText : false,
       enabled: widget.enabled,
+      onChanged: widget.onChanged,
+      onFieldSubmitted: widget.onSubmitted,
       style: AppTextStyles.bodyLarge.copyWith(
         color: widget.enabled ? AppColors.textPrimary : AppColors.textMuted,
         fontWeight: FontWeight.w500,
@@ -59,7 +65,9 @@ class _AppTextFieldState extends State<AppTextField> {
         suffixIcon: widget.isPassword
             ? IconButton(
                 icon: Icon(
-                  _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  _obscureText
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
                   color: AppColors.textMuted,
                   size: 20,
                 ),

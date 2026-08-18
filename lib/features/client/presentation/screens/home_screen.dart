@@ -142,16 +142,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xl),
 
+                      if (query.isEmpty) ...[
+                        _buildSmartAssistantCard(context),
+                        const SizedBox(height: AppSpacing.xl),
+                        _TopRatedTechsSection(horizontalPadding: horizontalPadding),
+                        const SizedBox(height: AppSpacing.xxl),
+                      ],
+
                       if (matchingTechs.isNotEmpty) ...[
                         Text('فنيون مطابقون لبحثك', style: AppTextStyles.titleLarge.copyWith(color: AppColors.gold)),
                         const SizedBox(height: 12),
                         ...matchingTechs.map((tech) => _TechSearchTile(tech: tech)),
                         const SizedBox(height: AppSpacing.xl),
-                      ],
-
-                      if (query.isEmpty) ...[
-                        _TopRatedTechsSection(horizontalPadding: horizontalPadding),
-                        const SizedBox(height: AppSpacing.xxl),
                       ],
 
                       Row(
@@ -229,6 +231,59 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           if (activeOrder != null)
             _LiveStatusFloatingBar(order: activeOrder, horizontalPadding: horizontalPadding),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSmartAssistantCard(BuildContext context) {
+    return AppCard(
+      onTap: () => context.push('/smart-assistant'),
+      padding: EdgeInsets.zero,
+      color: AppColors.surface1,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.gold.withOpacity(0.15),
+              AppColors.surface1,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome, color: AppColors.gold, size: 32),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '✨ مش عارف محتاج إيه؟',
+                    style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'احكي أو صوّر المشكلة... وحرفي يساعدك.',
+                    style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.gold),
+          ],
+        ),
       ),
     );
   }
@@ -322,29 +377,33 @@ class _TechSearchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => context.push('/tech/portfolio/${tech.id}'),
+      onTap: tech.canAcceptOrders ? () => context.push('/tech/portfolio/${tech.id}') : null,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       color: AppColors.surface1,
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-            child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(tech.name, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold)),
-                Text(tech.spec.label, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
-              ],
+      child: Opacity(
+        opacity: tech.canAcceptOrders ? 1.0 : 0.6,
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
+              child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
             ),
-          ),
-          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tech.name, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold)),
+                  Text(tech.spec.label, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
+                ],
+              ),
+            ),
+            if (tech.canAcceptOrders)
+              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }
@@ -543,63 +602,68 @@ class _PremiumTechCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rankColor = tech.rankColor;
+    final bool canAccept = tech.canAcceptOrders;
+
     return Container(
       width: 290,
       margin: const EdgeInsets.only(left: 16, bottom: 12),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.surface1, AppColors.surface2.withOpacity(0.95)]),
-              border: Border.all(color: rankColor.withOpacity(0.4), width: 1.5),
-              boxShadow: [BoxShadow(color: rankColor.withOpacity(0.1), blurRadius: 20, spreadRadius: 2)],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(child: Text(tech.name, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              if (tech.isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, color: AppColors.info, size: 16)],
-                            ],
-                          ),
-                          Text(tech.spec.label, style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Opacity(
+            opacity: canAccept ? 1.0 : 0.8,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [AppColors.surface1, AppColors.surface2.withOpacity(0.95)]),
+                border: Border.all(color: canAccept ? rankColor.withOpacity(0.4) : AppColors.textMuted.withOpacity(0.2), width: 1.5),
+                boxShadow: [BoxShadow(color: canAccept ? rankColor.withOpacity(0.1) : Colors.transparent, blurRadius: 20, spreadRadius: 2)],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      _buildInfoItem(Icons.star_rounded, tech.rating.toStringAsFixed(1), Colors.amber),
-                      _buildInfoItem(Icons.task_alt_rounded, '${tech.totalJobs}', AppColors.success),
-                      _buildInfoItem(Icons.payments_rounded, '${tech.visitPrice}ج', AppColors.info),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(child: Text(tech.name, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                if (tech.isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, color: AppColors.info, size: 16)],
+                              ],
+                            ),
+                            Text(tech.spec.label, style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.05))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildInfoItem(Icons.star_rounded, tech.rating.toStringAsFixed(1), Colors.amber),
+                        _buildInfoItem(Icons.task_alt_rounded, '${tech.totalJobs}', AppColors.success),
+                        _buildInfoItem(Icons.payments_rounded, '${tech.visitPrice}ج', AppColors.info),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           Positioned(
             top: -20, right: 16,
             child: Container(
               padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: tech.rankColor, width: 2), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 5))]),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: canAccept ? tech.rankColor : AppColors.textMuted, width: 2), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 5))]),
               child: CircleAvatar(radius: 35, backgroundColor: AppColors.surface3, backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null, child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 30)) : null),
             ),
           ),
@@ -607,11 +671,17 @@ class _PremiumTechCard extends StatelessWidget {
             top: 16, left: 16,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: tech.rankColor.withOpacity(0.2), borderRadius: BorderRadius.circular(10), border: Border.all(color: tech.rankColor.withOpacity(0.4))),
-              child: Row(children: [Text(tech.rankEmoji, style: const TextStyle(fontSize: 10)), const SizedBox(width: 4), Text(tech.rank, style: TextStyle(color: tech.rankColor, fontSize: 9, fontWeight: FontWeight.bold))]),
+              decoration: BoxDecoration(color: (canAccept ? tech.rankColor : AppColors.textMuted).withOpacity(0.2), borderRadius: BorderRadius.circular(10), border: Border.all(color: (canAccept ? tech.rankColor : AppColors.textMuted).withOpacity(0.4))),
+              child: Row(children: [
+                if (!canAccept) const Icon(Icons.timer_off_outlined, size: 10, color: AppColors.textMuted),
+                if (!canAccept) const SizedBox(width: 4),
+                Text(canAccept ? tech.rankEmoji : '', style: const TextStyle(fontSize: 10)), 
+                const SizedBox(width: 4), 
+                Text(canAccept ? tech.rank : 'غير متاح حالياً', style: TextStyle(color: canAccept ? tech.rankColor : AppColors.textMuted, fontSize: 9, fontWeight: FontWeight.bold))
+              ]),
             ),
           ),
-          Positioned.fill(child: Material(color: Colors.transparent, child: InkWell(onTap: () => context.push('/tech/portfolio/${tech.id}'), borderRadius: BorderRadius.circular(28)))),
+          Positioned.fill(child: Material(color: Colors.transparent, child: InkWell(onTap: canAccept ? () => context.push('/tech/portfolio/${tech.id}') : null, borderRadius: BorderRadius.circular(28)))),
         ],
       ),
     );

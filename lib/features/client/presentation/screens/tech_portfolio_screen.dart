@@ -60,7 +60,8 @@ class _PortfolioBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAvailable = tech.status == TechStatus.available;
+    // استخدام المنطق الجوكر
+    final canBook = tech.canAcceptOrders;
     final reviews = orders.where((o) => o.rating != null && o.rating! > 0).toList();
 
     return SingleChildScrollView(
@@ -72,11 +73,11 @@ class _PortfolioBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeader(),
-              const SizedBox(height: AppSpacing.lg), // تقليل المسافة
+              const SizedBox(height: AppSpacing.lg),
               _buildStatsRow(),
               const SizedBox(height: AppSpacing.md),
               _buildTrustBadges(),
-              const SizedBox(height: AppSpacing.lg), // تقليل المسافة
+              const SizedBox(height: AppSpacing.lg),
               _buildBioSection(),
               const SizedBox(height: AppSpacing.lg),
               
@@ -102,10 +103,10 @@ class _PortfolioBody extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
 
               AppButton(
-                label: isAvailable ? 'أطلب هذا الفني الآن' : 'الفني مشغول حالياً',
-                icon: isAvailable ? Icons.build_circle : Icons.timer_outlined,
-                variant: isAvailable ? ButtonVariant.primary : ButtonVariant.ghost,
-                onTap: isAvailable ? () => context.push('/request', extra: {'service': tech.spec, 'techId': tech.id}) : null,
+                label: canBook ? 'أطلب هذا الفني الآن' : 'الفني غير متاح حالياً',
+                icon: canBook ? Icons.build_circle : Icons.timer_off_outlined,
+                variant: canBook ? ButtonVariant.primary : ButtonVariant.ghost,
+                onTap: canBook ? () => context.push('/request', extra: {'service': tech.spec, 'techId': tech.id}) : null,
               ),
               const SizedBox(height: AppSpacing.md),
               AppButton(
@@ -147,7 +148,7 @@ class _PortfolioBody extends StatelessWidget {
                   border: Border.all(color: tech.rankColor.withOpacity(0.5), width: 2),
                 ),
                 child: CircleAvatar(
-                  radius: 45, // تصغير من 60
+                  radius: 45,
                   backgroundColor: AppColors.gold.withOpacity(0.1),
                   backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
                   child: tech.photoUrl == null 
@@ -166,28 +167,31 @@ class _PortfolioBody extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         
-        // Rank Badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: tech.rankColor.withOpacity(0.1),
+            color: (tech.canAcceptOrders ? tech.rankColor : AppColors.textMuted).withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(tech.rankIcon, color: tech.rankColor, size: 12),
+              Icon(tech.canAcceptOrders ? tech.rankIcon : Icons.timer_off_outlined, 
+                   color: tech.canAcceptOrders ? tech.rankColor : AppColors.textMuted, size: 12),
               const SizedBox(width: 4),
               Text(
-                tech.rank,
-                style: AppTextStyles.labelLarge.copyWith(color: tech.rankColor, fontWeight: FontWeight.bold, fontSize: 10),
+                tech.canAcceptOrders ? tech.rank : 'غير متاح حالياً',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: tech.canAcceptOrders ? tech.rankColor : AppColors.textMuted, 
+                  fontWeight: FontWeight.bold, fontSize: 10
+                ),
               ),
             ],
           ),
         ),
         
         const SizedBox(height: 4),
-        Text(tech.name, style: AppTextStyles.headlineLarge), // تصغير الخط من displayMedium
+        Text(tech.name, style: AppTextStyles.headlineLarge),
         
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -269,7 +273,7 @@ class _PortfolioBody extends StatelessWidget {
 
   Widget _buildPortfolioGallery(BuildContext context) {
     return SizedBox(
-      height: 140, // تصغير الارتفاع
+      height: 140,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: tech.portfolioImages.length,

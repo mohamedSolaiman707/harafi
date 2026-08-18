@@ -4,8 +4,8 @@ enum OrderStatus {
   @JsonValue('بانتظار المراجعة')
   pending('بانتظار المراجعة'),
   
-  @JsonValue('تم تعيين فني')
-  assigned('تم تعيين فني'),
+  @JsonValue('بانتظار موافقة الفني')
+  assigned('بانتظار موافقة الفني'),
   
   @JsonValue('الفني في الطريق')
   onTheWay('الفني في الطريق'),

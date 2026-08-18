@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/error_handler.dart';
 import '../providers/admin_actions_provider.dart';
 import '../providers/admin_ui_providers.dart';
 import '../providers/techs_provider.dart';
@@ -104,9 +105,9 @@ class TechniciansScreen extends ConsumerWidget {
                 SliverPadding(
                   padding: EdgeInsets.all(sidePadding),
                   sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 420,
-                      mainAxisExtent: 380,
+                      mainAxisExtent: 185,
                       crossAxisSpacing: AppSpacing.lg,
                       mainAxisSpacing: AppSpacing.lg,
                     ),
@@ -132,9 +133,9 @@ class TechniciansScreen extends ConsumerWidget {
               SliverPadding(
                 padding: EdgeInsets.all(sidePadding),
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 400,
-                    mainAxisExtent: 360,
+                    mainAxisExtent: 185,
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
                   ),
@@ -154,7 +155,7 @@ class TechniciansScreen extends ConsumerWidget {
         },
         loading: () => const LoadingWidget(),
         error: (err, stack) => AppErrorWidget(
-          message: 'حدث خطأ في تحميل بيانات الفنيين',
+          message: AppErrorHandler.translate(err),
           error: err,
           onRetry: () => ref.invalidate(techsStreamProvider),
         ),
@@ -190,31 +191,19 @@ class TechniciansScreen extends ConsumerWidget {
           children: [
             const Icon(Icons.add_card_rounded, color: AppColors.gold),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'شحن محفظة: ${tech.name}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            Expanded(child: Text('شحن محفظة: ${tech.name}', overflow: TextOverflow.ellipsis)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'الرصيد الحالي: ${tech.walletBalance} ج.م',
-              style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
-            ),
+            Text('الرصيد الحالي: ${tech.walletBalance} ج.م', style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextFormField(
               controller: amountController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'مبلغ الشحن (ج.م)',
-                prefixIcon: Icon(Icons.payments_outlined),
-                hintText: 'مثال: 100',
-              ),
+              decoration: const InputDecoration(labelText: 'مبلغ الشحن (ج.م)', prefixIcon: Icon(Icons.payments_outlined)),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -239,7 +228,7 @@ class TechniciansScreen extends ConsumerWidget {
               final result = await ref.read(adminActionsProvider).rechargeTechWallet(tech.id, amt);
               if (context.mounted) {
                 result.when(
-                  left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+                  left: (f) => AppErrorHandler.showSnackBar(context, f.message),
                   right: (updatedTech) => ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('تم شحن محفظة ${tech.name} بمبلغ $amt ج.م بنجاح! الرصيد الجديد: ${updatedTech.walletBalance} ج.م⚡')),
                   ),
@@ -306,12 +295,7 @@ class TechniciansScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: AppSpacing.xl,
-            right: AppSpacing.xl,
-            top: AppSpacing.xl,
-          ),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: AppSpacing.xl, right: AppSpacing.xl, top: AppSpacing.xl),
           child: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -321,23 +305,15 @@ class TechniciansScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        technician == null ? 'إضافة فني جديد' : 'تعديل بيانات الفني',
-                        style: AppTextStyles.headlineMed,
-                      ),
+                      Text(technician == null ? 'إضافة فني جديد' : 'تعديل بيانات الفني', style: AppTextStyles.headlineMed),
                       IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
                   if (technician != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface2, 
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.borderDefault)
-                      ),
+                      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.borderDefault)),
                       child: SwitchListTile(
                         title: const Text('توثيق الحساب (Verified)'),
                         subtitle: const Text('تفعيل العلامة الزرقاء للفني لزيادة الثقة'),
@@ -347,7 +323,6 @@ class TechniciansScreen extends ConsumerWidget {
                         onChanged: (val) => setModalState(() => isVerified = val),
                       ),
                     ),
-                  
                   TextFormField(
                     controller: nameController,
                     decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
@@ -370,13 +345,7 @@ class TechniciansScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: visitPriceController,
-                          decoration: const InputDecoration(labelText: 'سعر الزيارة', prefixIcon: Icon(Icons.monetization_on_outlined)),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
+                      Expanded(child: TextFormField(controller: visitPriceController, decoration: const InputDecoration(labelText: 'سعر الزيارة', prefixIcon: Icon(Icons.monetization_on_outlined)), keyboardType: TextInputType.number)),
                       const SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<TechStatus>(
@@ -397,9 +366,7 @@ class TechniciansScreen extends ConsumerWidget {
                           isExpanded: true,
                           decoration: const InputDecoration(labelText: 'المحافظة', prefixIcon: Icon(Icons.map_outlined)),
                           dropdownColor: AppColors.surface2,
-                          items: AppConstants.governoratesAndCities.keys
-                              .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                              .toList(),
+                          items: AppConstants.governoratesAndCities.keys.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                           onChanged: (val) {
                             if (val != null) {
                               setModalState(() {
@@ -413,75 +380,38 @@ class TechniciansScreen extends ConsumerWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: AppConstants.governoratesAndCities[selectedGov]!.contains(selectedCity)
-                              ? selectedCity
-                              : AppConstants.governoratesAndCities[selectedGov]!.first,
+                          value: AppConstants.governoratesAndCities[selectedGov]!.contains(selectedCity) ? selectedCity : AppConstants.governoratesAndCities[selectedGov]!.first,
                           isExpanded: true,
                           decoration: const InputDecoration(labelText: 'المدينة / منطقة التغطية', prefixIcon: Icon(Icons.location_city_outlined)),
                           dropdownColor: AppColors.surface2,
-                          items: (AppConstants.governoratesAndCities[selectedGov] ?? [])
-                              .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setModalState(() => selectedCity = val);
-                          },
+                          items: (AppConstants.governoratesAndCities[selectedGov] ?? []).map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                          onChanged: (val) { if (val != null) setModalState(() => selectedCity = val); },
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: bioController,
-                    decoration: const InputDecoration(labelText: 'نبذة مختصرة عن الخبرة'),
-                    maxLines: 3,
-                  ),
+                  TextFormField(controller: bioController, decoration: const InputDecoration(labelText: 'نبذة مختصرة عن الخبرة'), maxLines: 3),
                   const SizedBox(height: 32),
                   AppButton(
                     label: technician?.status == TechStatus.pending ? 'اعتماد الحساب الآن' : 'حفظ التعديلات',
                     onTap: () async {
                         if (!formKey.currentState!.validate()) return;
-
-                        final dto = UpdateTechnicianDto(
-                          name: nameController.text.trim(),
-                          spec: selectedSpec,
-                          visitPrice: int.tryParse(visitPriceController.text),
-                          area: selectedCity,
-                          bio: bioController.text.trim(),
-                          status: selectedStatus,
-                          isVerified: isVerified,
-                        );
-
+                        final dto = UpdateTechnicianDto(name: nameController.text.trim(), spec: selectedSpec, visitPrice: int.tryParse(visitPriceController.text), area: selectedCity, bio: bioController.text.trim(), status: selectedStatus, isVerified: isVerified);
                         final result = technician == null 
-                          ? await ref.read(adminActionsProvider).addTechnician(CreateTechnicianDto(
-                              name: nameController.text.trim(),
-                              phone: phoneController.text.trim(),
-                              spec: selectedSpec,
-                              bio: bioController.text.trim(),
-                              visitPrice: int.tryParse(visitPriceController.text) ?? 50,
-                              area: selectedCity,
-                              isVerified: isVerified,
-                            ))
+                          ? await ref.read(adminActionsProvider).addTechnician(CreateTechnicianDto(name: nameController.text.trim(), phone: phoneController.text.trim(), spec: selectedSpec, bio: bioController.text.trim(), visitPrice: int.tryParse(visitPriceController.text) ?? 50, area: selectedCity, isVerified: isVerified))
                           : await ref.read(adminActionsProvider).updateTechnician(technician.id, dto);
-
                         if (context.mounted) {
                           result.when(
-                            left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
-                            right: (_) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث بيانات الفني بنجاح ✅')));
-                            },
+                            left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                            right: (_) { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث بيانات الفني بنجاح ✅'))); },
                           );
                         }
                     },
                   ),
                   const SizedBox(height: 12),
                   if (technician != null)
-                    TextButton.icon(
-                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                      onPressed: () => _confirmDelete(context, ref, technician),
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('حذف الفني نهائياً'),
-                    ),
+                    TextButton.icon(style: TextButton.styleFrom(foregroundColor: AppColors.error), onPressed: () => _confirmDelete(context, ref, technician), icon: const Icon(Icons.delete_outline), label: const Text('حذف الفني نهائياً')),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -500,24 +430,16 @@ class TechniciansScreen extends ConsumerWidget {
         content: Text('هل أنت متأكد من حذف الفني "${tech.name}"؟ سيتم مسح كافة بياناته نهائياً.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('تأكيد الحذف'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, true), style: TextButton.styleFrom(foregroundColor: AppColors.error), child: const Text('تأكيد الحذف')),
         ],
       ),
     );
-
     if (confirmed == true && context.mounted) {
       final result = await ref.read(adminActionsProvider).deleteTechnician(tech.id);
       if (context.mounted) {
         result.when(
-          left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
-          right: (_) {
-            Navigator.pop(context); // Close form
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الفني بنجاح')));
-          },
+          left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+          right: (_) { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الفني بنجاح'))); },
         );
       }
     }

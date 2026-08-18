@@ -12,6 +12,7 @@ import 'techs_provider.dart';
 import '../../../../core/either.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/services/whatsapp_otp_service.dart';
+import '../../data/repositories/job_outcomes_repository.dart';
 
 final adminActionsProvider = Provider<AdminActions>((ref) {
   return AdminActions(ref);
@@ -44,6 +45,7 @@ class AdminActions {
     int? finalPrice,
     String? techNotes,
     String? logMessage,
+    Map<String, dynamic>? outcomeData,
   }) async {
     final statusResult = await _ref
         .read(ordersRepositoryProvider)
@@ -81,6 +83,35 @@ class AdminActions {
                   'wallet_balance': newWalletBalance,
                   'phone': tech.phone,
                 });
+
+                final outcomeResult = await _ref.read(jobOutcomesRepositoryProvider).create({
+                  'order_id': updatedOrder.id,
+                  'customer_id': updatedOrder.clientPhone,
+                  'ai_detected_category': updatedOrder.service.name,
+                  'ai_category_name_ar': updatedOrder.service.label,
+                  'ai_problem_summary': updatedOrder.description ?? '',
+                  'ai_possible_issue': updatedOrder.description ?? '',
+                  'ai_recommended_action': techNotes ?? '',
+                  'ai_analysis_source': 'openai',
+                  'recommended_technician_id': techId,
+                  'technician_actual_diagnosis': outcomeData?['technician_actual_diagnosis'] ?? techNotes ?? '',
+                  'repair_action_taken': outcomeData?['repair_action_taken'] ?? techNotes ?? '',
+                  'first_visit_fix': outcomeData?['first_visit_fix'] ?? true,
+                  'repeat_issue': outcomeData?['repeat_issue'] ?? false,
+                  'warranty_claimed': outcomeData?['warranty_claimed'] ?? false,
+                  'customer_rating': updatedOrder.rating,
+                  'customer_feedback': updatedOrder.ratingComment,
+                  'final_cost': finalPrice,
+                  'parts_used': outcomeData?['parts_used'],
+                  'resolution_time_minutes': updatedOrder.completedAt != null
+                      ? DateTime.now().difference(updatedOrder.createdAt).inMinutes
+                      : null,
+                });
+
+                outcomeResult.when(
+                  left: (f) => debugPrint('فشل حفظ نتيجة الطلب: ${f.message}'),
+                  right: (_) {},
+                );
 
                 _ref.invalidate(techsStreamProvider);
                 _ref.invalidate(ordersStreamProvider);

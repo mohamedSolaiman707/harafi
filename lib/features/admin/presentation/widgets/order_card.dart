@@ -6,6 +6,7 @@ import '../../../../core/utils/whatsapp_utils.dart';
 import '../../domain/models/order.dart';
 import '../../domain/enums/order_status.dart';
 import '../providers/techs_provider.dart';
+import '../../../../shared/widgets/app_card.dart';
 
 class OrderCard extends ConsumerWidget {
   final Order order;
@@ -23,300 +24,360 @@ class OrderCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
     final assignedTech = techs.where((t) => t.id == order.techId).firstOrNull;
+    final statusColor = _getStatusColor(order.status);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.borderDefault.withOpacity(0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  // الصف العلوي: الحالة والكود
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _StatusBadge(status: order.status),
-                      _buildTrackingTag(),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // المحتوى الأوسط: الخدمة والأيقونة
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              order.service.label,
-                              style: AppTextStyles.headlineMed.copyWith(
-                                fontSize: 24, 
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Container(
-                                  width: 8, height: 8, 
-                                  decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle)
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'منذ ${DateTime.now().difference(order.createdAt).inHours} ساعة',
-                                  style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // أيقونة الخدمة في مربع فخم
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface2,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.borderSubtle),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)
-                          ]
-                        ),
-                        child: Text(order.service.icon, style: const TextStyle(fontSize: 30)),
-                      ),
-                    ],
-                  ),
-                  
-                  if (assignedTech != null || order.finalPrice != null) ...[
-                    const SizedBox(height: 12),
-                    _buildExtraDetails(assignedTech),
-                  ],
-                ],
-              ),
-            ),
-
-            // شريط العميل (Footer)
-            _buildClientFooter(),
-
-            // شريط الأزرار التفاعلية
-            _buildActionToolbar(assignedTech),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrackingTag() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFB300).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFFFB300).withOpacity(0.3)),
-      ),
-      child: Text(
-        '#${order.trackingCode}',
-        style: AppTextStyles.labelLarge.copyWith(
-          color: const Color(0xFFFFD54F), 
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExtraDetails(dynamic tech) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface2.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          if (tech != null) ...[
-            const Icon(Icons.engineering_outlined, size: 16, color: AppColors.gold),
-            const SizedBox(width: 8),
-            Text(tech.name, style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
-          ],
-          const Spacer(),
-          if (order.finalPrice != null)
-            Text(
-              '${order.finalPrice} ج.م',
-              style: AppTextStyles.titleLarge.copyWith(color: AppColors.success, fontWeight: FontWeight.bold),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildClientFooter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.25),
-        border: const Border(top: BorderSide(color: AppColors.borderSubtle, width: 0.5)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.person_pin_circle_outlined, size: 22, color: AppColors.textMuted),
-          const SizedBox(width: 12),
-          Text('العميل:', style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted)),
-          const SizedBox(width: 8),
-          Text(order.clientName, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.w700)),
-          const Spacer(),
-          if (order.area != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.gold.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(order.area!, style: AppTextStyles.labelMed.copyWith(color: AppColors.gold)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionToolbar(dynamic tech) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return AppCard(
+      padding: EdgeInsets.zero,
       color: AppColors.surface1,
-      child: Row(
+      border: Border.all(color: AppColors.borderSubtle.withOpacity(0.4), width: 1),
+      child: Stack(
         children: [
-          _ActionButton(
-            onTap: () => _launchWhatsApp(order.clientPhone, tech),
-            icon: Icons.message_outlined,
-            label: 'تواصل',
-            color: AppColors.success,
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            tooltip: 'اتصال هاتفي',
-            onPressed: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
-            icon: const Icon(Icons.phone_in_talk_outlined, size: 20, color: AppColors.info),
-          ),
-          const Spacer(),
-          
-          if (tech == null)
-            IconButton(
-              tooltip: 'تعيين فني',
-              onPressed: onAssignTech,
-              icon: const Icon(Icons.person_add_alt_1_rounded, color: AppColors.gold),
-            )
-          else
-            IconButton(
-              tooltip: 'تغيير الفني',
-              onPressed: onAssignTech,
-              icon: const Icon(Icons.swap_horiz_rounded, color: AppColors.textMuted),
+          // Subtle background glow based on status
+          Positioned(
+            left: -30,
+            top: -30,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
             ),
-            
-          IconButton(
-            tooltip: 'تحديث حالة الطلب',
-            onPressed: onUpdateStatus,
-            icon: const Icon(Icons.settings_suggest_rounded, color: AppColors.textSecondary),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Meta Header: Tracking & Time
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '#${order.trackingCode}',
+                      style: AppTextStyles.labelMed.copyWith(
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      'منذ ${DateTime.now().difference(order.createdAt).inHours} ساعة',
+                      style: AppTextStyles.labelMed.copyWith(
+                        color: AppColors.textMuted,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 12),
+
+                // 2. Main Identity: Service & Price
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Text(order.service.icon, style: const TextStyle(fontSize: 22)),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.service.label,
+                            style: AppTextStyles.titleLarge.copyWith(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          _StatusChip(status: order.status, color: statusColor),
+                        ],
+                      ),
+                    ),
+                    if (order.finalPrice != null)
+                      _PriceTag(price: order.finalPrice!),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+
+                // 3. Info Strip: Client & Technical Context
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.borderSubtle.withOpacity(0.1)),
+                  ),
+                  child: Column(
+                    children: [
+                      _InfoRow(
+                        icon: Icons.person_outline_rounded,
+                        label: 'العميل',
+                        value: order.clientName,
+                      ),
+                      if (assignedTech != null) ...[
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 6),
+                          child: Divider(height: 1, thickness: 0.5, color: AppColors.borderSubtle),
+                        ),
+                        _InfoRow(
+                          icon: Icons.engineering_outlined,
+                          label: 'الفني المعتمد',
+                          value: assignedTech.name,
+                          valueColor: AppColors.gold,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // 4. Quick Actions
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PrimaryWhatsAppBtn(
+                        onTap: () => _launchWhatsApp(order.clientPhone, assignedTech),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _GhostActionBtn(
+                      icon: Icons.phone_in_talk_rounded,
+                      color: AppColors.info,
+                      onTap: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
+                      tooltip: 'اتصال هاتفى',
+                    ),
+                    const SizedBox(width: 8),
+                    _GhostActionBtn(
+                      icon: assignedTech == null ? Icons.person_add_alt_1_rounded : Icons.swap_horiz_rounded,
+                      color: AppColors.gold,
+                      onTap: onAssignTech,
+                      tooltip: assignedTech == null ? 'تعيين فني' : 'تغيير الفني',
+                    ),
+                    const SizedBox(width: 8),
+                    _GhostActionBtn(
+                      icon: Icons.settings_suggest_rounded,
+                      color: AppColors.textSecondary,
+                      onTap: onUpdateStatus,
+                      tooltip: 'تحديث الحالة',
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending: return AppColors.gold;
+      case OrderStatus.assigned: return AppColors.info;
+      case OrderStatus.onTheWay: return Colors.orange;
+      case OrderStatus.started: return Colors.blue;
+      case OrderStatus.completed: return AppColors.success;
+      case OrderStatus.cancelled: return AppColors.error;
+    }
   }
 
   void _launchWhatsApp(String phone, dynamic tech) {
-    final message = tech != null 
-      ? WhatsAppUtils.techAssignedClient(tech.name, order.trackingCode)
-      : WhatsAppUtils.orderCreated(order.trackingCode);
+    final message = tech != null
+        ? WhatsAppUtils.techAssignedClient(tech.name, order.trackingCode)
+        : WhatsAppUtils.orderCreated(order.trackingCode);
     launchUrl(WhatsAppUtils.buildUri(phone, message), mode: LaunchMode.externalApplication);
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final VoidCallback onTap;
-  final IconData icon;
-  final String label;
+class _StatusChip extends StatelessWidget {
+  final OrderStatus status;
   final Color color;
-  const _ActionButton({required this.onTap, required this.icon, required this.label, required this.color});
+  const _StatusChip({required this.status, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6, height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        child: Row(
+        const SizedBox(width: 6),
+        Text(
+          status.label.toUpperCase(),
+          style: AppTextStyles.labelMed.copyWith(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: 10,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PriceTag extends StatelessWidget {
+  final int price;
+  const _PriceTag({required this.price});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 8),
-            Text(label, style: AppTextStyles.labelLarge.copyWith(color: color, fontWeight: FontWeight.bold)),
+            Text(
+              '$price',
+              style: AppTextStyles.titleLarge.copyWith(
+                color: AppColors.success,
+                fontWeight: FontWeight.w900,
+                fontSize: 22,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Text(
+              'ج.م',
+              style: AppTextStyles.labelMed.copyWith(
+                color: AppColors.success.withOpacity(0.7),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
+        ),
+        Text(
+          'الإجمالي المستحق',
+          style: AppTextStyles.labelMed.copyWith(fontSize: 8, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 8),
+        Text(
+          '$label:',
+          style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 10),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            value,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PrimaryWhatsAppBtn extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PrimaryWhatsAppBtn({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.success.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.chat_bubble_outline_rounded, color: AppColors.success, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'تواصل مع العميل',
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final OrderStatus status;
-  const _StatusBadge({required this.status});
+class _GhostActionBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+  final String tooltip;
+
+  const _GhostActionBtn({
+    required this.icon,
+    required this.color,
+    this.onTap,
+    required this.tooltip,
+  });
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    switch (status) {
-      case OrderStatus.pending: color = AppColors.gold; break;
-      case OrderStatus.assigned: color = AppColors.info; break;
-      case OrderStatus.onTheWay: color = Colors.orange; break;
-      case OrderStatus.started: color = Colors.blue; break;
-      case OrderStatus.completed: color = const Color(0xFF00C853); break;
-      case OrderStatus.cancelled: color = AppColors.error; break;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8, height: 8, 
-            decoration: BoxDecoration(
-              color: color, 
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 4)]
-            )
+    return Material(
+      color: AppColors.surface2,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Tooltip(
+          message: tooltip,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 10),
-          Text(
-            status.label, 
-            style: AppTextStyles.labelLarge.copyWith(color: color, fontWeight: FontWeight.w900, fontSize: 13)
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/error_handler.dart';
 import '../providers/admin_actions_provider.dart';
 import '../providers/orders_provider.dart';
 import '../providers/techs_provider.dart';
@@ -84,7 +85,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
         },
         loading: () => const LoadingWidget(),
         error: (err, stack) => AppErrorWidget(
-          message: 'فشل الاتصال بقاعدة البيانات',
+          message: AppErrorHandler.translate(err),
           error: err,
           onRetry: () => ref.invalidate(ordersStreamProvider),
         ),
@@ -118,13 +119,30 @@ class _OrdersList extends ConsumerWidget {
     final crossAxisCount = width > 1400 ? 3 : (width > 900 ? 2 : 1);
     final sidePadding = width > 1200 ? width * 0.05 : AppSpacing.lg;
 
+    if (crossAxisCount == 1) {
+      return ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: AppSpacing.lg),
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+            child: OrderCard(
+              order: orders[index],
+              onUpdateStatus: () => _showAdminActionSheet(context, ref, orders[index]),
+              onAssignTech: () => _showAssignTechSheet(context, ref, orders[index]),
+            ),
+          );
+        },
+      );
+    }
+
     return GridView.builder(
       padding: EdgeInsets.symmetric(horizontal: sidePadding, vertical: AppSpacing.lg),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: AppSpacing.lg,
         mainAxisSpacing: AppSpacing.md,
-        mainAxisExtent: 430, // زيادة الطول الكافي لمنع الـ Overflow على كافة الأجهزة
+        mainAxisExtent: 220,
       ),
       itemCount: orders.length,
       itemBuilder: (context, index) {
@@ -146,7 +164,7 @@ class _OrdersList extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface2,
-      constraints: BoxConstraints(maxWidth: width > 900 ? 600 : width), // عرض محدد للديسكتوب
+      constraints: BoxConstraints(maxWidth: width > 900 ? 600 : width),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
       builder: (context) => Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -179,7 +197,7 @@ class _OrdersList extends ConsumerWidget {
                         final result = await ref.read(adminActionsProvider).assignTech(order, tech);
                         if (context.mounted) {
                           result.when(
-                            left: (f) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(f.message))),
+                            left: (f) => AppErrorHandler.showSnackBar(context, f.message),
                             right: (_) => Navigator.pop(context),
                           );
                         }
@@ -213,13 +231,18 @@ class _OrdersList extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.cancel_outlined, color: AppColors.error),
                 title: const Text('إلغاء هذا الطلب نهائياً'),
-                onTap: () {
-                  ref.read(adminActionsProvider).updateOrderStatus(
+                onTap: () async {
+                  final result = await ref.read(adminActionsProvider).updateOrderStatus(
                     order, 
                     OrderStatus.cancelled,
                     logMessage: 'تم إلغاء الطلب بمعرفة الإدارة',
                   );
-                  Navigator.pop(context);
+                  if (context.mounted) {
+                    result.when(
+                      left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                      right: (_) => Navigator.pop(context),
+                    );
+                  }
                 },
               ),
             ListTile(
@@ -237,9 +260,14 @@ class _OrdersList extends ConsumerWidget {
                     ],
                   ),
                 );
-                if (confirm == true) {
-                  await ref.read(ordersRepositoryProvider).deleteOrder(order.id);
-                  if (context.mounted) Navigator.pop(context);
+                if (confirm == true && context.mounted) {
+                  final result = await ref.read(adminActionsProvider).deleteOrder(order);
+                  if (context.mounted) {
+                    result.when(
+                      left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                      right: (_) => Navigator.pop(context),
+                    );
+                  }
                 }
               },
             ),

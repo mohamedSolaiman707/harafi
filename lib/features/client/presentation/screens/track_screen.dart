@@ -65,13 +65,11 @@ class TrackScreen extends ConsumerWidget {
               _StatusCard(status: order.status),
               const SizedBox(height: AppSpacing.xl),
 
-              // كارت ضمان الصيانة 7 أيام المفعّل
               if (order.status == OrderStatus.completed) ...[
                 _WarrantyBadgeCard(order: order),
                 const SizedBox(height: AppSpacing.xl),
               ],
 
-              // كارت توضيح سبب اعتذار الفني للعميل
               if (order.status == OrderStatus.cancelled && order.techNotes != null && order.techNotes!.isNotEmpty) ...[
                 Container(
                   width: double.infinity,
@@ -112,13 +110,12 @@ class TrackScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.xl),
               ],
               
-              // عرض صور الإنجاز للعميل
               if (order.completionImages.isNotEmpty) ...[
                 _buildCompletionGallery(context, order.completionImages),
                 const SizedBox(height: AppSpacing.xl),
               ],
 
-              if (tech != null) _TechInfoCard(tech: tech),
+              if (tech != null) _TechInfoCard(tech: tech, orderStatus: order.status),
               
               if (order.status == OrderStatus.pending || order.status == OrderStatus.assigned)
                 Padding(
@@ -467,16 +464,15 @@ class _StatusCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             status.label,
-            style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold),
+            style: AppTextStyles.displayMedium.copyWith(color: AppColors.gold, fontSize: 24),
           ),
           const SizedBox(height: 16),
-          // شريط المراحل اللحظية
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _stepItem('تم الاستلام', Icons.assignment_turned_in_outlined, status == OrderStatus.pending || status == OrderStatus.assigned || status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
-              _stepLine(status == OrderStatus.assigned || status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
-              _stepItem('في الطريق', Icons.directions_run_outlined, status == OrderStatus.assigned || status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
+              _stepLine(status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
+              _stepItem('في الطريق', Icons.directions_run_outlined, status == OrderStatus.onTheWay || status == OrderStatus.started || status == OrderStatus.completed),
               _stepLine(status == OrderStatus.started || status == OrderStatus.completed),
               _stepItem('جاري التنفيذ', Icons.build_outlined, status == OrderStatus.started || status == OrderStatus.completed),
               _stepLine(status == OrderStatus.completed),
@@ -601,32 +597,40 @@ class _WarrantyBadgeCard extends StatelessWidget {
 
 class _TechInfoCard extends StatelessWidget {
   final dynamic tech;
-  const _TechInfoCard({required this.tech});
+  final OrderStatus orderStatus;
+  const _TechInfoCard({required this.tech, required this.orderStatus});
 
   @override
   Widget build(BuildContext context) {
+    final bool isWaitingApproval = orderStatus == OrderStatus.assigned;
+    
     return AppCard(
       child: Row(
         children: [
           CircleAvatar(
             radius: 25,
             backgroundColor: AppColors.surface1,
-            child: Text(tech.spec.icon, style: const TextStyle(fontSize: 24)),
+            backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl) : null,
+            child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('الفني القادم إليك', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
+                Text(
+                  isWaitingApproval ? 'الفني المختار' : 'الفني القادم إليك', 
+                  style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)
+                ),
                 Text(tech.name, style: AppTextStyles.titleLarge),
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.phone, color: AppColors.success),
-            onPressed: () => launchUrl(Uri.parse('tel:${tech.phone}')),
-          ),
+          if (!isWaitingApproval)
+            IconButton(
+              icon: const Icon(Icons.phone, color: AppColors.success),
+              onPressed: () => launchUrl(Uri.parse('tel:${tech.phone}')),
+            ),
         ],
       ),
     );
@@ -648,7 +652,7 @@ class _OrderDetailsCard extends StatelessWidget {
           const Divider(height: 24),
           _row('نوع الخدمة', order.service.label),
           _row('كود التتبع', order.trackingCode),
-          _row('تاريخ الطلب', order.createdAt.toString().split(' ')[0]),
+          _row('تاريخ الطلب', intl.DateFormat('d MMM yyyy').format(order.createdAt)),
         ],
       ),
     );

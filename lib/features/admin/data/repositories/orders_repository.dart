@@ -22,13 +22,13 @@ abstract class OrdersRepository {
   Future<Either<Failure, List<Order>>> getOrdersByStatus(OrderStatus status);
   Future<Either<Failure, List<Order>>> getOrdersByTech(String techId);
   Stream<List<Order>> watchOrders();
-  
+
   Future<Either<Failure, Order>> assignTechnician(
     String orderId,
-    String techId,
-    {DateTime? estimatedArrival}
-  );
-  
+    String techId, {
+    DateTime? estimatedArrival,
+  });
+
   Future<Either<Failure, Order>> updateOrderStatus(
     String orderId,
     OrderStatus status, {
@@ -37,9 +37,13 @@ abstract class OrdersRepository {
     DateTime? completedAt,
     String? logMessage,
   });
-  
+
   Future<Either<Failure, Order>> addAdminNotes(String orderId, String notes);
-  Future<Either<Failure, Order>> rateOrder(String orderId, int rating, {String? comment});
+  Future<Either<Failure, Order>> rateOrder(
+    String orderId,
+    int rating, {
+    String? comment,
+  });
   Future<Either<Failure, void>> deleteOrder(String id);
 }
 
@@ -64,7 +68,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .from('orders')
         .select(_orderSelect)
         .eq('tracking_code', code);
-    
+
     if (data.isEmpty) throw Exception('الطلب غير موجود');
     return Order.fromJson(data.first);
   }
@@ -82,7 +86,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Order> create(Order order) async {
     final orderData = order.toJson();
-    
+
     // إزالة الحقول التي يتم إنشاؤها تلقائياً أو التي قد لا تكون موجودة في الجدول
     orderData.remove('id');
     orderData.remove('tracking_code');
@@ -94,7 +98,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
     orderData.remove('rating');
     orderData.remove('order_logs');
     orderData.remove('completed_at');
-    orderData.remove('estimated_arrival'); // شيله مؤقتاً لو مش موجود في الداتابيز
+    orderData.remove(
+      'estimated_arrival',
+    ); // شيله مؤقتاً لو مش موجود في الداتابيز
 
     if (orderData['tech_id'] == null ||
         orderData['tech_id'].toString().isEmpty) {
@@ -107,9 +113,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .from('orders')
         .insert(orderData)
         .select(_orderSelect);
-        
+
     if (data.isEmpty) throw Exception('فشل إنشاء الطلب');
-    
+
     await _client.from('order_logs').insert({
       'order_id': data.first['id'],
       'status': OrderStatus.pending.label,
@@ -122,7 +128,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Order> update(String id, Map<String, dynamic> data) async {
     final Map<String, dynamic> updateData = Map<String, dynamic>.from(data);
-    
+
     if (updateData.containsKey('status')) {
       final status = updateData['status'];
       if (status is OrderStatus) {
@@ -135,7 +141,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
         .update(updateData)
         .eq('id', id)
         .select(_orderSelect);
-        
+
     if (response.isEmpty) throw Exception('الطلب غير موجود');
     return Order.fromJson(response.first);
   }
@@ -172,17 +178,19 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Either<Failure, Order>> createOrder(CreateOrderDto dto) async {
     try {
-      final order = await create(Order(
-        id: '',
-        trackingCode: '',
-        clientName: dto.clientName,
-        clientPhone: dto.clientPhone,
-        service: dto.service,
-        area: dto.area,
-        description: dto.description,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ));
+      final order = await create(
+        Order(
+          id: '',
+          trackingCode: '',
+          clientName: dto.clientName,
+          clientPhone: dto.clientPhone,
+          service: dto.service,
+          area: dto.area,
+          description: dto.description,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
       return Right(order);
     } catch (error) {
       return Left(DatabaseFailure(error.toString()));
@@ -202,7 +210,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Either<Failure, Order>> getOrderById(String id) async {
     try {
-      final List data = await _client.from('orders').select(_orderSelect).eq('id', id);
+      final List data = await _client
+          .from('orders')
+          .select(_orderSelect)
+          .eq('id', id);
       if (data.isEmpty) return Left(DatabaseFailure('الطلب غير موجود'));
       return Right(Order.fromJson(data.first));
     } catch (error) {
@@ -221,7 +232,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, List<Order>>> getOrdersByStatus(OrderStatus status) async {
+  Future<Either<Failure, List<Order>>> getOrdersByStatus(
+    OrderStatus status,
+  ) async {
     try {
       final response = await _client
           .from('orders')
@@ -256,13 +269,13 @@ class SupabaseOrdersRepository implements OrdersRepository {
   @override
   Future<Either<Failure, Order>> assignTechnician(
     String orderId,
-    String techId,
-    {DateTime? estimatedArrival}
-  ) async {
+    String techId, {
+    DateTime? estimatedArrival,
+  }) async {
     try {
       final Map<String, dynamic> data = {
         'tech_id': techId,
-        'status': OrderStatus.assigned.label, 
+        'status': OrderStatus.assigned.label,
       };
       // هنا برضه ممكن تضرب لو العمود مش موجود، يفضل تظيفه في الداتابيز
       if (estimatedArrival != null) {
@@ -300,18 +313,20 @@ class SupabaseOrdersRepository implements OrdersRepository {
   }) async {
     try {
       final Map<String, dynamic> data = {'status': status.label};
-      
+
       if (finalPrice != null) data['final_price'] = finalPrice;
       if (techNotes != null) data['tech_notes'] = techNotes;
-      if (completedAt != null) data['completed_at'] = completedAt.toIso8601String();
-      
+      if (completedAt != null)
+        data['completed_at'] = completedAt.toIso8601String();
+
       final List response = await _client
           .from('orders')
           .update(data)
           .eq('id', orderId)
           .select(_orderSelect);
-          
-      if (response.isEmpty) return Left(DatabaseFailure('فشل تحديث حالة الطلب'));
+
+      if (response.isEmpty)
+        return Left(DatabaseFailure('فشل تحديث حالة الطلب'));
 
       await _client.from('order_logs').insert({
         'order_id': orderId,
@@ -326,7 +341,10 @@ class SupabaseOrdersRepository implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, Order>> addAdminNotes(String orderId, String notes) async {
+  Future<Either<Failure, Order>> addAdminNotes(
+    String orderId,
+    String notes,
+  ) async {
     try {
       final List response = await _client
           .from('orders')
@@ -341,11 +359,15 @@ class SupabaseOrdersRepository implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, Order>> rateOrder(String orderId, int rating, {String? comment}) async {
+  Future<Either<Failure, Order>> rateOrder(
+    String orderId,
+    int rating, {
+    String? comment,
+  }) async {
     try {
       final Map<String, dynamic> data = {'rating': rating};
       if (comment != null) data['rating_comment'] = comment;
-      
+
       final List response = await _client
           .from('orders')
           .update(data)

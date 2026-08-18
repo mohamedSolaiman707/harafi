@@ -14,56 +14,68 @@ final techsRepositoryProvider = Provider<TechniciansRepository>((ref) {
   return SupabaseTechniciansRepository(Supabase.instance.client);
 });
 
-// 1. مزود الفنيين الخام (جلب دوري من قاعدة البيانات)
+const _techsCacheKey = 'cached_techs_list';
+
 final _rawTechsProvider = StreamProvider<List<Technician>>((ref) async* {
   final repo = ref.watch(techsRepositoryProvider);
-  yield await repo.getAll();
-  yield* Stream.periodic(AppConstants.pollingInterval).asyncMap((_) => repo.getAll());
+  final prefs = await SharedPreferences.getInstance();
+
+  final cachedData = prefs.getString(_techsCacheKey);
+  if (cachedData != null) {
+    try {
+      final List decoded = jsonDecode(cachedData);
+      yield decoded.map((e) => Technician.fromJson(e)).toList();
+    } catch (_) {}
+  }
+
+  await for (final techs in repo.watchAll()) {
+    await prefs.setString(_techsCacheKey, jsonEncode(techs.map((t) => t.toJson()).toList()));
+    yield techs;
+  }
 });
 
-// 2. المزود النهائي (StreamProvider ليدعم .future مع منع الـ Flicker)
-final techniciansProvider = StreamProvider<List<Technician>>((ref) {
+final techniciansProvider = StreamProvider<List<Technician>>((ref) async* {
   final techsAsync = ref.watch(_rawTechsProvider);
-  final ordersAsync = ref.watch(ordersStreamProvider);
+  final ordersAsync = ref.watch(ordersProvider);
 
-  // نستخدم الـ Stream الخاص بـ _rawTechsProvider كأساس
-  return techsAsync.when(
-    data: (techs) {
-      final orders = ordersAsync.valueOrNull ?? [];
-      
-      // حساب التقييمات في الذاكرة (سريع جداً ولا يسبب تحميل)
-      final calculatedTechs = techs.map((tech) {
-        final techOrders = orders.where((o) => 
-          (o.techId == tech.id || o.techId == tech.phone) && 
-          o.rating != null && o.rating! > 0
-        ).toList();
-        
-        if (techOrders.isNotEmpty) {
-          final double total = techOrders.fold(0.0, (sum, o) => sum + (o.rating as num));
-          return tech.copyWith(rating: total / techOrders.length);
-        }
-        return tech;
-      }).toList();
-      
-      return Stream.value(calculatedTechs);
-    },
-    // إرجاع الستريم الأصلي في حالة التحميل أو الخطأ
-    loading: () => ref.watch(_rawTechsProvider.stream),
-    error: (e, s) => Stream.error(e, s),
-  );
+  final techs = techsAsync.valueOrNull ?? [];
+  final orders = ordersAsync.valueOrNull ?? [];
+
+  if (techs.isNotEmpty) {
+    yield techs.map((tech) {
+      final techOrders = orders
+          .where(
+            (o) =>
+        (o.techId == tech.id || o.techId == tech.phone) &&
+            o.rating != null &&
+            o.rating! > 0,
+      )
+          .toList();
+
+      if (techOrders.isNotEmpty) {
+        final double total = techOrders.fold(
+          0.0,
+              (sum, o) => sum + (o.rating as num),
+        );
+        return tech.copyWith(rating: total / techOrders.length);
+      }
+      return tech;
+    }).toList();
+  }
 });
 
 final techsStreamProvider = techniciansProvider;
 
-// الفنيون المتميزون بالقرب من العميل
 final topRatedTechsProvider = Provider<List<Technician>>((ref) {
   final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
   final userLocation = ref.watch(userLocationProvider);
 
-  final approvedTechs = techs.where((t) => 
-    t.status != TechStatus.pending && 
-    t.walletBalance >= AppConstants.platformFee
-  ).toList();
+  // تم إلغاء شرط الرصيد هنا لضمان ظهور الفنيين للعميل (تجربة مستخدم أفضل)
+  final approvedTechs = techs
+      .where(
+        (t) => t.status != TechStatus.pending,
+      )
+      .toList();
 
   final userCity = userLocation.city.trim();
   final userGov = userLocation.governorate.trim();
@@ -72,8 +84,14 @@ final topRatedTechsProvider = Provider<List<Technician>>((ref) {
   int locationScore(Technician t) {
     final techArea = t.area?.trim() ?? '';
     if (techArea.isEmpty) return 0;
-    if (techArea == userCity || techArea.contains(userCity) || userCity.contains(techArea)) return 2;
-    if (govCities.any((city) => techArea.contains(city) || city.contains(techArea))) return 1;
+    if (techArea == userCity ||
+        techArea.contains(userCity) ||
+        userCity.contains(techArea))
+      return 2;
+    if (govCities.any(
+          (city) => techArea.contains(city) || city.contains(techArea),
+    ))
+      return 1;
     return 0;
   }
 
@@ -86,6 +104,10 @@ final topRatedTechsProvider = Provider<List<Technician>>((ref) {
   }
 
   approvedTechs.sort((a, b) {
+    final aAvail = a.status == TechStatus.available ? 0 : (a.status == TechStatus.busy ? 1 : 2);
+    final bAvail = b.status == TechStatus.available ? 0 : (b.status == TechStatus.busy ? 1 : 2);
+    if (aAvail != bAvail) return aAvail - bAvail;
+
     int locDiff = locationScore(b) - locationScore(a);
     if (locDiff != 0) return locDiff;
     int rankDiff = rankScore(b) - rankScore(a);
@@ -97,8 +119,8 @@ final topRatedTechsProvider = Provider<List<Technician>>((ref) {
   return approvedTechs.take(8).toList();
 });
 
-// الفني الحالي الموثق مع دعم الكاش
-final currentTechnicianProvider = StateNotifierProvider<CurrentTechNotifier, AsyncValue<Technician?>>((ref) {
+final currentTechnicianProvider =
+StateNotifierProvider<CurrentTechNotifier, AsyncValue<Technician?>>((ref) {
   return CurrentTechNotifier(ref);
 });
 
@@ -136,7 +158,6 @@ class CurrentTechNotifier extends StateNotifier<AsyncValue<Technician?>> {
   void updateTech(Technician tech) {
     state = AsyncValue.data(tech);
     _saveToCache(tech);
-    _ref.invalidate(techsRepositoryProvider); 
   }
 
   Future<void> _loadFromCache() async {
@@ -152,7 +173,10 @@ class CurrentTechNotifier extends StateNotifier<AsyncValue<Technician?>> {
   Future<void> _saveToCache(Technician tech) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_cacheKey, jsonEncode(Technician.technicianToJson(tech)));
+      await prefs.setString(
+        _cacheKey,
+        jsonEncode(tech.toJson()),
+      );
     } catch (_) {}
   }
 
@@ -163,9 +187,21 @@ class CurrentTechNotifier extends StateNotifier<AsyncValue<Technician?>> {
   }
 }
 
-final availableTechsProvider = Provider.family<List<Technician>, ServiceType>((ref, serviceType) {
+final availableTechsProvider = Provider.family<List<Technician>, ServiceType>((
+    ref,
+    serviceType,
+    ) {
   final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
-  return techs.where((t) => t.status == TechStatus.available && t.spec == serviceType && t.walletBalance >= AppConstants.platformFee).toList();
+  
+  // نسمح بظهور الفنيين المتاحين بغض النظر عن الرصيد
+  // المنع من العمل سيكون عند محاولة الفني قبول الطلب أو عبر لوحة تحكمه
+  return techs
+      .where(
+        (t) =>
+    t.status == TechStatus.available &&
+        t.spec == serviceType,
+      )
+      .toList();
 });
 
 final techStatsProvider = Provider<TechStats>((ref) {
@@ -174,11 +210,22 @@ final techStatsProvider = Provider<TechStats>((ref) {
     total: techs.length,
     available: techs.where((t) => t.status == TechStatus.available).length,
     busy: techs.where((t) => t.status == TechStatus.busy).length,
-    pending: techs.where((t) =>  t.status == TechStatus.pending).length,
+    pending: techs.where((t) => t.status == TechStatus.pending).length,
+    onLeave: techs.where((t) => t.status == TechStatus.onLeave).length,
   );
 });
 
 class TechStats {
-  final int total; final int available; final int busy; final int pending;
-  TechStats({required this.total, required this.available, required this.busy, required this.pending});
+  final int total;
+  final int available;
+  final int busy;
+  final int pending;
+  final int onLeave;
+  TechStats({
+    required this.total,
+    required this.available,
+    required this.busy,
+    required this.pending,
+    required this.onLeave,
+  });
 }
