@@ -52,17 +52,24 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _pickIdImage(ImageSource source) async {
+  Future<void> _pickDocumentImage(ImageSource source, String docType) async {
     final XFile? image = await _picker.pickImage(
       source: source,
-      imageQuality: 50,
+      imageQuality: 70,
     );
     if (image != null) {
-      ref.read(techRegisterIdProofProvider.notifier).state = image;
+      if (docType == 'front') {
+        ref.read(techRegisterIdFrontProvider.notifier).state = image;
+        ref.read(techRegisterIdProofProvider.notifier).state = image;
+      } else if (docType == 'back') {
+        ref.read(techRegisterIdBackProvider.notifier).state = image;
+      } else if (docType == 'criminal') {
+        ref.read(techRegisterCriminalRecordProvider.notifier).state = image;
+      }
     }
   }
 
-  void _showImageSourceSheet() {
+  void _showImageSourceSheet(String docType, String docTitle) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface1,
@@ -73,11 +80,11 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Text(
-                'صورة إثبات الهوية (بطاقة/كارنيه)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                'رفع $docTitle',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
             ListTile(
@@ -85,7 +92,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               title: const Text('التقاط صورة بالكاميرا'),
               onTap: () {
                 Navigator.pop(context);
-                _pickIdImage(ImageSource.camera);
+                _pickDocumentImage(ImageSource.camera, docType);
               },
             ),
             ListTile(
@@ -93,7 +100,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               title: const Text('اختيار من المعرض'),
               onTap: () {
                 Navigator.pop(context);
-                _pickIdImage(ImageSource.gallery);
+                _pickDocumentImage(ImageSource.gallery, docType);
               },
             ),
             const SizedBox(height: 16),
@@ -105,15 +112,17 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
   Future<void> _submit() async {
     final selectedSpec = ref.read(techRegisterSpecProvider);
-    final idProofImage = ref.read(techRegisterIdProofProvider);
+    final idFrontImage = ref.read(techRegisterIdFrontProvider) ?? ref.read(techRegisterIdProofProvider);
+    final idBackImage = ref.read(techRegisterIdBackProvider);
+    final criminalRecordImage = ref.read(techRegisterCriminalRecordProvider);
     final selectedCity = ref.read(techRegisterCityProvider);
 
     if (!_formKey.currentState!.validate() || selectedSpec == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع البيانات')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى ملء جميع البيانات المطلوب إدخالها')));
       return;
     }
-    if (idProofImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى رفع صورة إثبات الهوية للتوثيق')));
+    if (idFrontImage == null || idBackImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى رفع صورة وجه وظهر البطاقة الشخصية لتوثيق حسابك 🛡️')));
       return;
     }
 
@@ -130,11 +139,24 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
       if (authResponse.user == null) throw 'فشل إنشاء الحساب';
       String userId = authResponse.user!.id;
 
-      final imageUrl = await _storageService.uploadImage(
-        image: idProofImage,
+      final frontUrl = await _storageService.uploadImage(
+        image: idFrontImage,
         path: 'tech_photos',
-        fileName: userId,
+        fileName: '${userId}_id_front',
       );
+      final backUrl = await _storageService.uploadImage(
+        image: idBackImage,
+        path: 'tech_photos',
+        fileName: '${userId}_id_back',
+      );
+      String? criminalUrl;
+      if (criminalRecordImage != null) {
+        criminalUrl = await _storageService.uploadImage(
+          image: criminalRecordImage,
+          path: 'tech_photos',
+          fileName: '${userId}_criminal',
+        );
+      }
 
       final technicianData = {
         'id': userId,
@@ -144,7 +166,11 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'bio': _bioController.text.trim(),
         'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
         'area': selectedCity,
-        'photo_url': imageUrl,
+        'photo_url': frontUrl,
+        'identity_proof_url': frontUrl,
+        'national_id_front_url': frontUrl,
+        'national_id_back_url': backUrl,
+        'criminal_record_url': criminalUrl,
         'status': TechStatus.available.label,
         'is_verified': false,
         'total_earnings': 0,
@@ -177,7 +203,9 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     final isLoading = ref.watch(techRegisterLoadingProvider);
     final selectedGov = ref.watch(techRegisterGovProvider);
     final selectedCity = ref.watch(techRegisterCityProvider);
-    final idProofImage = ref.watch(techRegisterIdProofProvider);
+    final idFrontImage = ref.watch(techRegisterIdFrontProvider) ?? ref.watch(techRegisterIdProofProvider);
+    final idBackImage = ref.watch(techRegisterIdBackProvider);
+    final criminalRecordImage = ref.watch(techRegisterCriminalRecordProvider);
     
     return Scaffold(
       appBar: AppBar(title: const Text('انضم لفريق المحترفين')),
@@ -220,25 +248,34 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           prefixIcon: Icons.lock_outline,
                           validator: (v) => v!.length < 6 ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : null,
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        InkWell(
-                          onTap: _showImageSourceSheet,
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface1,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(color: idProofImage != null ? AppColors.success : AppColors.borderDefault),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(idProofImage != null ? Icons.check_circle : Icons.badge_outlined, color: idProofImage != null ? AppColors.success : AppColors.gold),
-                                const SizedBox(width: 12),
-                                Expanded(child: Text(idProofImage != null ? 'تم اختيار صورة الهوية' : 'ارفع صورة البطاقة أو كارنيه المهنة')),
-                                const Icon(Icons.upload_file, size: 18),
-                              ],
-                            ),
-                          ),
+                        const SizedBox(height: AppSpacing.lg),
+                        const Text(
+                          'وثائق توثيق الهوية (مطلوبة للأمان 🛡️)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.gold),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _buildDocTile(
+                          title: 'وجه البطاقة الشخصية',
+                          subtitle: 'صورة واضحة من الأمام',
+                          image: idFrontImage,
+                          onTap: () => _showImageSourceSheet('front', 'وجه البطاقة الشخصية'),
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _buildDocTile(
+                          title: 'ظهر البطاقة الشخصية',
+                          subtitle: 'صورة واضحة من الخلف',
+                          image: idBackImage,
+                          onTap: () => _showImageSourceSheet('back', 'ظهر البطاقة الشخصية'),
+                          isRequired: true,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        _buildDocTile(
+                          title: 'صحيفة الحالة الجنائية (الفيش والتشبيه)',
+                          subtitle: 'اختياري - يمنحك التوثيق الذهبي المباشر',
+                          image: criminalRecordImage,
+                          onTap: () => _showImageSourceSheet('criminal', 'الفيش والتشبيه'),
+                          isRequired: false,
                         ),
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<ServiceType>(
@@ -295,6 +332,59 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocTile({
+    required String title,
+    required String subtitle,
+    required XFile? image,
+    required VoidCallback onTap,
+    bool isRequired = true,
+  }) {
+    final bool uploaded = image != null;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: uploaded ? AppColors.success.withValues(alpha: 0.08) : AppColors.surface1,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: uploaded ? AppColors.success : AppColors.borderDefault),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              uploaded ? Icons.check_circle_rounded : (isRequired ? Icons.badge_outlined : Icons.description_outlined),
+              color: uploaded ? AppColors.success : AppColors.gold,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(title, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+                      if (isRequired)
+                        Text(' *', style: AppTextStyles.titleMed.copyWith(color: AppColors.error)),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    uploaded ? 'تم اختيار المستند (${image.name})' : subtitle,
+                    style: AppTextStyles.labelMed.copyWith(color: uploaded ? AppColors.success : AppColors.textMuted, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(uploaded ? Icons.task_alt_rounded : Icons.upload_file_rounded, size: 20, color: uploaded ? AppColors.success : AppColors.textMuted),
+          ],
         ),
       ),
     );

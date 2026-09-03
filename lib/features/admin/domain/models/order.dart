@@ -1,5 +1,6 @@
 import '../enums/order_status.dart';
 import '../enums/service_type.dart';
+import '../business/order_lifecycle.dart';
 import 'order_log.dart';
 
 class Order {
@@ -21,6 +22,14 @@ class Order {
   final DateTime? completedAt;
   final List<OrderLog> logs;
   final List<String> completionImages; // جديد: صور إثبات العمل
+  final int? inspectionFee;
+  final int? laborFee;
+  final int? partsFee;
+  final String? promoCode;
+  final int? discountAmount;
+  final bool isScheduled;
+  final DateTime? scheduledDate;
+  final String? preferredTimeSlot;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -43,6 +52,14 @@ class Order {
     this.completedAt,
     this.logs = const [],
     this.completionImages = const [],
+    this.inspectionFee,
+    this.laborFee,
+    this.partsFee,
+    this.promoCode,
+    this.discountAmount,
+    this.isScheduled = false,
+    this.scheduledDate,
+    this.preferredTimeSlot,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -64,6 +81,12 @@ class Order {
     final diff = warrantyUntil.difference(DateTime.now()).inDays;
     return diff < 0 ? 0 : diff + 1;
   }
+
+  OrderLifecyclePhase get lifecyclePhase => OrderLifecycle.fromStatus(status);
+
+  bool get isActive => OrderLifecycle.isActive(status);
+
+  bool get isTerminal => OrderLifecycle.isTerminal(status);
 
   factory Order.fromJson(Map<String, dynamic> json) {
     final serviceValue = json['service']?.toString() ?? '';
@@ -101,6 +124,14 @@ class Order {
               ?.map((e) => OrderLog.fromJson(e))
               .toList() ?? [],
       completionImages: (json['completion_images'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      inspectionFee: (json['inspection_fee'] as num?)?.toInt(),
+      laborFee: (json['labor_fee'] as num?)?.toInt(),
+      partsFee: (json['parts_fee'] as num?)?.toInt(),
+      promoCode: json['promo_code']?.toString(),
+      discountAmount: (json['discount_amount'] as num?)?.toInt(),
+      isScheduled: json['is_scheduled'] == true || json['is_scheduled'] == 1,
+      scheduledDate: json['scheduled_date'] != null ? DateTime.tryParse(json['scheduled_date'].toString()) : null,
+      preferredTimeSlot: json['preferred_time_slot']?.toString(),
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
@@ -125,6 +156,14 @@ class Order {
     if (estimatedArrival != null) data['estimated_arrival'] = estimatedArrival?.toIso8601String();
     if (completedAt != null) data['completed_at'] = completedAt?.toIso8601String();
     if (completionImages.isNotEmpty) data['completion_images'] = completionImages;
+    if (inspectionFee != null) data['inspection_fee'] = inspectionFee;
+    if (laborFee != null) data['labor_fee'] = laborFee;
+    if (partsFee != null) data['parts_fee'] = partsFee;
+    if (promoCode != null) data['promo_code'] = promoCode;
+    if (discountAmount != null) data['discount_amount'] = discountAmount;
+    if (isScheduled) data['is_scheduled'] = true;
+    if (scheduledDate != null) data['scheduled_date'] = scheduledDate?.toIso8601String();
+    if (preferredTimeSlot != null) data['preferred_time_slot'] = preferredTimeSlot;
 
     return data;
   }
@@ -148,6 +187,14 @@ class Order {
     DateTime? completedAt,
     List<OrderLog>? logs,
     List<String>? completionImages,
+    int? inspectionFee,
+    int? laborFee,
+    int? partsFee,
+    String? promoCode,
+    int? discountAmount,
+    bool? isScheduled,
+    DateTime? scheduledDate,
+    String? preferredTimeSlot,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -170,6 +217,14 @@ class Order {
       completedAt: completedAt ?? this.completedAt,
       logs: logs ?? this.logs,
       completionImages: completionImages ?? this.completionImages,
+      inspectionFee: inspectionFee ?? this.inspectionFee,
+      laborFee: laborFee ?? this.laborFee,
+      partsFee: partsFee ?? this.partsFee,
+      promoCode: promoCode ?? this.promoCode,
+      discountAmount: discountAmount ?? this.discountAmount,
+      isScheduled: isScheduled ?? this.isScheduled,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      preferredTimeSlot: preferredTimeSlot ?? this.preferredTimeSlot,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

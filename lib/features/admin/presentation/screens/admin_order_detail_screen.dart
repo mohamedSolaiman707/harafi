@@ -15,6 +15,7 @@ import '../providers/admin_actions_provider.dart';
 import '../../domain/models/order.dart';
 import '../../domain/enums/order_status.dart';
 import '../../domain/models/technician.dart';
+import '../../domain/business/order_lifecycle.dart';
 
 class AdminOrderDetailScreen extends ConsumerWidget {
   final String orderId;
@@ -58,6 +59,8 @@ class AdminOrderDetailScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildMainInfo(context, order, assignedTech),
+              const SizedBox(height: AppSpacing.xl),
+              _buildLifecycleCard(order),
               const SizedBox(height: AppSpacing.xl),
               
               if (order.completionImages.isNotEmpty) ...[
@@ -184,6 +187,38 @@ class AdminOrderDetailScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(order.description ?? 'لا يوجد وصف', style: AppTextStyles.bodyLarge),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLifecycleCard(Order order) {
+    final phase = order.lifecyclePhase;
+    final (title, subtitle, color) = switch (phase) {
+      OrderLifecyclePhase.newRequest => ('طلب جديد', 'تم استلام الطلب وما زال في بداية المسار.', AppColors.gold),
+      OrderLifecyclePhase.awaitingTechnicianResponse => ('بانتظار الفني', 'الطلب تم إرساله أو تعيينه وما زال ينتظر التفاعل.', AppColors.info),
+      OrderLifecyclePhase.technicianAccepted => ('تم القبول', 'الفني وافق على الطلب وبدأت المتابعة.', AppColors.info),
+      OrderLifecyclePhase.technicianOnTheWay => ('في الطريق', 'الفني متحرك الآن إلى موقع العميل.', Colors.orange),
+      OrderLifecyclePhase.technicianArrived => ('الوصول', 'الفني وصل للموقع وجاهز للمعاينة.', Colors.orange),
+      OrderLifecyclePhase.inProgress => ('جاري التنفيذ', 'الإصلاح أو التنفيذ بدأ فعليًا.', Colors.blue),
+      OrderLifecyclePhase.readyToComplete => ('جاهز للإغلاق', 'العملية اقتربت من الإنهاء وتحتاج تأكيدًا أخيرًا.', AppColors.success),
+      OrderLifecyclePhase.completed => ('مكتمل', 'تم إنهاء الطلب بنجاح.', AppColors.success),
+      OrderLifecyclePhase.cancelled => ('ملغي', 'تم إيقاف الطلب ولن يستكمل.', AppColors.error),
+    };
+
+    return AppCard(
+      color: color.withValues(alpha: 0.06),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.titleLarge.copyWith(color: color)),
+          const SizedBox(height: 8),
+          Text(subtitle, style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary)),
+          const SizedBox(height: 12),
+          Text(
+            'الحالة الحالية: ${order.status.label}',
+            style: AppTextStyles.labelLarge.copyWith(color: AppColors.textPrimary),
           ),
         ],
       ),

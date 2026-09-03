@@ -1,9 +1,12 @@
+// ignore_for_file: invalid_annotation_target
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../enums/service_type.dart';
 import '../enums/tech_status.dart';
+import 'tech_badge.dart';
 import '../../../../core/constants/app_constants.dart';
 
 part 'technician.freezed.dart';
@@ -25,6 +28,9 @@ class Technician with _$Technician {
     @JsonKey(name: 'total_jobs') @Default(0) int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,
     @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
+    @JsonKey(name: 'national_id_front_url') String? nationalIdFrontUrl,
+    @JsonKey(name: 'national_id_back_url') String? nationalIdBackUrl,
+    @JsonKey(name: 'criminal_record_url') String? criminalRecordUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') @Default(0) int totalEarnings,
     @JsonKey(name: 'wallet_balance') @Default(100) int walletBalance,
@@ -54,10 +60,20 @@ class Technician with _$Technician {
   }
 
   Color get rankColor {
-    if (totalJobs >= 50 && rating >= 4.7) return const Color(0xFFE5E4E2);
-    if (totalJobs >= 30 && rating >= 4.5) return const Color(0xFFFFD700);
-    if (totalJobs >= 10) return const Color(0xFFC0C0C0);
-    return const Color(0xFFCD7F32);
+    if (totalJobs >= 50 && rating >= 4.7) return const Color(0xFFE5E4E2); // Platinum
+    if (totalJobs >= 30 && rating >= 4.5) return AppColors.gold;
+    if (totalJobs >= 10) return const Color(0xFFC0C0C0); // Silver
+    return const Color(0xFFCD7F32); // Bronze
+  }
+
+  List<TechBadge> get earnedBadges {
+    final list = <TechBadge>[];
+    if (isVerified) list.add(TechBadge.verified);
+    if (rating >= 4.7) list.add(TechBadge.topRated);
+    if (totalJobs >= 50) list.add(TechBadge.expert);
+    if (totalJobs >= 10) list.add(TechBadge.superFast);
+    list.add(TechBadge.CleanRecord);
+    return list;
   }
 
   IconData get rankIcon {
@@ -119,6 +135,9 @@ class Technician with _$Technician {
         totalJobs: _toInt(json['total_jobs']) ?? 0,
         photoUrl: json['photo_url']?.toString(),
         identityProofUrl: json['identity_proof_url']?.toString(),
+        nationalIdFrontUrl: json['national_id_front_url']?.toString() ?? json['identity_proof_url']?.toString(),
+        nationalIdBackUrl: json['national_id_back_url']?.toString(),
+        criminalRecordUrl: json['criminal_record_url']?.toString(),
         bio: json['bio']?.toString(),
         totalEarnings: _toInt(json['total_earnings']) ?? 0,
         walletBalance: _toInt(json['wallet_balance']) ?? 100,
@@ -170,7 +189,10 @@ class Technician with _$Technician {
       'wallet_balance': tech.walletBalance,
       'bio': tech.bio,
       'photo_url': tech.photoUrl,
-      'identity_proof_url': tech.identityProofUrl,
+      'identity_proof_url': tech.identityProofUrl ?? tech.nationalIdFrontUrl,
+      'national_id_front_url': tech.nationalIdFrontUrl ?? tech.identityProofUrl,
+      'national_id_back_url': tech.nationalIdBackUrl,
+      'criminal_record_url': tech.criminalRecordUrl,
       'portfolio_images': tech.portfolioImages,
       'is_verified': tech.isVerified,
       'created_at': tech.createdAt.toIso8601String(),

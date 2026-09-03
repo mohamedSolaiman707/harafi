@@ -138,6 +138,11 @@ class AdminShell extends StatelessWidget {
                           selectedIcon: Icon(Icons.people),
                           label: Text('الفنيين والخبراء'),
                         ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.confirmation_number_outlined),
+                          selectedIcon: Icon(Icons.confirmation_number),
+                          label: Text('أكواد الخصم 🎁'),
+                        ),
                       ],
                     ),
                   ),
@@ -188,6 +193,7 @@ class AdminShell extends StatelessWidget {
                 NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'الرئيسية'),
                 NavigationDestination(icon: Icon(Icons.assignment_outlined), label: 'الطلبات'),
                 NavigationDestination(icon: Icon(Icons.people_outline), label: 'الفنيين'),
+                NavigationDestination(icon: Icon(Icons.confirmation_number_outlined), label: 'الخصومات'),
               ],
             ),
     );
@@ -196,6 +202,7 @@ class AdminShell extends StatelessWidget {
   int _getSelectedIndex(String location) {
     if (location.startsWith('/admin/orders')) return 1;
     if (location.startsWith('/admin/techs')) return 2;
+    if (location.startsWith('/admin/promos')) return 3;
     return 0;
   }
 
@@ -204,6 +211,7 @@ class AdminShell extends StatelessWidget {
       case 0: context.go('/admin'); break;
       case 1: context.go('/admin/orders'); break;
       case 2: context.go('/admin/techs'); break;
+      case 3: context.go('/admin/promos'); break;
     }
   }
 }

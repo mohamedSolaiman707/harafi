@@ -9,6 +9,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../../shared/widgets/notification_icon.dart';
+import '../../../client/presentation/providers/technician_learning_metrics.dart';
 import '../widgets/stats_widget.dart';
 import '../widgets/revenue_chart.dart';
 import '../providers/techs_provider.dart';
@@ -17,6 +18,10 @@ import '../../domain/models/technician.dart';
 import '../../domain/models/order.dart';
 import '../../domain/enums/tech_status.dart';
 import '../../domain/enums/order_status.dart';
+import '../../../client/presentation/providers/learning_insights_provider.dart';
+import '../../domain/models/warranty_claim.dart';
+import '../providers/warranty_claims_provider.dart';
+import 'package:intl/intl.dart' as intl;
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -98,9 +103,20 @@ class DashboardScreen extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: sidePadding),
               sliver: SliverToBoxAdapter(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const StatsWidget(),
+                    const SizedBox(height: 16),
+                    const _PendingWarrantyClaimsSection(),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: sidePadding),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     const SizedBox(height: AppSpacing.lg),
 
                     if (isDesktop)
@@ -124,6 +140,8 @@ class DashboardScreen extends ConsumerWidget {
                               children: [
                                 _buildPendingAlerts(techsAsync, context),
                                 const SizedBox(height: AppSpacing.lg),
+                                _buildLearningInsights(techsAsync),
+                                const SizedBox(height: AppSpacing.lg),
                                 _buildRecentReviews(ordersAsync, context),
                               ],
                             ),
@@ -134,6 +152,8 @@ class DashboardScreen extends ConsumerWidget {
                       Column(
                         children: [
                           _buildPendingAlerts(techsAsync, context),
+                          const SizedBox(height: AppSpacing.md),
+                          _buildLearningInsights(techsAsync),
                           const SizedBox(height: AppSpacing.md),
                           _buildChartSection(ordersAsync),
                           const SizedBox(height: AppSpacing.md),
@@ -264,6 +284,65 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildLearningInsights(AsyncValue<List<Technician>> techsAsync) {
+    return techsAsync.when(
+      data: (techs) {
+        final activeTechs = techs.where((tech) => tech.status != TechStatus.pending).toList();
+        if (activeTechs.isEmpty) return const SizedBox.shrink();
+
+        final insights = activeTechs.map((tech) {
+          final metrics = buildTechnicianLearningMetrics(
+            tech.id,
+            {
+              'rating': tech.rating,
+              'is_verified': tech.isVerified,
+              'status': tech.status.label,
+            },
+            const [],
+          );
+          return (tech: tech, metrics: metrics);
+        }).toList()
+          ..sort((a, b) => b.metrics.reliabilityScore.compareTo(a.metrics.reliabilityScore));
+
+        final top = insights.take(3).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader('تعلّم الفنيين', AppColors.info, Icons.insights_rounded),
+            const SizedBox(height: AppSpacing.md),
+            ...top.map((entry) => AppCard(
+              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+              color: AppColors.surface1,
+              child: ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                leading: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.info.withOpacity(0.12),
+                  child: Text(entry.tech.spec.icon, style: const TextStyle(fontSize: 16)),
+                ),
+                title: Text(entry.tech.name, style: AppTextStyles.titleMed),
+                subtitle: Text(
+                  buildLearningSummary(entry.metrics),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMed,
+                ),
+                trailing: Text(
+                  '${entry.metrics.reliabilityScore.toStringAsFixed(0)}%',
+                  style: AppTextStyles.titleMed.copyWith(color: AppColors.info, fontWeight: FontWeight.bold),
+                ),
+              ),
+            )),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildSectionHeader(String title, Color color, IconData icon) {
     return Row(
       children: [
@@ -372,5 +451,144 @@ class _RecentOrdersSection extends StatelessWidget {
       case OrderStatus.started: return Colors.blue;
       default: return AppColors.textSecondary;
     }
+  }
+}
+
+class _PendingWarrantyClaimsSection extends ConsumerWidget {
+  const _PendingWarrantyClaimsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final claimsAsync = ref.watch(warrantyClaimsStreamProvider);
+
+    return claimsAsync.when(
+      data: (claims) {
+        final pendingClaims = claims.where((c) => c.isPending).toList();
+        if (pendingClaims.isEmpty) return const SizedBox.shrink();
+
+        return AppCard(
+          color: AppColors.error.withValues(alpha: 0.05),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.shield_outlined, color: AppColors.error, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        'مطالبات الضمان المعلقة (${pendingClaims.length}) 🛡️',
+                        style: AppTextStyles.titleLarge.copyWith(color: AppColors.error, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'يتطلب مراجعة العميل والحل الفوري',
+                    style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: pendingClaims.length,
+                itemBuilder: (context, index) {
+                  final claim = pendingClaims[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface1,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderDefault),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'العميل: ${claim.clientName} (${claim.clientPhone})',
+                              style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'كود التتبع: ${claim.trackingCode}',
+                              style: AppTextStyles.labelMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'وصف المشكلة: ${claim.issueDescription}',
+                          style: AppTextStyles.bodyMed,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'تاريخ الطلب: ${intl.DateFormat('d MMM, HH:mm').format(claim.createdAt)}',
+                              style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11),
+                            ),
+                            Row(
+                              children: [
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  ),
+                                  onPressed: () async {
+                                    await Supabase.instance.client
+                                        .from('warranty_claims')
+                                        .update({
+                                      'status': 'resolved',
+                                      'resolved_at': DateTime.now().toIso8601String(),
+                                    }).eq('id', claim.id);
+                                    ref.invalidate(warrantyClaimsStreamProvider);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تسجيل حل مطالبة الضمان بنجاح 🟢')));
+                                    }
+                                  },
+                                  icon: const Icon(Icons.check, size: 16),
+                                  label: const Text('تم الحل'),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton(
+                                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                                  onPressed: () async {
+                                    await Supabase.instance.client
+                                        .from('warranty_claims')
+                                        .update({
+                                      'status': 'rejected',
+                                    }).eq('id', claim.id);
+                                    ref.invalidate(warrantyClaimsStreamProvider);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم رفض مطالبة الضمان')));
+                                    }
+                                  },
+                                  child: const Text('رفض', style: TextStyle(fontSize: 11)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+    );
   }
 }

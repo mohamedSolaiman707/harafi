@@ -34,6 +34,12 @@ mixin _$Technician {
   String? get photoUrl => throw _privateConstructorUsedError;
   @JsonKey(name: 'identity_proof_url')
   String? get identityProofUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'national_id_front_url')
+  String? get nationalIdFrontUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'national_id_back_url')
+  String? get nationalIdBackUrl => throw _privateConstructorUsedError;
+  @JsonKey(name: 'criminal_record_url')
+  String? get criminalRecordUrl => throw _privateConstructorUsedError;
   String? get bio => throw _privateConstructorUsedError;
   @JsonKey(name: 'total_earnings')
   int get totalEarnings => throw _privateConstructorUsedError;
@@ -73,6 +79,9 @@ abstract class $TechnicianCopyWith<$Res> {
     @JsonKey(name: 'total_jobs') int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,
     @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
+    @JsonKey(name: 'national_id_front_url') String? nationalIdFrontUrl,
+    @JsonKey(name: 'national_id_back_url') String? nationalIdBackUrl,
+    @JsonKey(name: 'criminal_record_url') String? criminalRecordUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') int totalEarnings,
     @JsonKey(name: 'wallet_balance') int walletBalance,
@@ -109,6 +118,9 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
     Object? totalJobs = null,
     Object? photoUrl = freezed,
     Object? identityProofUrl = freezed,
+    Object? nationalIdFrontUrl = freezed,
+    Object? nationalIdBackUrl = freezed,
+    Object? criminalRecordUrl = freezed,
     Object? bio = freezed,
     Object? totalEarnings = null,
     Object? walletBalance = null,
@@ -166,6 +178,18 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
                 ? _value.identityProofUrl
                 : identityProofUrl // ignore: cast_nullable_to_non_nullable
                       as String?,
+            nationalIdFrontUrl: freezed == nationalIdFrontUrl
+                ? _value.nationalIdFrontUrl
+                : nationalIdFrontUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            nationalIdBackUrl: freezed == nationalIdBackUrl
+                ? _value.nationalIdBackUrl
+                : nationalIdBackUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            criminalRecordUrl: freezed == criminalRecordUrl
+                ? _value.criminalRecordUrl
+                : criminalRecordUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
             bio: freezed == bio
                 ? _value.bio
                 : bio // ignore: cast_nullable_to_non_nullable
@@ -218,6 +242,9 @@ abstract class _$$TechnicianImplCopyWith<$Res>
     @JsonKey(name: 'total_jobs') int totalJobs,
     @JsonKey(name: 'photo_url') String? photoUrl,
     @JsonKey(name: 'identity_proof_url') String? identityProofUrl,
+    @JsonKey(name: 'national_id_front_url') String? nationalIdFrontUrl,
+    @JsonKey(name: 'national_id_back_url') String? nationalIdBackUrl,
+    @JsonKey(name: 'criminal_record_url') String? criminalRecordUrl,
     String? bio,
     @JsonKey(name: 'total_earnings') int totalEarnings,
     @JsonKey(name: 'wallet_balance') int walletBalance,
@@ -253,6 +280,9 @@ class __$$TechnicianImplCopyWithImpl<$Res>
     Object? totalJobs = null,
     Object? photoUrl = freezed,
     Object? identityProofUrl = freezed,
+    Object? nationalIdFrontUrl = freezed,
+    Object? nationalIdBackUrl = freezed,
+    Object? criminalRecordUrl = freezed,
     Object? bio = freezed,
     Object? totalEarnings = null,
     Object? walletBalance = null,
@@ -310,6 +340,18 @@ class __$$TechnicianImplCopyWithImpl<$Res>
             ? _value.identityProofUrl
             : identityProofUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        nationalIdFrontUrl: freezed == nationalIdFrontUrl
+            ? _value.nationalIdFrontUrl
+            : nationalIdFrontUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        nationalIdBackUrl: freezed == nationalIdBackUrl
+            ? _value.nationalIdBackUrl
+            : nationalIdBackUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        criminalRecordUrl: freezed == criminalRecordUrl
+            ? _value.criminalRecordUrl
+            : criminalRecordUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
         bio: freezed == bio
             ? _value.bio
             : bio // ignore: cast_nullable_to_non_nullable
@@ -355,6 +397,9 @@ class _$TechnicianImpl extends _Technician {
     @JsonKey(name: 'total_jobs') this.totalJobs = 0,
     @JsonKey(name: 'photo_url') this.photoUrl,
     @JsonKey(name: 'identity_proof_url') this.identityProofUrl,
+    @JsonKey(name: 'national_id_front_url') this.nationalIdFrontUrl,
+    @JsonKey(name: 'national_id_back_url') this.nationalIdBackUrl,
+    @JsonKey(name: 'criminal_record_url') this.criminalRecordUrl,
     this.bio,
     @JsonKey(name: 'total_earnings') this.totalEarnings = 0,
     @JsonKey(name: 'wallet_balance') this.walletBalance = 100,
@@ -397,6 +442,15 @@ class _$TechnicianImpl extends _Technician {
   @JsonKey(name: 'identity_proof_url')
   final String? identityProofUrl;
   @override
+  @JsonKey(name: 'national_id_front_url')
+  final String? nationalIdFrontUrl;
+  @override
+  @JsonKey(name: 'national_id_back_url')
+  final String? nationalIdBackUrl;
+  @override
+  @JsonKey(name: 'criminal_record_url')
+  final String? criminalRecordUrl;
+  @override
   final String? bio;
   @override
   @JsonKey(name: 'total_earnings')
@@ -422,7 +476,7 @@ class _$TechnicianImpl extends _Technician {
 
   @override
   String toString() {
-    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, identityProofUrl: $identityProofUrl, bio: $bio, totalEarnings: $totalEarnings, walletBalance: $walletBalance, portfolioImages: $portfolioImages, isVerified: $isVerified, createdAt: $createdAt)';
+    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, identityProofUrl: $identityProofUrl, nationalIdFrontUrl: $nationalIdFrontUrl, nationalIdBackUrl: $nationalIdBackUrl, criminalRecordUrl: $criminalRecordUrl, bio: $bio, totalEarnings: $totalEarnings, walletBalance: $walletBalance, portfolioImages: $portfolioImages, isVerified: $isVerified, createdAt: $createdAt)';
   }
 
   @override
@@ -447,6 +501,12 @@ class _$TechnicianImpl extends _Technician {
                 other.photoUrl == photoUrl) &&
             (identical(other.identityProofUrl, identityProofUrl) ||
                 other.identityProofUrl == identityProofUrl) &&
+            (identical(other.nationalIdFrontUrl, nationalIdFrontUrl) ||
+                other.nationalIdFrontUrl == nationalIdFrontUrl) &&
+            (identical(other.nationalIdBackUrl, nationalIdBackUrl) ||
+                other.nationalIdBackUrl == nationalIdBackUrl) &&
+            (identical(other.criminalRecordUrl, criminalRecordUrl) ||
+                other.criminalRecordUrl == criminalRecordUrl) &&
             (identical(other.bio, bio) || other.bio == bio) &&
             (identical(other.totalEarnings, totalEarnings) ||
                 other.totalEarnings == totalEarnings) &&
@@ -463,7 +523,7 @@ class _$TechnicianImpl extends _Technician {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     name,
@@ -477,13 +537,16 @@ class _$TechnicianImpl extends _Technician {
     totalJobs,
     photoUrl,
     identityProofUrl,
+    nationalIdFrontUrl,
+    nationalIdBackUrl,
+    criminalRecordUrl,
     bio,
     totalEarnings,
     walletBalance,
     const DeepCollectionEquality().hash(_portfolioImages),
     isVerified,
     createdAt,
-  );
+  ]);
 
   /// Create a copy of Technician
   /// with the given fields replaced by the non-null parameter values.
@@ -508,6 +571,9 @@ abstract class _Technician extends Technician {
     @JsonKey(name: 'total_jobs') final int totalJobs,
     @JsonKey(name: 'photo_url') final String? photoUrl,
     @JsonKey(name: 'identity_proof_url') final String? identityProofUrl,
+    @JsonKey(name: 'national_id_front_url') final String? nationalIdFrontUrl,
+    @JsonKey(name: 'national_id_back_url') final String? nationalIdBackUrl,
+    @JsonKey(name: 'criminal_record_url') final String? criminalRecordUrl,
     final String? bio,
     @JsonKey(name: 'total_earnings') final int totalEarnings,
     @JsonKey(name: 'wallet_balance') final int walletBalance,
@@ -546,6 +612,15 @@ abstract class _Technician extends Technician {
   @override
   @JsonKey(name: 'identity_proof_url')
   String? get identityProofUrl;
+  @override
+  @JsonKey(name: 'national_id_front_url')
+  String? get nationalIdFrontUrl;
+  @override
+  @JsonKey(name: 'national_id_back_url')
+  String? get nationalIdBackUrl;
+  @override
+  @JsonKey(name: 'criminal_record_url')
+  String? get criminalRecordUrl;
   @override
   String? get bio;
   @override

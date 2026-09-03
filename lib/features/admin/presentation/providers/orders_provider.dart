@@ -111,11 +111,11 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
 
   return DashboardStats(
     totalOrders: orders.length,
-    pendingOrders: orders.where((o) => o.status == OrderStatus.pending).length,
+    pendingOrders: orders.where((o) =>
+      o.status == OrderStatus.pending || o.status == OrderStatus.assigned
+    ).length,
     activeOrders: orders.where((o) =>
-    o.status == OrderStatus.assigned ||
-        o.status == OrderStatus.onTheWay ||
-        o.status == OrderStatus.started
+      o.status == OrderStatus.onTheWay || o.status == OrderStatus.started
     ).length,
     completedOrders: orders.where((o) => o.status == OrderStatus.completed).length,
     cancelledOrders: orders.where((o) => o.status == OrderStatus.cancelled).length,

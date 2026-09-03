@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart' as intl;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/whatsapp_otp_service.dart';
 import '../../../../core/utils/error_handler.dart';
@@ -15,6 +16,8 @@ import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/models/technician.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/presentation/providers/admin_actions_provider.dart';
+import '../../../admin/domain/models/promo_code.dart';
+import '../../../admin/presentation/providers/promo_codes_provider.dart';
 import '../providers/client_screen_providers.dart';
 
 class RequestScreen extends ConsumerStatefulWidget {
@@ -30,6 +33,13 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   final _phoneController = TextEditingController();
   final _areaController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _promoCodeController = TextEditingController();
+  PromoCode? _appliedPromo;
+  bool _isValidatingPromo = false;
+  String? _promoError;
+  bool _isScheduled = false;
+  DateTime? _scheduledDate;
+  String _preferredTimeSlot = '9:00 ص - 12:00 ظ';
   String? _preSelectedTechId;
   bool _isInitialized = false;
 
@@ -39,11 +49,23 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
     _loadSavedClientData();
   }
 
+  String _normalizePhone(String phone) {
+    return phone.replaceAll(RegExp(r'\D'), '');
+  }
+
   Future<void> _loadSavedClientData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final savedPhone = prefs.getString('client_phone') ?? '';
       _nameController.text = prefs.getString('client_name') ?? '';
-      _phoneController.text = prefs.getString('client_phone') ?? '';
+      _phoneController.text = savedPhone;
+
+      // مزامنة الرقم الموثق سابقاً لتفادي طلب OTP مجدداً
+      final verifiedPhone = prefs.getString('verified_phone');
+      if (savedPhone.isNotEmpty && (verifiedPhone == null || verifiedPhone.isEmpty)) {
+        await prefs.setString('verified_phone', savedPhone);
+        await prefs.setBool('is_client_verified', true);
+      }
       
       // مزامنة الموقع المختار في الهوم مع شاشة الطلب
       final savedArea = prefs.getString('client_area');
@@ -121,15 +143,30 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       await prefs.setString('client_phone', phone);
       await prefs.setString('client_area', _areaController.text.trim());
 
-      if (prefs.getString('verified_phone') != phone) {
+      final normalizedInputPhone = _normalizePhone(phone);
+      final normalizedVerifiedPhone = _normalizePhone(prefs.getString('verified_phone') ?? prefs.getString('client_phone') ?? '');
+      
+      final isAlreadyVerified = normalizedInputPhone.isNotEmpty &&
+          (normalizedVerifiedPhone == normalizedInputPhone || prefs.getBool('is_client_verified') == true);
+
+      if (!isAlreadyVerified) {
         final otp = WhatsAppOtpService.generateOtp();
         await WhatsAppOtpService.sendOtpViaWhatsApp(phone, otp);
         if (!mounted) return;
-        final isVerified = await WhatsAppOtpService.showOtpVerificationDialog(context: context, phone: phone, generatedOtp: otp);
-        if (!isVerified) return;
+        final isVerified = await WhatsAppOtpService.showOtpVerificationDialog(
+          context: context, 
+          phone: phone, 
+          generatedOtp: otp,
+        );
+        if (!isVerified) {
+          ref.read(requestLoadingProvider.notifier).state = false;
+          return;
+        }
         await prefs.setString('verified_phone', phone);
+        await prefs.setBool('is_client_verified', true);
       }
 
+      final discountAmount = _appliedPromo != null ? _appliedPromo!.calculateDiscount(100) : 0;
       final order = Order(
         id: '', trackingCode: '',
         clientName: _nameController.text.trim(),
@@ -139,6 +176,11 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
         description: _descriptionController.text.trim(),
         techId: _preSelectedTechId,
         status: _preSelectedTechId != null ? OrderStatus.assigned : OrderStatus.pending,
+        promoCode: _appliedPromo?.code,
+        discountAmount: discountAmount,
+        isScheduled: _isScheduled,
+        scheduledDate: _isScheduled ? (_scheduledDate ?? DateTime.now().add(const Duration(days: 1))) : null,
+        preferredTimeSlot: _isScheduled ? _preferredTimeSlot : null,
         createdAt: DateTime.now(), updatedAt: DateTime.now(),
       );
 
@@ -146,6 +188,9 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       result.when(
         left: (f) => AppErrorHandler.showSnackBar(context, f.message),
         right: (createdOrder) {
+          if (_appliedPromo != null) {
+            incrementPromoCodeUse(_appliedPromo!.code);
+          }
           WhatsAppOtpService.sendOrderConfirmationToClient(createdOrder);
           if (mounted) _showSuccessDialog(createdOrder);
         },
@@ -237,10 +282,20 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
                     _buildAvailableTechsList(selectedService),
                   ],
 
+                  const SizedBox(height: 24),
+                  _buildStepHeader('🕒', 'موعد تقديم الخدمة'),
+                  const SizedBox(height: 16),
+                  _buildSchedulingSection(),
+
                   const SizedBox(height: 32),
                   _buildStepHeader('2', 'بيانات التواصل والعنوان'),
                   const SizedBox(height: 16),
                   _buildContactForm(),
+
+                  const SizedBox(height: 24),
+                  _buildStepHeader('🎁', 'كوبون الخصم (البرومو كود)'),
+                  const SizedBox(height: 16),
+                  _buildPromoCodeSection(),
 
                   const SizedBox(height: 40),
                   AppButton(
@@ -429,6 +484,196 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
           AppTextField(label: 'العنوان (المنطقة والشارع)', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
           const SizedBox(height: 16),
           AppTextField(label: 'وصف العطل باختصار', controller: _descriptionController, hint: 'مثال: حنفية المطبخ بتسرب ميه', maxLines: 2),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _applyPromoCode() async {
+    final code = _promoCodeController.text.trim();
+    if (code.isEmpty) return;
+
+    setState(() {
+      _isValidatingPromo = true;
+      _promoError = null;
+    });
+
+    try {
+      final promo = await validateAndFetchPromoCode(code);
+      if (promo == null) {
+        setState(() {
+          _appliedPromo = null;
+          _promoError = 'كود الخصم غير صحيح أو انتهت صلاحيته ❌';
+        });
+      } else {
+        setState(() {
+          _appliedPromo = promo;
+          _promoError = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تم تطبيق كود الخصم (${promo.code}) بنجاح! 🎉')),
+        );
+      }
+    } catch (_) {
+      setState(() => _promoError = 'خطأ في فحص الكود');
+    } finally {
+      setState(() => _isValidatingPromo = false);
+    }
+  }
+
+  Widget _buildPromoCodeSection() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: _appliedPromo != null ? AppColors.success : AppColors.borderDefault),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _promoCodeController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    labelText: 'أدخل كود الخصم (مثال: HARAFY10)',
+                    prefixIcon: const Icon(Icons.confirmation_number_outlined, color: AppColors.gold),
+                    errorText: _promoError,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                ),
+                onPressed: _isValidatingPromo ? null : _applyPromoCode,
+                child: _isValidatingPromo
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                    : const Text('تطبيق الخصم', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          if (_appliedPromo != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.stars_rounded, color: AppColors.success, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'كود خصم مفعّل: ${_appliedPromo!.code} (${_appliedPromo!.discountPercentage > 0 ? "خصم ${_appliedPromo!.discountPercentage}%" : "خصم ${_appliedPromo!.discountAmount} ج.م"}) 🎉',
+                    style: AppTextStyles.labelMed.copyWith(color: AppColors.success, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSchedulingSection() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.borderDefault),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('خدمة فورية الآن ⚡', style: TextStyle(fontWeight: FontWeight.bold)),
+                  selected: !_isScheduled,
+                  onSelected: (val) => setState(() => _isScheduled = !val),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Text('حجز موعد 📅', style: TextStyle(fontWeight: FontWeight.bold)),
+                  selected: _isScheduled,
+                  onSelected: (val) => setState(() => _isScheduled = val),
+                ),
+              ),
+            ],
+          ),
+          if (_isScheduled) ...[
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now().add(const Duration(days: 1)),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 30)),
+                );
+                if (picked != null) {
+                  setState(() => _scheduledDate = picked);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today_rounded, color: AppColors.gold, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          _scheduledDate != null
+                              ? 'الموعد المحدد: ${intl.DateFormat('d MMMM yyyy').format(_scheduledDate!)}'
+                              : 'اختر تاريخ الزيارة المناسب 📅',
+                          style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textMuted),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('الفترة الزمنية المفضلة:', style: AppTextStyles.labelLarge),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                '9:00 ص - 12:00 ظ',
+                '1:00 ظ - 4:00 ع',
+                '5:00 م - 8:00 م',
+                '8:00 م - 11:00 م',
+              ].map((slot) => ChoiceChip(
+                label: Text(slot),
+                selected: _preferredTimeSlot == slot,
+                onSelected: (val) {
+                  if (val) setState(() => _preferredTimeSlot = slot);
+                },
+              )).toList(),
+            ),
+          ],
         ],
       ),
     );

@@ -6,6 +6,7 @@ import '../providers/admin_actions_provider.dart';
 import '../providers/admin_ui_providers.dart';
 import '../providers/techs_provider.dart';
 import '../widgets/tech_card.dart';
+import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -14,6 +15,8 @@ import '../../domain/dtos/technician_dtos.dart';
 import '../../domain/enums/service_type.dart';
 import '../../domain/enums/tech_status.dart';
 import '../../domain/models/technician.dart';
+import '../providers/wallet_recharges_provider.dart';
+import 'package:intl/intl.dart' as intl;
 
 class TechniciansScreen extends ConsumerWidget {
   const TechniciansScreen({super.key});
@@ -95,6 +98,9 @@ class TechniciansScreen extends ConsumerWidget {
                 ),
               ),
 
+              const SliverToBoxAdapter(child: _PendingWalletRechargesSection()),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
               if (pendingTechs.isNotEmpty) ...[
                 SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: sidePadding),
@@ -107,7 +113,7 @@ class TechniciansScreen extends ConsumerWidget {
                   sliver: SliverGrid(
                     gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 420,
-                      mainAxisExtent: 185,
+                      mainAxisExtent: 220,
                       crossAxisSpacing: AppSpacing.lg,
                       mainAxisSpacing: AppSpacing.lg,
                     ),
@@ -135,7 +141,7 @@ class TechniciansScreen extends ConsumerWidget {
                 sliver: SliverGrid(
                   gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 400,
-                    mainAxisExtent: 185,
+                    mainAxisExtent: 220,
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
                   ),
@@ -310,19 +316,22 @@ class TechniciansScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  if (technician != null)
+                  if (technician != null) ...[
                     Container(
-                      margin: const EdgeInsets.only(bottom: 20),
+                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.borderDefault)),
                       child: SwitchListTile(
                         title: const Text('توثيق الحساب (Verified)'),
                         subtitle: const Text('تفعيل العلامة الزرقاء للفني لزيادة الثقة'),
                         secondary: Icon(Icons.verified, color: isVerified ? AppColors.info : AppColors.textMuted),
                         value: isVerified,
-                        activeColor: AppColors.info,
+                        activeThumbColor: AppColors.info,
                         onChanged: (val) => setModalState(() => isVerified = val),
                       ),
                     ),
+                    _buildVerificationDocsSection(context, technician),
+                    const SizedBox(height: 16),
+                  ],
                   TextFormField(
                     controller: nameController,
                     decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline)),
@@ -444,4 +453,310 @@ class TechniciansScreen extends ConsumerWidget {
       }
     }
   }
+
+  Widget _buildVerificationDocsSection(BuildContext context, Technician tech) {
+    final frontUrl = tech.nationalIdFrontUrl ?? tech.identityProofUrl;
+    final backUrl = tech.nationalIdBackUrl;
+    final criminalUrl = tech.criminalRecordUrl;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderDefault),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('مستندات التوثيق الرسمية 📄', style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold)),
+              if (tech.isVerified)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.verified, color: AppColors.success, size: 14),
+                      SizedBox(width: 4),
+                      Text('موثق رسميًا', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildDocPreviewCard(context, 'وجه البطاقة', frontUrl, Icons.badge_outlined)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildDocPreviewCard(context, 'ظهر البطاقة', backUrl, Icons.credit_card_outlined)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildDocPreviewCard(context, 'الفيش والتشبيه', criminalUrl, Icons.gavel_outlined)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocPreviewCard(BuildContext context, String title, String? url, IconData defaultIcon) {
+    final bool hasDoc = url != null && url.isNotEmpty;
+    return GestureDetector(
+      onTap: hasDoc ? () => _showDocPreviewDialog(context, url, title) : null,
+      child: Container(
+        height: 85,
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: hasDoc ? AppColors.gold.withValues(alpha: 0.5) : AppColors.borderSubtle),
+          image: hasDoc ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: hasDoc ? Colors.black.withValues(alpha: 0.35) : Colors.transparent,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(hasDoc ? Icons.visibility_outlined : defaultIcon, color: hasDoc ? Colors.white : AppColors.textMuted, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  color: hasDoc ? Colors.white : AppColors.textMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                hasDoc ? 'انقر للمعاينة' : 'غير مرفوع',
+                style: TextStyle(
+                  color: hasDoc ? AppColors.gold : AppColors.error.withValues(alpha: 0.7),
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDocPreviewDialog(BuildContext context, String url, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Container(
+              constraints: const BoxConstraints(maxWidth: 700, maxHeight: 600),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.surface1, borderRadius: BorderRadius.circular(16)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: InteractiveViewer(
+                        child: Image.network(
+                          url,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (c, child, p) => p == null ? child : const Center(child: CircularProgressIndicator()),
+                          errorBuilder: (c, e, s) => const Center(child: Text('تعذر تحميل المستند 🖼️')),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const CircleAvatar(backgroundColor: AppColors.surface3, child: Icon(Icons.close, color: Colors.white)),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+class _PendingWalletRechargesSection extends ConsumerWidget {
+  const _PendingWalletRechargesSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rechargesAsync = ref.watch(walletRechargesStreamProvider);
+    final width = MediaQuery.of(context).size.width;
+    final sidePadding = width > 1200 ? AppSpacing.xl : AppSpacing.lg;
+
+    return rechargesAsync.when(
+      data: (allRecharges) {
+        final pendingList = allRecharges.where((r) => r.isPending).toList();
+        if (pendingList.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: sidePadding),
+          child: AppCard(
+            color: AppColors.gold.withValues(alpha: 0.05),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet_outlined, color: AppColors.gold, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'طلبات شحن المحفظة المعلقة (${pendingList.length}) 💳',
+                          style: AppTextStyles.titleLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'يتطلب مراجعة الإيصال والاعتماد',
+                      style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: pendingList.length,
+                  itemBuilder: (context, index) {
+                    final item = pendingList[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface1,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.borderDefault),
+                      ),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _showImageDialog(context, item.receiptUrl),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                color: AppColors.surface2,
+                                child: Image.network(
+                                  item.receiptUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (c, e, s) => const Icon(Icons.receipt_outlined, color: AppColors.gold),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${item.techName} (${item.techPhone})',
+                                  style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'المبلغ: ${item.amount} ج.م • محفظة المحول: ${item.senderPhone}',
+                                  style: AppTextStyles.bodyMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'التاريخ: ${intl.DateFormat('d MMM, HH:mm').format(item.createdAt)}',
+                                  style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 10),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            children: [
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.success,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                onPressed: () async {
+                                  final res = await ref.read(adminActionsProvider).approveWalletRechargeRequest(item);
+                                  res.when(
+                                    left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                                    right: (_) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم اعتماد شحن محفظة ${item.techName} بمبلغ ${item.amount} ج.م ⚡'))),
+                                  );
+                                },
+                                icon: const Icon(Icons.check, size: 16),
+                                label: const Text('اعتماد الشحن'),
+                              ),
+                              const SizedBox(height: 4),
+                              TextButton(
+                                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                                onPressed: () async {
+                                  final res = await ref.read(adminActionsProvider).rejectWalletRechargeRequest(item.id);
+                                  res.when(
+                                    left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                                    right: (_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم رفض طلب الشحن'))),
+                                  );
+                                },
+                                child: const Text('رفض الطلب', style: TextStyle(fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            InteractiveViewer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(url, fit: BoxFit.contain),
+              ),
+            ),
+            IconButton(
+              icon: const CircleAvatar(backgroundColor: AppColors.surface3, child: Icon(Icons.close, color: Colors.white)),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+

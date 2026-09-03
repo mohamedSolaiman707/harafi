@@ -16,6 +16,7 @@ import '../../../features/client/presentation/screens/about_screen.dart';
 import '../../../features/admin/presentation/screens/dashboard_screen.dart';
 import '../../../features/admin/presentation/screens/orders_screen.dart';
 import '../../../features/admin/presentation/screens/technicians_screen.dart';
+import '../../../features/admin/presentation/screens/promo_codes_screen.dart';
 import '../../../features/admin/presentation/screens/admin_order_detail_screen.dart';
 import '../../../features/admin/presentation/screens/admin_shell.dart';
 import '../../../features/tech/presentation/screens/tech_login_screen.dart';
@@ -196,6 +197,11 @@ final appRouter = GoRouter(
           path: '/admin/techs',
           pageBuilder: (context, state) =>
               AppAnimations.fadeSlide(child: const TechniciansScreen()),
+        ),
+        GoRoute(
+          path: '/admin/promos',
+          pageBuilder: (context, state) =>
+              AppAnimations.fadeSlide(child: const PromoCodesScreen()),
         ),
       ],
     ),

@@ -11,8 +11,14 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/presentation/providers/admin_actions_provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/utils/error_handler.dart';
+import '../../../admin/presentation/providers/warranty_claims_provider.dart';
 import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/enums/order_status.dart';
+import '../../../admin/presentation/providers/order_messages_provider.dart';
 import '../providers/client_screen_providers.dart';
 
 class TrackScreen extends ConsumerWidget {
@@ -68,7 +74,10 @@ class TrackScreen extends ConsumerWidget {
               if (order.status == OrderStatus.completed) ...[
                 _WarrantyBadgeCard(order: order),
                 const SizedBox(height: AppSpacing.xl),
+                if (order.finalPrice != null) _InvoiceCard(order: order),
+                if (order.finalPrice != null) const SizedBox(height: AppSpacing.xl),
               ],
+
 
               if (order.status == OrderStatus.cancelled && order.techNotes != null && order.techNotes!.isNotEmpty) ...[
                 Container(
@@ -132,8 +141,54 @@ class TrackScreen extends ConsumerWidget {
               
               const SizedBox(height: AppSpacing.xxl),
               _OrderDetailsCard(order: order),
+
+              if (order.status == OrderStatus.completed) ...[
+                const SizedBox(height: AppSpacing.xl),
+                _WarrantyBannerAndButton(order: order),
+              ],
+
+              if (order.status != OrderStatus.pending && order.status != OrderStatus.cancelled) ...[
+                const SizedBox(height: AppSpacing.xl),
+                _buildLiveChatButton(context, order),
+              ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveChatButton(BuildContext context, Order order) {
+    return GestureDetector(
+      onTap: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _OrderLiveChatSheet(
+          order: order,
+          senderType: 'client',
+          senderName: order.clientName,
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.gold, Color(0xFFB8860B)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.chat_bubble_outline_rounded, color: Colors.black, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'تواصل مع الفني مباشرة 💬',
+              style: AppTextStyles.titleMed.copyWith(color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
       ),
     );
@@ -643,6 +698,10 @@ class _OrderDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dateStr = order.scheduledDate != null
+        ? intl.DateFormat('EEEE، d MMMM yyyy').format(order.scheduledDate!)
+        : null;
+
     return AppCard(
       color: AppColors.surface3,
       child: Column(
@@ -652,7 +711,12 @@ class _OrderDetailsCard extends StatelessWidget {
           const Divider(height: 24),
           _row('نوع الخدمة', order.service.label),
           _row('كود التتبع', order.trackingCode),
-          _row('تاريخ الطلب', intl.DateFormat('d MMM yyyy').format(order.createdAt)),
+          _row('نوع الطلب', order.isScheduled ? 'حجز مجدول مسبقاً 📅' : 'طلب فوري (الآن) ⚡'),
+          if (order.isScheduled && dateStr != null)
+            _row('الموعد المحدّد', dateStr),
+          if (order.isScheduled && order.preferredTimeSlot != null && order.preferredTimeSlot!.isNotEmpty)
+            _row('الفترة الزمنية', order.preferredTimeSlot!),
+          _row('تاريخ تقديم الطلب', intl.DateFormat('d MMM yyyy • HH:mm').format(order.createdAt)),
         ],
       ),
     );
@@ -665,7 +729,710 @@ class _OrderDetailsCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: AppTextStyles.bodyMed),
-          Text(value, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary)),
+          Text(value, style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoiceCard extends StatelessWidget {
+  final Order order;
+  const _InvoiceCard({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasBreakdown = order.inspectionFee != null || order.laborFee != null || order.partsFee != null;
+    return AppCard(
+      color: AppColors.success.withValues(alpha: 0.05),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.receipt_long_outlined, color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+            Text('فاتورة الخدمة', style: AppTextStyles.titleLarge.copyWith(color: AppColors.success)),
+          ]),
+          const SizedBox(height: 16),
+
+          if (hasBreakdown) ...[
+            if ((order.inspectionFee ?? 0) > 0)
+              _invoiceRow('رسوم الكشف والمعاينة', '${order.inspectionFee} ج.م'),
+            if ((order.laborFee ?? 0) > 0)
+              _invoiceRow('مصنعية الفني', '${order.laborFee} ج.م'),
+            if ((order.partsFee ?? 0) > 0)
+              _invoiceRow('قطع الغيار', '${order.partsFee} ج.م'),
+            const Divider(height: 20),
+          ],
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('الاجمالي المدفوع', style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+              Text('${order.finalPrice} ج.م', style: AppTextStyles.headlineMed.copyWith(color: AppColors.success, fontWeight: FontWeight.w900)),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _invoiceRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: AppTextStyles.bodyMed.copyWith(color: AppColors.textSecondary)),
+        Text(value, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+class _WarrantyBannerAndButton extends ConsumerWidget {
+  final Order order;
+  const _WarrantyBannerAndButton({required this.order});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final claimsAsync = ref.watch(warrantyClaimsStreamProvider);
+    final isWarrantyValid = order.warrantyUntil.isAfter(DateTime.now());
+
+    return claimsAsync.when(
+      data: (claims) {
+        final existingClaim = claims.where((c) => c.orderId == order.id).firstOrNull;
+
+        return AppCard(
+          color: AppColors.success.withValues(alpha: 0.05),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.shield_rounded, color: AppColors.success, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ضمان حرفي المالي المفعّل 🛡️',
+                          style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.success),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'محتفظ بضمان مجاني حتى ${intl.DateFormat('d MMMM yyyy').format(order.warrantyUntil)}',
+                          style: AppTextStyles.labelMed.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (existingClaim != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderDefault),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: AppColors.gold, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'تم تقديم مطالبة ضمان سابقة بحالة (${existingClaim.status == 'pending' ? "قيد المراجعة ⏱️" : existingClaim.status == 'resolved' ? "تمت المعالجة 🟢" : "مرفوضة 🔴"})',
+                          style: AppTextStyles.labelMed.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (isWarrantyValid) ...[
+                AppButton(
+                  label: 'تقديم مطالبة ضمان / إعادة زيارة 🛡️',
+                  icon: Icons.assignment_return_rounded,
+                  variant: ButtonVariant.ghost,
+                  onTap: () => _showClaimModal(context, ref),
+                ),
+              ] else ...[
+                Text(
+                  'انتهت فترة الضمان لهذه الخدمة (30 يوماً).',
+                  style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, s) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showClaimModal(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _WarrantyClaimSheet(order: order),
+    );
+  }
+}
+
+class _WarrantyClaimSheet extends ConsumerStatefulWidget {
+  final Order order;
+  const _WarrantyClaimSheet({required this.order});
+
+  @override
+  ConsumerState<_WarrantyClaimSheet> createState() => _WarrantyClaimSheetState();
+}
+
+class _WarrantyClaimSheetState extends ConsumerState<_WarrantyClaimSheet> {
+  final _descController = TextEditingController();
+  final List<String> _images = [];
+  bool _isUploading = false;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image == null) return;
+
+    setState(() => _isUploading = true);
+    try {
+      final storage = StorageService();
+      final url = await storage.uploadImage(
+        image: image,
+        path: 'warranty_claims',
+        fileName: 'claim_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (url != null) {
+        setState(() => _images.add(url));
+      }
+    } catch (e) {
+      if (mounted) AppErrorHandler.showSnackBar(context, e);
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _submitClaim() async {
+    final desc = _descController.text.trim();
+    if (desc.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يرجى شرح سبب المطالبة أو المشكلة المترتبة')));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final claimData = {
+        'order_id': widget.order.id,
+        'tracking_code': widget.order.trackingCode,
+        'client_name': widget.order.clientName,
+        'client_phone': widget.order.clientPhone,
+        'tech_id': widget.order.techId,
+        'issue_description': desc,
+        'claim_images': _images,
+        'status': 'pending',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      await Supabase.instance.client.from('warranty_claims').insert(claimData);
+      ref.invalidate(warrantyClaimsStreamProvider);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تقديم مطالبة الضمان بنجاح! ستتواصل معك الإدارة فوراً 🛡️')),
+        );
+      }
+    } catch (e) {
+      if (mounted) AppErrorHandler.showSnackBar(context, e);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        top: 20, left: 20, right: 20,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.shield_rounded, color: AppColors.success, size: 24),
+                    const SizedBox(width: 8),
+                    Text('تقديم مطالبة ضمان مجانية 🛡️', style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'طلب رقم: ${widget.order.trackingCode} • الخدمة: ${widget.order.service.label}',
+              style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _descController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'شرح المشكلة التي ظهرت بعد الصيانة',
+                hintText: 'مثال: التسريب عاد مرة أخرى بعد يومين من الإصلاح...',
+                prefixIcon: Icon(Icons.description_outlined),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('صور إثبات المشكلة (اختياري):', style: AppTextStyles.labelLarge),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ..._images.map((url) => Container(
+                        width: 70, height: 70,
+                        margin: const EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+                        ),
+                      )),
+                  if (_isUploading)
+                    const SizedBox(width: 70, height: 70, child: Center(child: CircularProgressIndicator()))
+                  else
+                    InkWell(
+                      onTap: _pickImage,
+                      child: Container(
+                        width: 70, height: 70,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface2,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.borderDefault),
+                        ),
+                        child: const Icon(Icons.add_a_photo_outlined, color: AppColors.gold),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'إرسال مطالبة الضمان',
+              onTap: _submitClaim,
+              isLoading: _isSubmitting,
+              icon: Icons.send_rounded,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrderLiveChatSheet extends ConsumerStatefulWidget {
+  final Order order;
+  final String senderType;
+  final String senderName;
+
+  const _OrderLiveChatSheet({
+    required this.order,
+    required this.senderType,
+    required this.senderName,
+  });
+
+  @override
+  ConsumerState<_OrderLiveChatSheet> createState() => _OrderLiveChatSheetState();
+}
+
+class _OrderLiveChatSheetState extends ConsumerState<_OrderLiveChatSheet> {
+  final _msgController = TextEditingController();
+  final _scrollController = ScrollController();
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _msgController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _send() async {
+    final text = _msgController.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _isSending = true);
+    _msgController.clear();
+    try {
+      await sendOrderMessage(
+        orderId: widget.order.id,
+        senderType: widget.senderType,
+        senderName: widget.senderName,
+        message: text,
+      );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        _msgController.text = text;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل إرسال الرسالة: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final msgsAsync = ref.watch(orderMessagesStreamProvider(widget.order.id));
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.88,
+        decoration: const BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 4),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderDefault,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 10, 12, 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.gold.withValues(alpha: 0.12), Colors.transparent],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                border: const Border(bottom: BorderSide(color: AppColors.borderSubtle, width: 0.8)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42, height: 42,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [AppColors.gold, Color(0xFFB8860B)]),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
+                    ),
+                    child: const Icon(Icons.chat_bubble_rounded, color: Colors.black, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('محادثة مباشرة', style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                        Row(children: [
+                          Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle)),
+                          const SizedBox(width: 5),
+                          Text('متصل • طلب ${widget.order.trackingCode}', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
+                        ]),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // ─── Messages List ────────────────────────────────────
+            Expanded(
+              child: msgsAsync.when(
+                data: (msgs) {
+                  if (msgs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 88, height: 88,
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.chat_bubble_outline_rounded, size: 42, color: AppColors.gold),
+                          ),
+                          const SizedBox(height: 16),
+                          Text('لا توجد رسائل بعد', style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 6),
+                          Text('ابدأ المحادثة مع الفني الآن 👋', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
+                        ],
+                      ),
+                    );
+                  }
+                  _scrollToBottom();
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    itemCount: msgs.length,
+                    itemBuilder: (context, i) {
+                      final msg = msgs[i];
+                      final isMe = msg.senderType == widget.senderType;
+                      final showAvatar = i == 0 || msgs[i - 1].senderType != msg.senderType;
+                      final initials = msg.senderName.isNotEmpty ? msg.senderName[0] : '؟';
+                      return _ChatBubble(
+                        message: msg.message,
+                        senderName: msg.senderName,
+                        time: intl.DateFormat('HH:mm').format(msg.createdAt),
+                        isMe: isMe,
+                        showAvatar: showAvatar,
+                        initials: initials,
+                        accentColor: AppColors.gold,
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+                error: (e, _) => Center(
+                  child: Text('خطأ في تحميل الرسائل', style: AppTextStyles.bodyMed.copyWith(color: AppColors.error)),
+                ),
+              ),
+            ),
+
+            // ─── Input Bar ────────────────────────────────────────
+            Container(
+              padding: EdgeInsets.only(
+                left: 16, right: 16, top: 10,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surface1,
+                border: const Border(top: BorderSide(color: AppColors.borderSubtle, width: 0.8)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -2))],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2,
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: TextField(
+                        controller: _msgController,
+                        textDirection: TextDirection.rtl,
+                        maxLines: 4,
+                        minLines: 1,
+                        style: AppTextStyles.bodyMed,
+                        decoration: InputDecoration(
+                          hintText: 'اكتب رسالتك للفني...',
+                          hintStyle: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          border: InputBorder.none,
+                        ),
+                        onSubmitted: (_) => _send(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: _isSending ? null : _send,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 50, height: 50,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [AppColors.gold, Color(0xFFB8860B)]),
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
+                      ),
+                      child: _isSending
+                          ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)))
+                          : const Icon(Icons.send_rounded, color: Colors.black, size: 22),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// فقاعة رسالة واحدة مع أفاتار
+class _ChatBubble extends StatelessWidget {
+  final String message;
+  final String senderName;
+  final String time;
+  final bool isMe;
+  final bool showAvatar;
+  final String initials;
+  final Color accentColor;
+
+  const _ChatBubble({
+    required this.message,
+    required this.senderName,
+    required this.time,
+    required this.isMe,
+    required this.showAvatar,
+    required this.initials,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          // أفاتار الطرف الآخر (على اليسار)
+          if (!isMe) ...[
+            if (showAvatar)
+              Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF37474F),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderDefault, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                ),
+              )
+            else
+              const SizedBox(width: 34),
+            const SizedBox(width: 8),
+          ],
+
+          // فقاعة الرسالة
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+              decoration: BoxDecoration(
+                color: isMe ? accentColor : AppColors.surface2,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
+                  bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isMe ? accentColor.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: Column(
+                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  if (showAvatar) ...[
+                    Text(
+                      senderName,
+                      style: TextStyle(
+                        color: isMe ? Colors.black.withValues(alpha: 0.6) : AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: isMe ? Colors.black : AppColors.textPrimary,
+                      fontSize: 14.5,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    time,
+                    style: TextStyle(
+                      color: isMe ? Colors.black.withValues(alpha: 0.45) : AppColors.textMuted,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // أفاتار المرسل (على اليمين)
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            if (showAvatar)
+              Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [accentColor, accentColor.withValues(alpha: 0.7)]),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(initials, style: const TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)),
+                ),
+              )
+            else
+              const SizedBox(width: 34),
+          ],
         ],
       ),
     );

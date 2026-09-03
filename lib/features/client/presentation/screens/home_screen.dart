@@ -388,7 +388,9 @@ class _TechSearchTile extends StatelessWidget {
             CircleAvatar(
               radius: 22,
               backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-              child: tech.photoUrl == null ? Text(tech.spec.icon) : null,
+              child: tech.photoUrl == null 
+                  ? const Icon(Icons.person_rounded, color: AppColors.textMuted, size: 24) 
+                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -664,7 +666,14 @@ class _PremiumTechCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: canAccept ? tech.rankColor : AppColors.textMuted, width: 2), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 5))]),
-              child: CircleAvatar(radius: 35, backgroundColor: AppColors.surface3, backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null, child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 30)) : null),
+              child: CircleAvatar(
+                radius: 35, 
+                backgroundColor: AppColors.surface3, 
+                backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null, 
+                child: tech.photoUrl == null 
+                    ? const Icon(Icons.person_rounded, size: 40, color: AppColors.textMuted) 
+                    : null
+              ),
             ),
           ),
           Positioned(

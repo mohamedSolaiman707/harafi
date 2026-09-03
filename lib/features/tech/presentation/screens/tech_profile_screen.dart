@@ -400,6 +400,51 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
               ),
             ),
           ],
+
+          if (widget.tech.earnedBadges.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surface2.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.workspace_premium_rounded, color: AppColors.gold, size: 20),
+                      const SizedBox(width: 8),
+                      Text('أوسمة التميز والإنجازات 🏆', style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: widget.tech.earnedBadges.map((b) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: b.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: b.color.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(b.icon, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(b.title, style: TextStyle(color: b.color, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ],
+                      ),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

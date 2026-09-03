@@ -60,7 +60,6 @@ class _PortfolioBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // استخدام المنطق الجوكر
     final canBook = tech.canAcceptOrders;
     final reviews = orders.where((o) => o.rating != null && o.rating! > 0).toList();
 
@@ -152,7 +151,7 @@ class _PortfolioBody extends StatelessWidget {
                   backgroundColor: AppColors.gold.withOpacity(0.1),
                   backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
                   child: tech.photoUrl == null 
-                      ? Text(tech.spec.icon, style: const TextStyle(fontSize: 32))
+                      ? const Icon(Icons.person_rounded, size: 48, color: AppColors.textMuted)
                       : null,
                 ),
               ),

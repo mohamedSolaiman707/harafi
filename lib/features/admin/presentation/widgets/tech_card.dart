@@ -101,7 +101,7 @@ class TechCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -129,7 +129,36 @@ class TechCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              if (tech.earnedBadges.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: tech.earnedBadges.map((b) => Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: b.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: b.color.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(b.icon, style: const TextStyle(fontSize: 11)),
+                          const SizedBox(width: 4),
+                          Text(
+                            b.title,
+                            style: TextStyle(color: b.color, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    )).toList(),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 8),
 
               Row(
                 children: [

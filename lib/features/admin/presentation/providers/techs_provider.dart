@@ -41,27 +41,27 @@ final techniciansProvider = StreamProvider<List<Technician>>((ref) async* {
   final techs = techsAsync.valueOrNull ?? [];
   final orders = ordersAsync.valueOrNull ?? [];
 
-  if (techs.isNotEmpty) {
-    yield techs.map((tech) {
-      final techOrders = orders
-          .where(
-            (o) =>
-        (o.techId == tech.id || o.techId == tech.phone) &&
-            o.rating != null &&
-            o.rating! > 0,
-      )
-          .toList();
+  final mappedTechs = techs.map((tech) {
+    final techOrders = orders
+        .where(
+          (o) =>
+              (o.techId == tech.id || o.techId == tech.phone) &&
+              o.rating != null &&
+              o.rating! > 0,
+        )
+        .toList();
 
-      if (techOrders.isNotEmpty) {
-        final double total = techOrders.fold(
-          0.0,
-              (sum, o) => sum + (o.rating as num),
-        );
-        return tech.copyWith(rating: total / techOrders.length);
-      }
-      return tech;
-    }).toList();
-  }
+    if (techOrders.isNotEmpty) {
+      final double total = techOrders.fold(
+        0.0,
+        (sum, o) => sum + (o.rating as num),
+      );
+      return tech.copyWith(rating: total / techOrders.length);
+    }
+    return tech;
+  }).toList();
+
+  yield mappedTechs;
 });
 
 final techsStreamProvider = techniciansProvider;

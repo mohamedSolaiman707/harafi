@@ -33,6 +33,9 @@ abstract class OrdersRepository {
     String orderId,
     OrderStatus status, {
     int? finalPrice,
+    int? inspectionFee,
+    int? laborFee,
+    int? partsFee,
     String? techNotes,
     DateTime? completedAt,
     String? logMessage,
@@ -98,6 +101,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
     orderData.remove('rating');
     orderData.remove('order_logs');
     orderData.remove('completed_at');
+    orderData.remove('inspection_fee');
+    orderData.remove('labor_fee');
+    orderData.remove('parts_fee');
     orderData.remove(
       'estimated_arrival',
     ); // شيله مؤقتاً لو مش موجود في الداتابيز
@@ -121,6 +127,26 @@ class SupabaseOrdersRepository implements OrdersRepository {
       'status': OrderStatus.pending.label,
       'message': 'تم استلام الطلب وبانتظار المراجعة',
     });
+
+    if (order.promoCode != null && order.promoCode!.trim().isNotEmpty) {
+      try {
+        final cleanCode = order.promoCode!.trim().toUpperCase();
+        final promoData = await _client
+            .from('promo_codes')
+            .select('id, current_uses')
+            .eq('code', cleanCode)
+            .maybeSingle();
+
+        if (promoData != null) {
+          final String promoId = promoData['id'].toString();
+          final int currentUses = (promoData['current_uses'] as num?)?.toInt() ?? 0;
+          await _client
+              .from('promo_codes')
+              .update({'current_uses': currentUses + 1})
+              .eq('id', promoId);
+        }
+      } catch (_) {}
+    }
 
     return Order.fromJson(data.first);
   }
@@ -307,6 +333,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
     String orderId,
     OrderStatus status, {
     int? finalPrice,
+    int? inspectionFee,
+    int? laborFee,
+    int? partsFee,
     String? techNotes,
     DateTime? completedAt,
     String? logMessage,
@@ -315,6 +344,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
       final Map<String, dynamic> data = {'status': status.label};
 
       if (finalPrice != null) data['final_price'] = finalPrice;
+      if (inspectionFee != null) data['inspection_fee'] = inspectionFee;
+      if (laborFee != null) data['labor_fee'] = laborFee;
+      if (partsFee != null) data['parts_fee'] = partsFee;
       if (techNotes != null) data['tech_notes'] = techNotes;
       if (completedAt != null)
         data['completed_at'] = completedAt.toIso8601String();

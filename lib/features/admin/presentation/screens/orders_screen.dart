@@ -63,14 +63,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
             controller: _tabController,
             children: [
               _OrdersList(
-                orders: orders.where((o) => o.status == OrderStatus.pending).toList(),
+                orders: orders.where((o) => 
+                  o.status == OrderStatus.pending || o.status == OrderStatus.assigned
+                ).toList(),
                 emptyMessage: 'لا توجد طلبات جديدة حالياً',
               ),
               _OrdersList(
                 orders: orders.where((o) => 
-                  [OrderStatus.assigned, OrderStatus.onTheWay, OrderStatus.started].contains(o.status)
+                  [OrderStatus.onTheWay, OrderStatus.started].contains(o.status)
                 ).toList(),
-                emptyMessage: 'لا توجد طلبات قيد التنفيذ',
+                emptyMessage: 'لا توجد طلبات قيد التنفيذ حالياً',
               ),
               _OrdersList(
                 orders: orders.where((o) => o.status == OrderStatus.completed).toList(),
