@@ -17,6 +17,7 @@ import '../providers/favorites_provider.dart';
 import '../providers/smart_match_edge_provider.dart';
 
 final selectedAreaProvider = StateProvider<String>((ref) => 'الكل');
+final smartMatchExpandedProvider = StateProvider<bool>((ref) => false);
 
 class ServiceTechsScreen extends ConsumerWidget {
   final ServiceType? service;
@@ -48,7 +49,7 @@ class ServiceTechsScreen extends ConsumerWidget {
         children: [
           _buildAreaFilter(ref, selectedArea, userLocation),
           if (service != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildSmartMatchHeader(ref, service!, selectedArea, context),
           ],
           Expanded(
@@ -168,7 +169,7 @@ class ServiceTechsScreen extends ConsumerWidget {
                   color: selected ? AppColors.gold : AppColors.surface2,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: selected ? AppColors.gold : Colors.white.withOpacity(0.08),
+                    color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.08),
                   ),
                 ),
                 child: Text(
@@ -193,125 +194,177 @@ class ServiceTechsScreen extends ConsumerWidget {
     final ranked = rankedAsync.valueOrNull;
     if (ranked == null) return const SizedBox.shrink();
 
-    final top = ranked.topTechnicians.take(3).toList();
-    if (top.isEmpty) return const SizedBox.shrink();
-
     final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
+
+    // تصفية النتائج والتأكد من أن الفني موجود بالفعل في قاعدة البيانات
+    final validItems = ranked.topTechnicians.where((item) {
+      final techId = item['technicianId']?.toString();
+      return techs.any((t) => t.id == techId);
+    }).take(3).toList();
+
+    // إذا لم توجد فنيين مطابقين، لا تعرض الكارت أصلًا
+    if (validItems.isEmpty) return const SizedBox.shrink();
+
     final recommendedId = ranked.recommendedTechnicianId;
     final recommendedTech = recommendedId == null
         ? null
         : techs.where((t) => t.id == recommendedId).firstOrNull;
-    final recommendedItem = ranked.topTechnicians
+    final recommendedItem = validItems
         .where((item) => item['technicianId']?.toString() == recommendedId)
         .firstOrNull;
     final canAutoPick = recommendedItem != null &&
         (recommendedItem['reliabilityScore'] as num?) != null &&
         (recommendedItem['reliabilityScore'] as num).toDouble() >= ranked.autoPickThreshold;
 
+    final isExpanded = ref.watch(smartMatchExpandedProvider);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: AppCard(
-        color: AppColors.surface1,
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_awesome_rounded, color: AppColors.gold, size: 18),
-                const SizedBox(width: 8),
-                Text('اقتراحات المساعد الذكي', style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold)),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.3), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(height: 10),
-            if (recommendedTech != null && canAutoPick) ...[
-              AppButton(
-                label: 'اختيار تلقائي للأفضل',
-                icon: Icons.flash_on_rounded,
-                variant: ButtonVariant.secondary,
-                onTap: () => context.push('/request', extra: {
-                  'service': service,
-                  'techId': recommendedTech.id,
-                  'fallbackTechIds': ranked.fallbackTechnicianIds,
-                }),
-              ),
-              const SizedBox(height: 12),
-            ],
-            ...top.map((item) {
-              final tech = techs.where((t) => t.id == item['technicianId']).firstOrNull;
-              if (tech == null) return const SizedBox.shrink();
-              final rank = top.indexOf(item) + 1;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+          ],
+        ),
+        child: Column(
+          children: [
+            // ─── شريط العنوان المدمج للتوسيع والطي ───
+            InkWell(
+              onTap: () => ref.read(smartMatchExpandedProvider.notifier).state = !isExpanded,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   children: [
                     Container(
-                      width: 28,
-                      height: 28,
-                      alignment: Alignment.center,
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: AppColors.gold.withOpacity(0.18),
+                        color: AppColors.gold.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Text('$rank', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(tech.name, style: AppTextStyles.bodyLarge),
-                          const SizedBox(height: 2),
-                          Text(
-                            item['reason']?.toString() ?? '',
-                            style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.gold, size: 16),
                     ),
                     const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          (item['score'] as num?)?.toStringAsFixed(0) ?? '0',
-                          style: AppTextStyles.labelMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'ثقة ${(item['reliabilityScore'] as num?)?.toStringAsFixed(0) ?? '0'}%',
-                          style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
-                        ),
-                        const SizedBox(height: 4),
-                        if (item['technicianId']?.toString() == recommendedId)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text('الأفضل', style: AppTextStyles.labelMed.copyWith(color: AppColors.success, fontWeight: FontWeight.bold)),
-                          ),
-                        SizedBox(
-                          height: 32,
-                          child: AppButton(
-                            label: 'اختيار',
-                            size: ButtonSize.sm,
-                            onTap: () => context.push('/request', extra: {
-                              'service': service,
-                              'techId': tech.id,
-                              'fallbackTechIds': ranked.fallbackTechnicianIds,
-                            }),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'اقترحات المساعد الذكي',
+                      style: AppTextStyles.titleMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${validItems.length} ترشيحات',
+                        style: const TextStyle(color: AppColors.gold, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.gold,
+                      size: 22,
                     ),
                   ],
                 ),
-              );
-            }),
-            if (recommendedTech != null && !canAutoPick) ...[
-              const SizedBox(height: 10),
-              Text(
-                'لا يوجد فني مؤهل للـ Auto-pick الآن، وسيبقى الترشيح اليدوي فقط.',
-                style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+              ),
+            ),
+
+            // ─── محتوى الترشيحات عند التوسيع ───
+            if (isExpanded) ...[
+              const Divider(height: 1, color: AppColors.borderSubtle),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (recommendedTech != null && canAutoPick) ...[
+                      SizedBox(
+                        height: 36,
+                        child: AppButton(
+                          label: 'اختيار تلقائي للأفضل ⚡',
+                          icon: Icons.flash_on_rounded,
+                          variant: ButtonVariant.secondary,
+                          size: ButtonSize.sm,
+                          onTap: () => context.push('/request', extra: {
+                            'service': service,
+                            'techId': recommendedTech.id,
+                            'fallbackTechIds': ranked.fallbackTechnicianIds,
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    ...validItems.map((item) {
+                      final tech = techs.firstWhere((t) => t.id == item['technicianId']?.toString());
+                      final rank = validItems.indexOf(item) + 1;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface2,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.gold.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text('$rank', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 11)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(tech.name, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'ثقة ${(item['reliabilityScore'] as num?)?.toStringAsFixed(0) ?? '0'}% • ${tech.area ?? "كفر الزيات"}',
+                                    style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              height: 32,
+                              child: AppButton(
+                                label: 'اختيار',
+                                size: ButtonSize.sm,
+                                onTap: () => context.push('/request', extra: {
+                                  'service': service,
+                                  'techId': tech.id,
+                                  'fallbackTechIds': ranked.fallbackTechnicianIds,
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    if (recommendedTech != null && !canAutoPick) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'لا يوجد فني مؤهل للـ Auto-pick الآن، وسيبقى الترشيح اليدوي فقط.',
+                        style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -328,7 +381,7 @@ class ServiceTechsScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_search_outlined, size: 80, color: AppColors.textMuted.withOpacity(0.5)),
+            Icon(Icons.person_search_outlined, size: 80, color: AppColors.textMuted.withValues(alpha: 0.5)),
             const SizedBox(height: 24),
             Text(
               isLocalFilter ? 'لا يوجد فنيون في $area حاليًا' : 'لا يوجد فنيون متوفرون حاليًا',
@@ -444,7 +497,7 @@ class _TechListItem extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: tech.rankColor.withOpacity(0.15),
+                              color: tech.rankColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -460,7 +513,7 @@ class _TechListItem extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.gold.withOpacity(0.12),
+                              color: AppColors.gold.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
