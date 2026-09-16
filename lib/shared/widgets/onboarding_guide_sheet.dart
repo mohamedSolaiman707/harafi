@@ -96,7 +96,7 @@ class _OnboardingGuideSheetState extends ConsumerState<OnboardingGuideSheet> {
           badge: 'ضمان التقييم والجودة ⭐',
           badgeColor: AppColors.info,
           title: 'تتبع طلبك وقيّم تجربتك',
-          subtitle: 'تتبع حالة طلبك خطوة بخطوة من (بدء الحركة) وحتى (إكمال العمل)، ثم شارك تقييمك لمساعدة باقي العملاء في اختيار الأفضل.',
+          subtitle: ' تتبع حالة طلبك خطوة بخطوة من (بدء الحركة) وحتى (إكمال العمل)، ثم شارك تقييمك لمساعدة باقي العملاء في اختيار الأفضل.',
           accentColor: AppColors.info,
         ),
       ];
