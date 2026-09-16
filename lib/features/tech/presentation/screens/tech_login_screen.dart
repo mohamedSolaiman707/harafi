@@ -131,7 +131,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                     await prefs.remove('user_role');
                     if (context.mounted) context.go('/welcome');
                   },
-                  child: const Text('العودة لااختيار الدور'),
+                  child: const Text('العودة لاختيار الدور'),
                 ),
               ],
             ),
