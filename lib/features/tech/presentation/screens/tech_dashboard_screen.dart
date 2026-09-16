@@ -55,8 +55,6 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
     return currentTechAsync.when(
       data: (tech) {
         if (tech == null) return const _NewTechOnboarding();
-        if (tech.status == TechStatus.pending)
-          return _PendingApprovalScreen(tech: tech);
 
         final ordersAsync = ref.watch(techOrdersStreamProvider(tech.id));
 
@@ -182,6 +180,9 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (isActive) ...[
+                if (tech.status == TechStatus.pending)
+                  _buildPendingApprovalBanner(tech),
+
                 if (tech.walletBalance < AppConstants.platformFee)
                   _buildBalanceWarning(tech.walletBalance),
 
@@ -203,8 +204,12 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
 
               if (filteredOrders.isEmpty)
                 _buildEmptyState(
-                  isActive ? 'لا توجد مهام حالية' : 'سجل المهام فارغ',
-                  isActive ? Icons.task_alt : Icons.history,
+                  isActive
+                      ? (tech.status == TechStatus.pending
+                          ? 'حسابك قيد المراجعة والتدقيق حالياً، وسيتم تفعيل إمكانية استقبال الطلبات فور اعتماد أوراقك من الإدارة ⏳'
+                          : 'أنت جاهز لاستقبال الطلبات، سيصلك تنبيه فور طلب عميل بالقرب منك 🟢')
+                      : 'سجل المهام فارغ',
+                  isActive ? Icons.radar_rounded : Icons.history,
                 )
               else
                 GridView.builder(
@@ -214,7 +219,7 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
                     crossAxisCount: width > 800 ? 2 : 1,
                     crossAxisSpacing: AppSpacing.lg,
                     mainAxisSpacing: AppSpacing.lg,
-                    mainAxisExtent: isActive ? 210 : 215,
+                    mainAxisExtent: isActive ? 225 : 215,
                   ),
                   itemCount: filteredOrders.length,
                   itemBuilder: (context, index) => isActive
@@ -225,6 +230,119 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPendingApprovalBanner(Technician tech) {
+    final hasNote = tech.adminNote != null && tech.adminNote!.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: hasNote
+            ? AppColors.error.withValues(alpha: 0.1)
+            : AppColors.gold.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(
+          color: hasNote
+              ? AppColors.error.withValues(alpha: 0.5)
+              : AppColors.gold.withValues(alpha: 0.4),
+          width: hasNote ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (hasNote ? AppColors.error : AppColors.gold).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  hasNote ? Icons.info_outline_rounded : Icons.hourglass_top_rounded,
+                  color: hasNote ? AppColors.error : AppColors.gold,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasNote
+                        ? 'ملاحظة من الإدارة – يرجى الاطلاع ⚠️'
+                        : 'حسابك غير مفعل بعد (قيد المراجعة) ⏳',
+                      style: AppTextStyles.titleMed.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: hasNote ? AppColors.error : AppColors.gold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasNote
+                        ? tech.adminNote!
+                        : 'يقوم فريق حرفي بمراجعة بياناتك ومستنداتك لضمان الجودة والأمان. يرجى الانتظار حتى يتم الاعتماد وسيصلك إشعار فور التفعيل.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: hasNote
+                            ? AppColors.error.withValues(alpha: 0.9)
+                            : AppColors.textSecondary,
+                        fontWeight: hasNote ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              InkWell(
+                onTap: () {
+                  final message = hasNote
+                    ? 'السلام عليكم، أنا الفني ${tech.name} أريد الرد على ملاحظة الإدارة برقم ${tech.phone}'
+                    : 'السلام عليكم، أنا الفني ${tech.name} أريد الاستفسار عن حالة تفعيل حسابي برقم ${tech.phone}';
+                  launchUrl(
+                    WhatsAppUtils.buildUri('201014250577', message),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.chat_rounded, color: AppColors.success, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        hasNote
+                          ? 'الرد على الإدارة 💬'
+                          : 'تواصل مع الإدارة للتفعيل السريع 💬',
+                        style: const TextStyle(
+                          color: AppColors.success,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -240,7 +358,7 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+          const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -325,19 +443,33 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
   Widget _buildEmptyState(String message, IconData icon) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 100),
+      padding: const EdgeInsets.symmetric(vertical: 60),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 80,
-            color: AppColors.textMuted.withValues(alpha: 0.15),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 56,
+              color: AppColors.gold,
+            ),
           ),
           const SizedBox(height: 16),
-          Text(
-            message,
-            style: TextStyle(color: AppColors.textMuted, fontSize: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.titleMed.copyWith(
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -345,40 +477,113 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
   }
 
   Widget _buildFinancialSummary(Technician tech, double width) {
-    final crossAxisCount = width > 800 ? 4 : 2;
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: crossAxisCount,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: width > 800 ? 2.2 : 1.5,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _QuickStatItem(
+            label: 'المحفظة',
+            value: '${tech.walletBalance} ج.م',
+            icon: Icons.account_balance_wallet_rounded,
+            iconColor: AppColors.gold,
+            actionLabel: 'شحن ⚡',
+            onAction: () => context.push('/tech/wallet'),
+          ),
+          Container(height: 36, width: 1, color: AppColors.borderSubtle),
+          _QuickStatItem(
+            label: 'الأرباح',
+            value: '${tech.totalEarnings} ج.م',
+            icon: Icons.monetization_on_rounded,
+            iconColor: AppColors.success,
+          ),
+          Container(height: 36, width: 1, color: AppColors.borderSubtle),
+          _QuickStatItem(
+            label: 'التقييم',
+            value: '${tech.rating.toStringAsFixed(1)} ★',
+            icon: Icons.star_rounded,
+            iconColor: Colors.amber,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickStatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color iconColor;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _QuickStatItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.iconColor,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _StatTile(
-          title: 'إجمالي الأرباح',
-          value: '${tech.totalEarnings} ج.م',
-          icon: Icons.account_balance_wallet_rounded,
-          iconColor: AppColors.success,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: iconColor),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: AppTextStyles.labelMed.copyWith(
+                color: AppColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+          ],
         ),
-        _StatTile(
-          title: 'رصيد المحفظة',
-          value: '${tech.walletBalance} ج.م',
-          icon: Icons.account_balance_rounded,
-          iconColor: AppColors.gold,
-          actionLabel: 'شحن ⚡',
-          onAction: () => context.push('/tech/wallet'),
-        ),
-        _StatTile(
-          title: 'تقييمك العام',
-          value: '${tech.rating.toStringAsFixed(1)} ★',
-          icon: Icons.star_rounded,
-          iconColor: Colors.amber,
-        ),
-        _StatTile(
-          title: 'العمليات الناجحة',
-          value: '${tech.totalJobs} طلب',
-          icon: Icons.task_alt_rounded,
-          iconColor: AppColors.info,
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: AppTextStyles.titleMed.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(width: 6),
+              InkWell(
+                onTap: onAction,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    actionLabel!,
+                    style: const TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
@@ -701,102 +906,69 @@ class _NewTechOnboarding extends StatelessWidget {
   }
 }
 
-class _PendingApprovalScreen extends StatelessWidget {
-  final Technician tech;
-  const _PendingApprovalScreen({required this.tech});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-            onPressed: () => Supabase.instance.client.auth.signOut(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxxl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.hourglass_empty_rounded,
-                  size: 80,
-                  color: AppColors.gold,
-                ),
-                const SizedBox(height: 24),
-                Text('حسابك قيد المراجعة', style: AppTextStyles.displayMedium),
-                const SizedBox(height: 16),
-                const Text(
-                  'شكراً لانضمامك. يقوم فريق حرفي حالياً بمراجعة بياناتك لضمان الجودة.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                AppButton(
-                  label: 'تفعيل عبر واتساب',
-                  variant: ButtonVariant.whatsapp,
-                  icon: Icons.chat,
-                  onTap: () {
-                    final message =
-                        'السلام عليكم، أنا الفني ${tech.name} أريد تفعيل حسابي برقم ${tech.phone}';
-                    launchUrl(
-                      WhatsAppUtils.buildUri('201014250577', message),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                AppButton(
-                  label: 'العودة للرئيسية',
-                  variant: ButtonVariant.ghost,
-                  onTap: () => context.go('/'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+
 
 class _TechStatusCard extends ConsumerWidget {
   final Technician tech;
   const _TechStatusCard({required this.tech});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isPending = tech.status == TechStatus.pending;
     final isAvailable = tech.status == TechStatus.available;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(
-          color: isAvailable
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.borderSubtle,
+        gradient: LinearGradient(
+          colors: isPending
+              ? [AppColors.gold.withValues(alpha: 0.15), AppColors.surface1]
+              : (isAvailable
+                  ? [AppColors.success.withValues(alpha: 0.15), AppColors.surface1]
+                  : [AppColors.surface2, AppColors.surface1]),
+          begin: Alignment.centerRight,
+          end: Alignment.centerLeft,
         ),
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        border: Border.all(
+          color: isPending
+              ? AppColors.gold.withValues(alpha: 0.4)
+              : (isAvailable
+                  ? AppColors.success.withValues(alpha: 0.4)
+                  : AppColors.borderSubtle),
+          width: 1.5,
+        ),
+        boxShadow: isAvailable
+            ? [
+                BoxShadow(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : [],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: isAvailable
-                ? AppColors.success.withValues(alpha: 0.15)
-                : AppColors.surface2,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isPending
+                  ? AppColors.gold.withValues(alpha: 0.2)
+                  : (isAvailable
+                      ? AppColors.success.withValues(alpha: 0.2)
+                      : AppColors.surface2),
+              shape: BoxShape.circle,
+            ),
             child: Icon(
-              isAvailable
-                  ? Icons.check_circle_rounded
-                  : Icons.pause_circle_filled_rounded,
-              color: isAvailable ? AppColors.success : AppColors.textMuted,
-              size: 22,
+              isPending
+                  ? Icons.hourglass_top_rounded
+                  : (isAvailable
+                      ? Icons.sensors_rounded
+                      : Icons.pause_circle_filled_rounded),
+              color: isPending ? AppColors.gold : (isAvailable ? AppColors.success : AppColors.textMuted),
+              size: 24,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -808,8 +980,9 @@ class _TechStatusCard extends ConsumerWidget {
                         'يا بشمهندس ${tech.name}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.titleMed.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: AppTextStyles.titleLarge.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
                         ),
                       ),
                     ),
@@ -817,11 +990,14 @@ class _TechStatusCard extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 2,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: tech.rankColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: tech.rankColor.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Text(
                         tech.rank,
@@ -834,121 +1010,65 @@ class _TechStatusCard extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  isAvailable
-                      ? 'أنت متاح لاستقبال الطلبات 🟢'
-                      : 'في وضع الاستراحة 🔴',
+                  isPending
+                      ? 'حسابك غير مفعل بعد (قيد المراجعة) ⏳'
+                      : (isAvailable
+                          ? 'أنت متاح الآن لاستقبال طلبات العملاء 🟢'
+                          : 'أنت في وضع الاستراحة 🔴'),
                   style: TextStyle(
                     fontSize: 12,
-                    color: isAvailable
-                        ? AppColors.success
-                        : AppColors.textMuted,
-                    fontWeight: FontWeight.w600,
+                    color: isPending ? AppColors.gold : (isAvailable ? AppColors.success : AppColors.textMuted),
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
           ),
           Transform.scale(
-            scale: 0.85,
+            scale: 0.95,
             child: Switch(
               value: isAvailable,
               activeThumbColor: AppColors.success,
-              onChanged: (val) async {
-                final result = await ref
-                    .read(techsRepositoryProvider)
-                    .updateTechStatus(
-                      tech.id,
-                      val ? TechStatus.available : TechStatus.onLeave,
-                    );
-                result.when(
-                  left: (f) => AppErrorHandler.showSnackBar(context, f.message),
-                  right: (ut) {
-                    ref.read(currentTechnicianProvider.notifier).updateTech(ut);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          val
-                              ? 'أنت متاح الآن لاستقبال الطلبات 🚀'
-                              : 'أنت الآن في وضع الاستراحة 😴',
+              activeTrackColor: AppColors.success.withValues(alpha: 0.3),
+              onChanged: isPending
+                  ? (_) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: AppColors.gold,
+                          content: Text(
+                            'حسابك قيد المراجعة حالياً، وسيتم تفعيل إمكانية استقبال الطلبات فور موافقة الإدارة 🛡️',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-  const _StatTile({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-    this.actionLabel,
-    this.onAction,
-  });
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 18, color: iconColor),
-              ),
-              if (actionLabel != null && onAction != null)
-                InkWell(
-                  onTap: onAction,
-                  child: Text(
-                    actionLabel!,
-                    style: const TextStyle(
-                      color: AppColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
-          ),
-          Text(
-            value,
-            style: AppTextStyles.titleMed.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+                      );
+                    }
+                  : (val) async {
+                      final result = await ref
+                          .read(techsRepositoryProvider)
+                          .updateTechStatus(
+                            tech.id,
+                            val ? TechStatus.available : TechStatus.onLeave,
+                          );
+                      result.when(
+                        left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                        right: (ut) {
+                          ref.read(currentTechnicianProvider.notifier).updateTech(ut);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: val ? AppColors.success : AppColors.surface2,
+                              content: Text(
+                                val
+                                    ? 'أنت متاح الآن لاستقبال الطلبات 🚀'
+                                    : 'أنت الآن في وضع الاستراحة 😴',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
             ),
           ),
         ],
@@ -968,6 +1088,8 @@ class _TechOrderCard extends StatelessWidget {
         : '';
 
     return AppCard(
+      color: AppColors.surface1,
+      padding: const EdgeInsets.all(14),
       onTap: () => context.push('/tech/order/${order.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -975,23 +1097,33 @@ class _TechOrderCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                order.trackingCode,
-                style: AppTextStyles.labelLarge.copyWith(color: AppColors.gold),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  order.trackingCode,
+                  style: AppTextStyles.labelMed.copyWith(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               _StatusBadge(status: order.status),
             ],
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 8),
 
           // شارة الموعد المجدول أو الطلب الفوري
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: isScheduled
                   ? AppColors.gold.withValues(alpha: 0.12)
                   : AppColors.success.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isScheduled
                     ? AppColors.gold.withValues(alpha: 0.3)
@@ -1004,15 +1136,15 @@ class _TechOrderCard extends StatelessWidget {
                 Icon(
                   isScheduled
                       ? Icons.event_available_rounded
-                      : Icons.flash_on_rounded,
-                  size: 13,
+                      : Icons.bolt_rounded,
+                  size: 14,
                   color: isScheduled ? AppColors.gold : AppColors.success,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   isScheduled
                       ? 'مجدول: $dateFormatted ${order.preferredTimeSlot != null ? "• ${order.preferredTimeSlot}" : ""}'
-                      : 'طلب فوري (الآن) ⚡',
+                      : 'طلب فوري مباشر ⚡',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -1023,41 +1155,100 @@ class _TechOrderCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.sm),
-          Text(order.clientName, style: AppTextStyles.titleLarge),
+          const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(
-                Icons.location_on_outlined,
-                size: 14,
-                color: AppColors.textSecondary,
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    order.service.icon,
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                ),
               ),
-              const SizedBox(width: 4),
-              Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyMed),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.clientName,
+                      style: AppTextStyles.titleLarge.copyWith(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 13,
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          order.area ?? 'كفر الزيات',
+                          style: AppTextStyles.bodyMed.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const Spacer(),
+
+          // أزرار الإجراءات السريعة والمباشرة للفني
           Row(
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'عرض التفاصيل',
+                  label: 'تفاصيل الطلب ⚡',
                   size: ButtonSize.sm,
                   onTap: () => context.push('/tech/order/${order.id}'),
                 ),
               ),
               const SizedBox(width: 8),
-              _ActionButton(
-                icon: Icons.map_outlined,
-                color: AppColors.gold,
-                onTap: () =>
-                    MapUtils.openMapWithAddress(order.area ?? 'كفر الزيات'),
-              ),
-              _ActionButton(
-                icon: Icons.phone,
+              _QuickActionButton(
+                icon: Icons.phone_forwarded_rounded,
                 color: AppColors.success,
+                tooltip: 'اتصال هاتفياً بالعميل',
                 onTap: () => launchUrl(Uri.parse('tel:${order.clientPhone}')),
               ),
+              const SizedBox(width: 4),
+              _QuickActionButton(
+                icon: Icons.map_rounded,
+                color: AppColors.gold,
+                tooltip: 'فتح الموقع في الخريطة',
+                onTap: () => MapUtils.openMapWithAddress(order.area ?? 'كفر الزيات'),
+              ),
+              if (order.clientPhone.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                _QuickActionButton(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  color: AppColors.info,
+                  tooltip: 'مراسلة العميل عبر واتساب',
+                  onTap: () {
+                    final message = 'السلام عليكم أ/ ${order.clientName}، مع حضرتك الفني لمتابعة طلب رقم ${order.trackingCode}';
+                    launchUrl(
+                      WhatsAppUtils.buildUri(order.clientPhone, message),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         ],
@@ -1066,27 +1257,38 @@ class _TechOrderCard extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _QuickActionButton extends StatelessWidget {
   final IconData icon;
   final Color color;
+  final String tooltip;
   final VoidCallback onTap;
-  const _ActionButton({
+
+  const _QuickActionButton({
     required this.icon,
     required this.color,
+    required this.tooltip,
     required this.onTap,
   });
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        margin: const EdgeInsets.only(right: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
         ),
-        child: Icon(icon, color: color, size: 20),
       ),
     );
   }
@@ -1101,10 +1303,17 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Text(status.label, style: AppTextStyles.labelMed),
+      child: Text(
+        status.label,
+        style: AppTextStyles.labelMed.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }
+

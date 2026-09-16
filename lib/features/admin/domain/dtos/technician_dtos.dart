@@ -60,6 +60,7 @@ class UpdateTechnicianDto {
   final String? bio;
   final int? totalEarnings;
   final bool? isVerified;
+  final String? adminNote;
 
   UpdateTechnicianDto({
     this.name,
@@ -73,6 +74,7 @@ class UpdateTechnicianDto {
     this.bio,
     this.totalEarnings,
     this.isVerified,
+    this.adminNote,
   });
 
   Map<String, dynamic> toJson() {
@@ -88,6 +90,7 @@ class UpdateTechnicianDto {
       if (bio != null) 'bio': bio,
       if (totalEarnings != null) 'total_earnings': totalEarnings,
       if (isVerified != null) 'is_verified': isVerified,
+      if (adminNote != null) 'admin_note': adminNote,
     };
   }
 }

@@ -171,7 +171,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'national_id_front_url': frontUrl,
         'national_id_back_url': backUrl,
         'criminal_record_url': criminalUrl,
-        'status': TechStatus.available.label,
+        'status': TechStatus.pending.label,
         'is_verified': false,
         'total_earnings': 0,
         'total_jobs': 0,
@@ -201,6 +201,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(techRegisterLoadingProvider);
+    final selectedSpec = ref.watch(techRegisterSpecProvider);
     final selectedGov = ref.watch(techRegisterGovProvider);
     final selectedCity = ref.watch(techRegisterCityProvider);
     final idFrontImage = ref.watch(techRegisterIdFrontProvider) ?? ref.watch(techRegisterIdProofProvider);
@@ -279,6 +280,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                         DropdownButtonFormField<ServiceType>(
+                          initialValue: selectedSpec,
                           decoration: const InputDecoration(labelText: 'التخصص المهني', prefixIcon: Icon(Icons.build_circle_outlined)),
                           dropdownColor: AppColors.surface2,
                           items: ServiceType.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
@@ -297,7 +299,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: selectedGov,
+                                initialValue: selectedGov,
                                 isExpanded: true,
                                 decoration: const InputDecoration(labelText: 'المحافظة', prefixIcon: Icon(Icons.map_outlined)),
                                 dropdownColor: AppColors.surface2,
@@ -313,7 +315,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: AppConstants.governoratesAndCities[selectedGov]!.contains(selectedCity) ? selectedCity : AppConstants.governoratesAndCities[selectedGov]!.first,
+                                initialValue: AppConstants.governoratesAndCities[selectedGov]!.contains(selectedCity) ? selectedCity : AppConstants.governoratesAndCities[selectedGov]!.first,
                                 isExpanded: true,
                                 decoration: const InputDecoration(labelText: 'المدينة / منطقة العمل', prefixIcon: Icon(Icons.location_city_outlined)),
                                 dropdownColor: AppColors.surface2,

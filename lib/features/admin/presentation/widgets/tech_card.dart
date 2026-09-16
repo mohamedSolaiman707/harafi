@@ -162,28 +162,45 @@ class TechCard extends StatelessWidget {
 
               Row(
                 children: [
-                  Expanded(
-                    child: _PrimaryWhatsAppButton(
-                      onTap: () => launchUrl(
-                        WhatsAppUtils.buildUri(tech.phone, 'السلام عليكم يا بشمهندس ${tech.name}'),
-                        mode: LaunchMode.externalApplication,
+                  if (isPending) ...[
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.gold,
+                          foregroundColor: const Color(0xFF090D16),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        onPressed: onEdit,
+                        icon: const Icon(Icons.badge_outlined, size: 16),
+                        label: const Text('مراجعة المستندات والاعتماد 🛡️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _SecondaryIconButton(
-                    icon: Icons.add_card_rounded,
-                    color: AppColors.success,
-                    onTap: onRecharge,
-                    tooltip: 'شحن رصيد',
-                  ),
-                  const SizedBox(width: 8),
-                  _SecondaryIconButton(
-                    icon: isPending ? Icons.how_to_reg_rounded : Icons.settings_suggest_rounded,
-                    color: AppColors.textSecondary,
-                    onTap: onEdit,
-                    tooltip: 'إدارة',
-                  ),
+                  ] else ...[
+                    Expanded(
+                      child: _PrimaryWhatsAppButton(
+                        onTap: () => launchUrl(
+                          WhatsAppUtils.buildUri(tech.phone, 'السلام عليكم يا بشمهندس ${tech.name}'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _SecondaryIconButton(
+                      icon: Icons.add_card_rounded,
+                      color: AppColors.success,
+                      onTap: onRecharge,
+                      tooltip: 'شحن رصيد',
+                    ),
+                    const SizedBox(width: 8),
+                    _SecondaryIconButton(
+                      icon: Icons.settings_suggest_rounded,
+                      color: AppColors.textSecondary,
+                      onTap: onEdit,
+                      tooltip: 'إدارة وتعديل',
+                    ),
+                  ],
                 ],
               ),
             ],

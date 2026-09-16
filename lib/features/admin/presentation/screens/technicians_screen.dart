@@ -419,8 +419,23 @@ class TechniciansScreen extends ConsumerWidget {
                     },
                   ),
                   const SizedBox(height: 12),
-                  if (technician != null)
+                  if (technician != null) ...[
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.info,
+                        side: const BorderSide(color: AppColors.info),
+                      ),
+                      icon: const Icon(Icons.comment_outlined, size: 18),
+                      label: Text(
+                        technician.adminNote != null && technician.adminNote!.isNotEmpty
+                          ? 'تعديل الملاحظة الإدارية 📝'
+                          : 'إرسال ملاحظة للفني 📝',
+                      ),
+                      onPressed: () => _showAdminNoteDialog(context, ref, technician),
+                    ),
+                    const SizedBox(height: 8),
                     TextButton.icon(style: TextButton.styleFrom(foregroundColor: AppColors.error), onPressed: () => _confirmDelete(context, ref, technician), icon: const Icon(Icons.delete_outline), label: const Text('حذف الفني نهائياً')),
+                  ],
                   const SizedBox(height: 24),
                 ],
               ),
@@ -449,6 +464,105 @@ class TechniciansScreen extends ConsumerWidget {
         result.when(
           left: (f) => AppErrorHandler.showSnackBar(context, f.message),
           right: (_) { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الفني بنجاح'))); },
+        );
+      }
+    }
+  }
+
+  Future<void> _showAdminNoteDialog(BuildContext context, WidgetRef ref, Technician tech) async {
+    final noteController = TextEditingController(text: tech.adminNote ?? '');
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface1,
+        title: Row(
+          children: [
+            const Icon(Icons.edit_note_rounded, color: AppColors.info),
+            const SizedBox(width: 8),
+            Expanded(child: Text('ملاحظة إدارية لـ ${tech.name}', overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.info, size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'ستظهر هذه الملاحظة للفني في داشبورده ضمن بانر الإشعارات. اتركها فارغة لمسحها.',
+                      style: TextStyle(color: AppColors.info, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: 'نص الملاحظة',
+                hintText: 'مثال: بياناتك تحتاج مراجعة، يرجى رفع صورة الفيش مجدداً بجودة أفضل',
+                prefixIcon: Icon(Icons.comment_outlined),
+                alignLabelWithHint: true,
+              ),
+              maxLines: 4,
+              maxLength: 300,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          if (tech.adminNote != null && tech.adminNote!.isNotEmpty)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              onPressed: () async {
+                noteController.clear();
+                final res = await ref.read(adminActionsProvider).sendAdminNoteToTech(tech.id, '');
+                if (ctx.mounted) Navigator.pop(ctx, false);
+                if (context.mounted) {
+                  res.when(
+                    left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                    right: (_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الملاحظة ✅'))),
+                  );
+                }
+              },
+              child: const Text('حذف الملاحظة'),
+            ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.info),
+            icon: const Icon(Icons.send_rounded, size: 18),
+            label: const Text('إرسال'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true && context.mounted) {
+      final res = await ref.read(adminActionsProvider).sendAdminNoteToTech(tech.id, noteController.text);
+      if (context.mounted) {
+        res.when(
+          left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+          right: (_) => ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(noteController.text.trim().isEmpty
+                ? 'تم مسح الملاحظة الإدارية ✅'
+                : 'تم إرسال الملاحظة للفني ${tech.name} ✅'),
+            ),
+          ),
         );
       }
     }

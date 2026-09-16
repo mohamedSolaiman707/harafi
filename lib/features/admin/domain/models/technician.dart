@@ -36,6 +36,7 @@ class Technician with _$Technician {
     @JsonKey(name: 'wallet_balance') @Default(100) int walletBalance,
     @JsonKey(name: 'portfolio_images') @Default([]) List<String> portfolioImages,
     @JsonKey(name: 'is_verified') @Default(false) bool isVerified,
+    @JsonKey(name: 'admin_note') String? adminNote,
     @JsonKey(name: 'created_at') required DateTime createdAt,
   }) = _Technician;
 
@@ -143,6 +144,7 @@ class Technician with _$Technician {
         walletBalance: _toInt(json['wallet_balance']) ?? 100,
         portfolioImages: _parseList(json['portfolio_images']),
         isVerified: json['is_verified'] == true || json['is_verified'] == 1 || json['is_verified'] == 'true',
+        adminNote: json['admin_note']?.toString(),
         createdAt: json['created_at'] != null
             ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
             : DateTime.now(),
@@ -195,6 +197,7 @@ class Technician with _$Technician {
       'criminal_record_url': tech.criminalRecordUrl,
       'portfolio_images': tech.portfolioImages,
       'is_verified': tech.isVerified,
+      if (tech.adminNote != null) 'admin_note': tech.adminNote,
       'created_at': tech.createdAt.toIso8601String(),
     };
   }

@@ -343,6 +343,22 @@ class AdminActions {
     _ref.invalidate(techniciansProvider);
     return result;
   }
+
+  /// إرسال ملاحظة من الأدمن إلى الفني (تُخزَّن في حقل admin_note وتظهر للفني في داشبورده)
+  Future<Either<Failure, void>> sendAdminNoteToTech(String techId, String note) async {
+    try {
+      await Supabase.instance.client
+          .from('technicians')
+          .update({'admin_note': note.trim().isEmpty ? null : note.trim()})
+          .eq('id', techId);
+      _ref.invalidate(techsStreamProvider);
+      _ref.invalidate(techniciansProvider);
+      _ref.invalidate(currentTechnicianProvider);
+      return const Right(null);
+    } catch (e) {
+      return Left(DatabaseFailure(e.toString()));
+    }
+  }
       
   Future<Either<Failure, Order>> addOrderNotes(String id, String notes) =>
       _ref.read(ordersRepositoryProvider).addAdminNotes(id, notes);

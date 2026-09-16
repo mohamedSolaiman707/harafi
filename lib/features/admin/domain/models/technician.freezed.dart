@@ -49,6 +49,8 @@ mixin _$Technician {
   List<String> get portfolioImages => throw _privateConstructorUsedError;
   @JsonKey(name: 'is_verified')
   bool get isVerified => throw _privateConstructorUsedError;
+  @JsonKey(name: 'admin_note')
+  String? get adminNote => throw _privateConstructorUsedError;
   @JsonKey(name: 'created_at')
   DateTime get createdAt => throw _privateConstructorUsedError;
 
@@ -87,6 +89,7 @@ abstract class $TechnicianCopyWith<$Res> {
     @JsonKey(name: 'wallet_balance') int walletBalance,
     @JsonKey(name: 'portfolio_images') List<String> portfolioImages,
     @JsonKey(name: 'is_verified') bool isVerified,
+    @JsonKey(name: 'admin_note') String? adminNote,
     @JsonKey(name: 'created_at') DateTime createdAt,
   });
 }
@@ -126,6 +129,7 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
     Object? walletBalance = null,
     Object? portfolioImages = null,
     Object? isVerified = null,
+    Object? adminNote = freezed,
     Object? createdAt = null,
   }) {
     return _then(
@@ -210,6 +214,10 @@ class _$TechnicianCopyWithImpl<$Res, $Val extends Technician>
                 ? _value.isVerified
                 : isVerified // ignore: cast_nullable_to_non_nullable
                       as bool,
+            adminNote: freezed == adminNote
+                ? _value.adminNote
+                : adminNote // ignore: cast_nullable_to_non_nullable
+                      as String?,
             createdAt: null == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -250,6 +258,7 @@ abstract class _$$TechnicianImplCopyWith<$Res>
     @JsonKey(name: 'wallet_balance') int walletBalance,
     @JsonKey(name: 'portfolio_images') List<String> portfolioImages,
     @JsonKey(name: 'is_verified') bool isVerified,
+    @JsonKey(name: 'admin_note') String? adminNote,
     @JsonKey(name: 'created_at') DateTime createdAt,
   });
 }
@@ -288,6 +297,7 @@ class __$$TechnicianImplCopyWithImpl<$Res>
     Object? walletBalance = null,
     Object? portfolioImages = null,
     Object? isVerified = null,
+    Object? adminNote = freezed,
     Object? createdAt = null,
   }) {
     return _then(
@@ -372,6 +382,10 @@ class __$$TechnicianImplCopyWithImpl<$Res>
             ? _value.isVerified
             : isVerified // ignore: cast_nullable_to_non_nullable
                   as bool,
+        adminNote: freezed == adminNote
+            ? _value.adminNote
+            : adminNote // ignore: cast_nullable_to_non_nullable
+                  as String?,
         createdAt: null == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -406,6 +420,7 @@ class _$TechnicianImpl extends _Technician {
     @JsonKey(name: 'portfolio_images')
     final List<String> portfolioImages = const [],
     @JsonKey(name: 'is_verified') this.isVerified = false,
+    @JsonKey(name: 'admin_note') this.adminNote,
     @JsonKey(name: 'created_at') required this.createdAt,
   }) : _portfolioImages = portfolioImages,
        super._();
@@ -471,12 +486,15 @@ class _$TechnicianImpl extends _Technician {
   @JsonKey(name: 'is_verified')
   final bool isVerified;
   @override
+  @JsonKey(name: 'admin_note')
+  final String? adminNote;
+  @override
   @JsonKey(name: 'created_at')
   final DateTime createdAt;
 
   @override
   String toString() {
-    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, identityProofUrl: $identityProofUrl, nationalIdFrontUrl: $nationalIdFrontUrl, nationalIdBackUrl: $nationalIdBackUrl, criminalRecordUrl: $criminalRecordUrl, bio: $bio, totalEarnings: $totalEarnings, walletBalance: $walletBalance, portfolioImages: $portfolioImages, isVerified: $isVerified, createdAt: $createdAt)';
+    return 'Technician(id: $id, name: $name, phone: $phone, spec: $spec, priceRange: $priceRange, visitPrice: $visitPrice, area: $area, status: $status, rating: $rating, totalJobs: $totalJobs, photoUrl: $photoUrl, identityProofUrl: $identityProofUrl, nationalIdFrontUrl: $nationalIdFrontUrl, nationalIdBackUrl: $nationalIdBackUrl, criminalRecordUrl: $criminalRecordUrl, bio: $bio, totalEarnings: $totalEarnings, walletBalance: $walletBalance, portfolioImages: $portfolioImages, isVerified: $isVerified, adminNote: $adminNote, createdAt: $createdAt)';
   }
 
   @override
@@ -518,6 +536,8 @@ class _$TechnicianImpl extends _Technician {
             ) &&
             (identical(other.isVerified, isVerified) ||
                 other.isVerified == isVerified) &&
+            (identical(other.adminNote, adminNote) ||
+                other.adminNote == adminNote) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -545,6 +565,7 @@ class _$TechnicianImpl extends _Technician {
     walletBalance,
     const DeepCollectionEquality().hash(_portfolioImages),
     isVerified,
+    adminNote,
     createdAt,
   ]);
 
@@ -579,6 +600,7 @@ abstract class _Technician extends Technician {
     @JsonKey(name: 'wallet_balance') final int walletBalance,
     @JsonKey(name: 'portfolio_images') final List<String> portfolioImages,
     @JsonKey(name: 'is_verified') final bool isVerified,
+    @JsonKey(name: 'admin_note') final String? adminNote,
     @JsonKey(name: 'created_at') required final DateTime createdAt,
   }) = _$TechnicianImpl;
   const _Technician._() : super._();
@@ -635,6 +657,9 @@ abstract class _Technician extends Technician {
   @override
   @JsonKey(name: 'is_verified')
   bool get isVerified;
+  @override
+  @JsonKey(name: 'admin_note')
+  String? get adminNote;
   @override
   @JsonKey(name: 'created_at')
   DateTime get createdAt;
