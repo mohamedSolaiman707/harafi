@@ -305,7 +305,8 @@ class ServiceTechsScreen extends ConsumerWidget {
                       const SizedBox(height: 10),
                     ],
                     ...validItems.map((item) {
-                      final tech = techs.firstWhere((t) => t.id == item['technicianId']?.toString());
+                      final tech = techs.where((t) => t.id == item['technicianId']?.toString()).firstOrNull;
+                      if (tech == null) return const SizedBox.shrink();
                       final rank = validItems.indexOf(item) + 1;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
