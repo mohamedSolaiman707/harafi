@@ -1,8 +1,10 @@
 {
   "rewrites": [
     {
-      "source": "/:path*",
+      "source": "/:path",
+      "handle": "filesystem",
       "destination": "/index.html"
     }
   ]
+
 }
