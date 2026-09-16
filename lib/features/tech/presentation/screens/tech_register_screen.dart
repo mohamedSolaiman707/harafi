@@ -227,11 +227,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         path: 'tech_photos',
         fileName: '${userId}_id_front',
       );
+      if (frontUrl == null) throw 'فشل رفع صورة وجه البطاقة، يرجى المحاولة مجدداً 📸';
+
       final backUrl = await _storageService.uploadImage(
         image: idBackImage,
         path: 'tech_photos',
         fileName: '${userId}_id_back',
       );
+      if (backUrl == null) throw 'فشل رفع صورة ظهر البطاقة، يرجى المحاولة مجدداً 📸';
       String? criminalUrl;
       if (criminalRecordImage != null) {
         criminalUrl = await _storageService.uploadImage(
@@ -245,14 +248,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'id': userId,
         'name': _nameController.text.trim(),
         'phone': phone,
-        'spec': selectedSpec!.label,
+        'spec': selectedSpec.label,
         'bio': _bioController.text.trim(),
         'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
         'area': selectedCity,
         'photo_url': avatarUrl,
-        'identity_proof_url': frontUrl ?? '',
-        'national_id_front_url': frontUrl ?? '',
-        'national_id_back_url': backUrl ?? '',
+        'identity_proof_url': frontUrl,
+        'national_id_front_url': frontUrl,
+        'national_id_back_url': backUrl,
         'criminal_record_url': criminalUrl,
         'status': TechStatus.pending.label,
         'is_verified': false,
@@ -688,7 +691,10 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                   onChanged: (val) {
                     if (val != null) {
                       ref.read(techRegisterGovProvider.notifier).state = val;
-                      ref.read(techRegisterCityProvider.notifier).state = AppConstants.governoratesAndCities[val]!.first;
+                      final cities = AppConstants.governoratesAndCities[val];
+                      if (cities != null && cities.isNotEmpty) {
+                        ref.read(techRegisterCityProvider.notifier).state = cities.first;
+                      }
                     }
                   },
                 ),
