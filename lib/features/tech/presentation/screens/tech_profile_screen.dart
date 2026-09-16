@@ -130,7 +130,16 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     super.dispose();
   }
 
+  final _formKey = GlobalKey<FormState>();
+
   Future<void> _updateProfile() async {
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ يرجى تصحيح البيانات المدخلة قبل الحفظ')),
+      );
+      return;
+    }
+
     ref.read(techProfileLoadingProvider.notifier).state = true;
     final selectedArea = ref.read(techProfileAreaProvider);
     
@@ -520,85 +529,105 @@ class _ProfileContentState extends ConsumerState<_ProfileContent> {
     final selectedArea = ref.watch(techProfileAreaProvider) ?? AppConstants.governoratesAndCities[selectedGov]?.first;
 
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('البيانات المهنية', style: AppTextStyles.headlineMed),
-              isLoading 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : TextButton.icon(
-                    onPressed: () => isEditing ? _updateProfile() : ref.read(techProfileEditingProvider.notifier).state = true,
-                    icon: Icon(isEditing ? Icons.check : Icons.edit),
-                    label: Text(isEditing ? 'حفظ التغييرات' : 'تعديل البيانات'),
-                  ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          AppTextField(label: 'الاسم الميداني', controller: _nameController, enabled: isEditing, prefixIcon: Icons.person_outline),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'سعر الزيارة (ج.م)',
-            controller: _visitPriceController,
-            enabled: isEditing,
-            keyboardType: TextInputType.number,
-            prefixIcon: Icons.payments_outlined,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: selectedGov,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'المحافظة',
-                    prefixIcon: Icon(Icons.map_outlined),
-                  ),
-                  dropdownColor: AppColors.surface2,
-                  items: AppConstants.governoratesAndCities.keys
-                      .map((gov) => DropdownMenuItem(value: gov, child: Text(gov, overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: isEditing
-                      ? (val) {
-                          if (val != null) {
-                            ref.read(techProfileGovProvider.notifier).state = val;
-                            ref.read(techProfileAreaProvider.notifier).state =
-                                AppConstants.governoratesAndCities[val]!.first;
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('البيانات المهنية', style: AppTextStyles.headlineMed),
+                isLoading 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : TextButton.icon(
+                      onPressed: () => isEditing ? _updateProfile() : ref.read(techProfileEditingProvider.notifier).state = true,
+                      icon: Icon(isEditing ? Icons.check : Icons.edit),
+                      label: Text(isEditing ? 'حفظ التغييرات' : 'تعديل البيانات'),
+                    ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppTextField(
+              label: 'الاسم الميداني',
+              controller: _nameController,
+              enabled: isEditing,
+              prefixIcon: Icons.person_outline,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'يرجى إدخال الاسم الميداني';
+                final parts = v.trim().split(RegExp(r'\s+'));
+                if (parts.length < 2) return 'يرجى كتابة الاسم الثنائي على الأقل';
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppTextField(
+              label: 'سعر الزيارة (ج.م)',
+              controller: _visitPriceController,
+              enabled: isEditing,
+              keyboardType: TextInputType.number,
+              prefixIcon: Icons.payments_outlined,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'يرجى تحديد سعر الزيارة';
+                final price = int.tryParse(v.trim());
+                if (price == null || price < 0 || price > 5000) return 'أدخل سعر زيارة منطقي بين 0 و 5000 ج.م';
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: selectedGov,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'المحافظة',
+                      prefixIcon: Icon(Icons.map_outlined),
+                    ),
+                    dropdownColor: AppColors.surface2,
+                    items: AppConstants.governoratesAndCities.keys
+                        .map((gov) => DropdownMenuItem(value: gov, child: Text(gov, overflow: TextOverflow.ellipsis)))
+                        .toList(),
+                    onChanged: isEditing
+                        ? (val) {
+                            if (val != null) {
+                              ref.read(techProfileGovProvider.notifier).state = val;
+                              ref.read(techProfileAreaProvider.notifier).state =
+                                  AppConstants.governoratesAndCities[val]!.first;
+                            }
                           }
-                        }
-                      : null,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: (AppConstants.governoratesAndCities[selectedGov] ?? []).contains(selectedArea)
-                      ? selectedArea
-                      : AppConstants.governoratesAndCities[selectedGov]?.first,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'المدينة / منطقة العمل',
-                    prefixIcon: Icon(Icons.location_city_outlined),
+                        : null,
                   ),
-                  dropdownColor: AppColors.surface2,
-                  items: (AppConstants.governoratesAndCities[selectedGov] ?? [])
-                      .map((city) => DropdownMenuItem(value: city, child: Text(city, overflow: TextOverflow.ellipsis)))
-                      .toList(),
-                  onChanged: isEditing
-                      ? (val) {
-                          if (val != null) ref.read(techProfileAreaProvider.notifier).state = val;
-                        }
-                      : null,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(label: 'نبذة عن خبرتك', controller: _bioController, enabled: isEditing, prefixIcon: Icons.history_edu_outlined, maxLines: 5),
-        ],
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: (AppConstants.governoratesAndCities[selectedGov] ?? []).contains(selectedArea)
+                        ? selectedArea
+                        : AppConstants.governoratesAndCities[selectedGov]?.first,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'المدينة / منطقة العمل',
+                      prefixIcon: Icon(Icons.location_city_outlined),
+                    ),
+                    dropdownColor: AppColors.surface2,
+                    items: (AppConstants.governoratesAndCities[selectedGov] ?? [])
+                        .map((city) => DropdownMenuItem(value: city, child: Text(city, overflow: TextOverflow.ellipsis)))
+                        .toList(),
+                    onChanged: isEditing
+                        ? (val) {
+                            if (val != null) ref.read(techProfileAreaProvider.notifier).state = val;
+                          }
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppTextField(label: 'نبذة عن خبرتك', controller: _bioController, enabled: isEditing, prefixIcon: Icons.history_edu_outlined, maxLines: 5),
+          ],
+        ),
       ),
     );
   }

@@ -10,7 +10,6 @@ import '../../../../core/providers/location_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../admin/domain/enums/service_type.dart';
-import '../../../admin/domain/enums/tech_status.dart';
 import '../../../admin/domain/enums/order_status.dart';
 import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/models/technician.dart';
@@ -473,17 +472,59 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface1,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
-          AppTextField(label: 'الاسم بالكامل', controller: _nameController, prefixIcon: Icons.person_outline, validator: (v) => v!.isEmpty ? 'يرجى إدخل الاسم' : null),
+          AppTextField(
+            label: 'الاسم بالكامل',
+            controller: _nameController,
+            prefixIcon: Icons.person_outline,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى إدخال الاسم بالكامل';
+              final parts = v.trim().split(RegExp(r'\s+'));
+              if (parts.length < 2) return 'يرجى كتابة اسم ثنائي على الأقل (مثال: أحمد علي)';
+              return null;
+            },
+          ),
           const SizedBox(height: 16),
-          AppTextField(label: 'رقم الواتساب', controller: _phoneController, keyboardType: TextInputType.phone, prefixIcon: Icons.phone_android_rounded, validator: (v) => v!.length < 11 ? 'رقم غير صحيح' : null),
+          AppTextField(
+            label: 'رقم الواتساب',
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            prefixIcon: Icons.phone_android_rounded,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى إدخال رقم الواتساب';
+              final clean = v.trim();
+              if (!RegExp(r'^01[0125][0-9]{8}$').hasMatch(clean)) {
+                return 'أدخل رقم هاتف مصري صحيح (11 رقم يبدأ بـ 010, 011, 012, 015)';
+              }
+              return null;
+            },
+          ),
           const SizedBox(height: 16),
-          AppTextField(label: 'العنوان (المنطقة والشارع)', controller: _areaController, prefixIcon: Icons.location_on_outlined, validator: (v) => v!.isEmpty ? 'يرجى إدخال العنوان' : null),
+          AppTextField(
+            label: 'العنوان (المنطقة، الحي والشارع)',
+            controller: _areaController,
+            prefixIcon: Icons.location_on_outlined,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى إدخال العنوان التفصيلي';
+              if (v.trim().length < 5) return 'أدخل عنواناً واضحاً (أكثر من 5 أحرف)';
+              return null;
+            },
+          ),
           const SizedBox(height: 16),
-          AppTextField(label: 'وصف العطل باختصار', controller: _descriptionController, hint: 'مثال: حنفية المطبخ بتسرب ميه', maxLines: 2),
+          AppTextField(
+            label: 'وصف العطل باختصار',
+            controller: _descriptionController,
+            hint: 'مثال: حنفية المطبخ بتسرب ميه',
+            maxLines: 2,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى كتابة وصف مختصر للمشكلة';
+              if (v.trim().length < 5) return 'صف المشكلة بوضوح أكثر ليساعد الفني (5 أحرف على الأقل)';
+              return null;
+            },
+          ),
         ],
       ),
     );

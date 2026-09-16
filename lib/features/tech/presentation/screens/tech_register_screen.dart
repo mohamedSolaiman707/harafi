@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -57,7 +59,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
   Future<void> _pickDocumentImage(ImageSource source, String docType) async {
     final XFile? image = await _picker.pickImage(
       source: source,
-      imageQuality: 70,
+      imageQuality: 75,
     );
     if (image != null) {
       if (docType == 'avatar') {
@@ -71,6 +73,16 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         ref.read(techRegisterCriminalRecordProvider.notifier).state = image;
       }
     }
+  }
+
+  void _removeDocumentImage(String docType) {
+    if (docType == 'avatar') ref.read(techRegisterAvatarProvider.notifier).state = null;
+    if (docType == 'front') {
+      ref.read(techRegisterIdFrontProvider.notifier).state = null;
+      ref.read(techRegisterIdProofProvider.notifier).state = null;
+    }
+    if (docType == 'back') ref.read(techRegisterIdBackProvider.notifier).state = null;
+    if (docType == 'criminal') ref.read(techRegisterCriminalRecordProvider.notifier).state = null;
   }
 
   void _showImageSourceSheet(String docType, String docTitle) {
@@ -87,13 +99,14 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'رفع $docTitle',
+                'اختيار $docTitle',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined, color: AppColors.gold),
-              title: const Text('التقاط صورة بالكاميرا'),
+              title: const Text('التقاط صورة بالكاميرا (مباشرة)'),
+              subtitle: const Text('يُفضل التقاط صورة واضحة ومباشرة'),
               onTap: () {
                 Navigator.pop(context);
                 _pickDocumentImage(ImageSource.camera, docType);
@@ -122,7 +135,10 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     final selectedSpec = ref.read(techRegisterSpecProvider);
     if (selectedSpec == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى اختيار التخصص المهني قبل المتابعة 🛠️')),
+        const SnackBar(
+          content: Text('⚠️ يرجى اختيار تخصصك المهني الرئيسي قبل المتابعة'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return false;
     }
@@ -139,7 +155,10 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
     if (idFrontImage == null || idBackImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى رفع صورة وجه وظهر البطاقة الشخصية لتوثيق حسابك 🛡️')),
+        const SnackBar(
+          content: Text('⚠️ يرجى رفع صورة وجه وظهر البطاقة الشخصية للتحقق الهوية'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -154,7 +173,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         password: _passwordController.text.trim(),
       );
 
-      if (authResponse.user == null) throw 'فشل إنشاء الحساب';
+      if (authResponse.user == null) throw 'فشل إنشاء الحساب، يرجى المحاولة لاحقاً';
       String userId = authResponse.user!.id;
 
       String? avatarUrl;
@@ -225,41 +244,78 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     }
   }
 
+  Future<bool> _onWillPop() async {
+    final currentStep = ref.read(techRegisterStepProvider);
+    if (currentStep > 0) {
+      ref.read(techRegisterStepProvider.notifier).state = currentStep - 1;
+      return false;
+    }
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('إلغاء التسجيل؟'),
+        content: const Text('هل أنت متأكد من الخروج؟ ستفقد البيانات والمستندات المرفوعة.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('متابعة التسجيل'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('خروج', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentStep = ref.watch(techRegisterStepProvider);
     final isLoading = ref.watch(techRegisterLoadingProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('انضم لفريق المحترفين'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 540),
-            child: Column(
-              children: [
-                // ─── Header & Stepper Progress ─────────────────────────────────
-                _buildStepperHeader(currentStep),
-                const SizedBox(height: AppSpacing.xl),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final exit = await _onWillPop();
+        if (exit && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('انضم لفريق المحترفين'),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 540),
+              child: Column(
+                children: [
+                  // ─── Header & Stepper Progress ─────────────────────────────────
+                  _buildStepperHeader(currentStep),
+                  const SizedBox(height: AppSpacing.xl),
 
-                // ─── Animated Step Content ────────────────────────────────────
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: AppCard(
-                    key: ValueKey<int>(currentStep),
-                    child: switch (currentStep) {
-                      0 => _buildStep1AccountInfo(),
-                      1 => _buildStep2ProfessionalDetails(),
-                      2 => _buildStep3IdentityVerification(isLoading),
-                      _ => _buildStep1AccountInfo(),
-                    },
+                  // ─── Animated Step Content ────────────────────────────────────
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: AppCard(
+                      key: ValueKey<int>(currentStep),
+                      child: switch (currentStep) {
+                        0 => _buildStep1AccountInfo(),
+                        1 => _buildStep2ProfessionalDetails(),
+                        2 => _buildStep3IdentityVerification(isLoading),
+                        _ => _buildStep1AccountInfo(),
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -288,8 +344,8 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                       children: [
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
-                          width: 36,
-                          height: 36,
+                          width: 38,
+                          height: 38,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: isCompleted
@@ -302,7 +358,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
                           ),
                           child: Center(
                             child: isCompleted
-                                ? const Icon(Icons.check, size: 20, color: Colors.black)
+                                ? const Icon(Icons.check_rounded, size: 22, color: Colors.black)
                                 : Text(
                                     '${index + 1}',
                                     style: TextStyle(
@@ -369,25 +425,44 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'أدخل معلوماتك الشخصية لتسهيل تسجيل الدخول والتواصل',
+            'أدخل معلوماتك الشخصية لتسهيل الحساب والتواصل مع العملاء',
             style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: AppSpacing.xl),
+
+          // الاسم الثلاثي للحد من الخطأ البشري
           AppTextField(
-            label: 'الاسم الكامل',
+            label: 'الاسم الكامل الثلاثي',
             controller: _nameController,
             prefixIcon: Icons.person_outline,
-            validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال الاسم الكامل' : null,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى إدخال الاسم الكامل';
+              final parts = v.trim().split(RegExp(r'\s+'));
+              if (parts.length < 3) {
+                return 'يرجى كتابة الاسم الثلاثي على الأقل (مثال: أحمد محمد علي)';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: AppSpacing.md),
+
+          // رقم الهاتف المصري (regex validation)
           AppTextField(
-            label: 'رقم الهاتف',
+            label: 'رقم الهاتف (المحمول)',
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             prefixIcon: Icons.phone_android,
-            validator: (v) => v == null || v.length < 11 ? 'أدخل رقم هاتف صحيح مكون من 11 رقم' : null,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى إدخال رقم الهاتف';
+              final clean = v.trim();
+              if (!RegExp(r'^01[0125][0-9]{8}$').hasMatch(clean)) {
+                return 'يرجى إدخال رقم هاتف مصري صحيح (11 رقم يبدأ بـ 010, 011, 012, 015)';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: AppSpacing.md),
+
           AppTextField(
             label: 'كلمة المرور',
             controller: _passwordController,
@@ -396,6 +471,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
             validator: (v) => v == null || v.length < 6 ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : null,
           ),
           const SizedBox(height: AppSpacing.xxl),
+
           AppButton(
             label: 'التالي: المجال والمنطقة ➡️',
             onTap: () {
@@ -430,17 +506,18 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'اختر تخصصك الرئيسي والمنطقة التي تقدم فيها خدماتك',
+            'اختر تخصصك الرئيسي والمنطقة التي تقدم فيها خدماتك الميدانية',
             style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ─── Visual Specialty Selector Grid ───
           const Text(
             'اختر تخصصك الرئيسي *',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.gold),
           ),
           const SizedBox(height: 10),
+
+          // ─── Visual Specialty Selector Grid ───
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -493,11 +570,18 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           AppTextField(
-            label: 'سعر الزيارة المعاينية (ج.م)',
+            label: 'سعر الزيارة الكشفية المعاينية (ج.م)',
             controller: _visitPriceController,
             keyboardType: TextInputType.number,
             prefixIcon: Icons.monetization_on_outlined,
-            validator: (v) => v == null || v.isEmpty ? 'يرجى تحديد سعر المعاينة' : null,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'يرجى تحديد سعر الزيارة';
+              final val = int.tryParse(v.trim());
+              if (val == null || val < 0 || val > 5000) {
+                return 'أدخل سعر زيارة منطقي بين 0 و 5000 ج.م';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -596,40 +680,40 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'قم برفع المستندات المطلوبة لتفعيل حسابك كـ فني موثق',
+          'قم بمعاينة ورفع المستندات المطلوبة للتأكد من صحتها قبل التفعيل',
           style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
         ),
         const SizedBox(height: AppSpacing.lg),
 
-        _buildDocTile(
+        _buildDocTileWithPreview(
+          docType: 'avatar',
           title: 'الصورة الشخصية (صورة ملامح الوجه)',
-          subtitle: 'اختياري - تُعرض للعملاء في نتائج البحث والطلبات',
+          subtitle: 'اختياري - تظهر للعملاء والمستخدمين كرمز لملفك الشخصي',
           image: avatarImage,
-          onTap: () => _showImageSourceSheet('avatar', 'الصورة الشخصية'),
           isRequired: false,
         ),
         const SizedBox(height: AppSpacing.sm),
-        _buildDocTile(
-          title: 'وجه البطاقة الشخصية',
-          subtitle: 'صورة واضحة من الأمام (سرية للتوثيق فقط)',
+        _buildDocTileWithPreview(
+          docType: 'front',
+          title: 'وجه البطاقة الشخصية (صورة الأمام)',
+          subtitle: 'مطلوبة - صورة واضحة ومباشرة من الأمام (سرية للتوثيق فقط)',
           image: idFrontImage,
-          onTap: () => _showImageSourceSheet('front', 'وجه البطاقة الشخصية'),
           isRequired: true,
         ),
         const SizedBox(height: AppSpacing.sm),
-        _buildDocTile(
-          title: 'ظهر البطاقة الشخصية',
-          subtitle: 'صورة واضحة من الخلف (سرية للتوثيق فقط)',
+        _buildDocTileWithPreview(
+          docType: 'back',
+          title: 'ظهر البطاقة الشخصية (صورة الخلف)',
+          subtitle: 'مطلوبة - صورة واضحة ومباشرة من الخلف (سرية للتوثيق فقط)',
           image: idBackImage,
-          onTap: () => _showImageSourceSheet('back', 'ظهر البطاقة الشخصية'),
           isRequired: true,
         ),
         const SizedBox(height: AppSpacing.sm),
-        _buildDocTile(
+        _buildDocTileWithPreview(
+          docType: 'criminal',
           title: 'صحيفة الحالة الجنائية (الفيش والتشبيه)',
-          subtitle: 'اختياري - يمنحك التوثيق الذهبي المباشر',
+          subtitle: 'اختياري - يمنحك شارة التوثيق الذهبي المباشرة 🏆',
           image: criminalRecordImage,
-          onTap: () => _showImageSourceSheet('criminal', 'الفيش والتشبيه'),
           isRequired: false,
         ),
         const SizedBox(height: AppSpacing.xxl),
@@ -649,7 +733,7 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               flex: 2,
               child: AppButton(
                 label: 'إنشاء الحساب والبدء 🚀',
-                onTap: _submit,
+                onTap: isLoading ? null : _submit,
                 isLoading: isLoading,
               ),
             ),
@@ -659,62 +743,130 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     );
   }
 
-  // ─── Document Tile Builder Helper ────────────────────────────────────────────
+  // ─── Enhanced Doc Tile Builder With Visual Thumbnail & Replace Option ─────────
 
-  Widget _buildDocTile({
+  Widget _buildDocTileWithPreview({
+    required String docType,
     required String title,
     required String subtitle,
     required XFile? image,
-    required VoidCallback onTap,
     bool isRequired = true,
   }) {
     final bool uploaded = image != null;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: uploaded ? AppColors.success.withValues(alpha: 0.08) : AppColors.surface1,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: uploaded ? AppColors.success : AppColors.borderDefault),
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: uploaded ? AppColors.success.withValues(alpha: 0.08) : AppColors.surface1,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: uploaded ? AppColors.success : AppColors.borderDefault,
+          width: uploaded ? 1.5 : 1,
         ),
-        child: Row(
-          children: [
-            Icon(
-              uploaded ? Icons.check_circle_rounded : (isRequired ? Icons.badge_outlined : Icons.description_outlined),
-              color: uploaded ? AppColors.success : AppColors.gold,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(title, style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
-                      if (isRequired)
-                        Text(' *', style: AppTextStyles.titleMed.copyWith(color: AppColors.error)),
-                    ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // ─── Image Thumbnail Preview ───
+              if (uploaded)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      border: Border.all(color: AppColors.success, width: 1),
+                    ),
+                    child: kIsWeb
+                        ? Image.network(image.path, fit: BoxFit.cover)
+                        : Image.file(File(image.path), fit: BoxFit.cover),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    uploaded ? 'تم اختيار المستند (${image.name})' : subtitle,
-                    style: AppTextStyles.labelMed.copyWith(color: uploaded ? AppColors.success : AppColors.textMuted, fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                )
+              else
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface2,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                  child: Icon(
+                    isRequired ? Icons.badge_outlined : Icons.portrait_rounded,
+                    color: AppColors.gold,
+                    size: 24,
+                  ),
+                ),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isRequired)
+                          Text(' *', style: AppTextStyles.titleMed.copyWith(color: AppColors.error)),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      uploaded ? 'تم تحديد الصورة بنجاح ✅ (عاينها للتأكد)' : subtitle,
+                      style: AppTextStyles.labelMed.copyWith(
+                        color: uploaded ? AppColors.success : AppColors.textMuted,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Icon(
-              uploaded ? Icons.task_alt_rounded : Icons.upload_file_rounded,
-              size: 20,
-              color: uploaded ? AppColors.success : AppColors.textMuted,
-            ),
-          ],
-        ),
+
+              const SizedBox(width: 8),
+
+              // ─── Action Buttons (Pick / Replace / Delete) ───
+              if (!uploaded)
+                ElevatedButton.icon(
+                  onPressed: () => _showImageSourceSheet(docType, title),
+                  icon: const Icon(Icons.upload_file_rounded, size: 16),
+                  label: const Text('رفع', style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                )
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.change_circle_outlined, color: AppColors.gold, size: 24),
+                      tooltip: 'تغيير الصورة',
+                      onPressed: () => _showImageSourceSheet(docType, title),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 22),
+                      tooltip: 'حذف',
+                      onPressed: () => _removeDocumentImage(docType),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

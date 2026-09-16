@@ -18,6 +18,7 @@ class TechLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -29,16 +30,12 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى إدخال رقم الهاتف وكلمة المرور')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
     
     ref.read(techLoginLoadingProvider.notifier).state = true;
     try {
-      final dummyEmail = '${_phoneController.text.trim()}@harafi.com';
+      final cleanPhone = _phoneController.text.trim();
+      final dummyEmail = '$cleanPhone@harafi.com';
 
       await Supabase.instance.client.auth.signInWithPassword(
         email: dummyEmail,
@@ -78,29 +75,41 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                 const Text('سجل دخول لمتابعة أعمالك', textAlign: TextAlign.center),
                 const SizedBox(height: AppSpacing.xxl),
                 AppCard(
-                  child: Column(
-                    children: [
-                      AppTextField(
-                        label: 'رقم الهاتف',
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        prefixIcon: Icons.phone_android,
-                        hint: '01xxxxxxxxx',
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      AppTextField(
-                        label: 'كلمة المرور',
-                        controller: _passwordController,
-                        isPassword: true,
-                        prefixIcon: Icons.lock_outline,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      AppButton(
-                        label: 'دخول',
-                        onTap: _login,
-                        isLoading: isLoading,
-                      ),
-                    ],
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        AppTextField(
+                          label: 'رقم الهاتف (المحمول)',
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          prefixIcon: Icons.phone_android,
+                          hint: '01xxxxxxxxx',
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'يرجى إدخال رقم الهاتف';
+                            final clean = v.trim();
+                            if (!RegExp(r'^01[0125][0-9]{8}$').hasMatch(clean)) {
+                              return 'أدخل رقم هاتف مصري صحيح (11 رقم يبدأ بـ 010, 011, 012, 015)';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        AppTextField(
+                          label: 'كلمة المرور',
+                          controller: _passwordController,
+                          isPassword: true,
+                          prefixIcon: Icons.lock_outline,
+                          validator: (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال كلمة المرور' : null,
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                        AppButton(
+                          label: 'دخول',
+                          onTap: _login,
+                          isLoading: isLoading,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -110,7 +119,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                     const Text('ليس لديك حساب؟'),
                     TextButton(
                       onPressed: () {
-                        context.push('/tech/register', extra: _phoneController.text);
+                        context.push('/tech/register', extra: _phoneController.text.trim());
                       },
                       child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
                     ),
@@ -122,7 +131,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                     await prefs.remove('user_role');
                     if (context.mounted) context.go('/welcome');
                   },
-                  child: const Text('العودة لاختيار الدور'),
+                  child: const Text('العودة لااختيار الدور'),
                 ),
               ],
             ),
