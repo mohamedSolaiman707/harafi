@@ -147,6 +147,17 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
 
   Future<void> _submit() async {
     final selectedSpec = ref.read(techRegisterSpecProvider);
+    if (selectedSpec == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ يرجى العودة للخطوة 2 واختيار تخصصك المهني الرئيسي'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      ref.read(techRegisterStepProvider.notifier).state = 1;
+      return;
+    }
+
     final avatarImage = ref.read(techRegisterAvatarProvider);
     final idFrontImage = ref.read(techRegisterIdFrontProvider) ?? ref.read(techRegisterIdProofProvider);
     final idBackImage = ref.read(techRegisterIdBackProvider);
