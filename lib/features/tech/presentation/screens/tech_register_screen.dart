@@ -517,51 +517,100 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
           ),
           const SizedBox(height: 10),
 
-          // ─── Visual Specialty Selector Grid ───
+          // ─── Real Photo Service Cards Grid ───
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1.15,
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.6,
             ),
             itemCount: ServiceType.values.length,
             itemBuilder: (context, index) {
               final spec = ServiceType.values[index];
               final isSelected = selectedSpec == spec;
+              final imageAsset = switch (spec) {
+                ServiceType.plumbing => 'assets/images/sbak.jpg',
+                ServiceType.electrical => 'assets/images/khrba.jpg',
+                ServiceType.carpentry => 'assets/images/negara.jpg',
+                ServiceType.ac => 'assets/images/takyeefat.jpg',
+                ServiceType.refrigerators => 'assets/images/fridge.jpg',
+                ServiceType.washingMachines => 'assets/images/washing.jpg',
+                ServiceType.screens => 'assets/images/tv.jpg',
+                ServiceType.stoves => 'assets/images/gas.jpg',
+              };
+
               return InkWell(
                 onTap: () => ref.read(techRegisterSpecProvider.notifier).state = spec,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.surface2,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? AppColors.gold : AppColors.borderSubtle,
-                      width: isSelected ? 2 : 1,
+                      color: isSelected ? AppColors.gold : Colors.white.withValues(alpha: 0.1),
+                      width: isSelected ? 2.5 : 1,
                     ),
+                    boxShadow: isSelected
+                        ? [BoxShadow(color: AppColors.gold.withValues(alpha: 0.35), blurRadius: 10)]
+                        : null,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(spec.icon, style: const TextStyle(fontSize: 26)),
-                      const SizedBox(height: 4),
-                      Text(
-                        spec.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? AppColors.gold : Colors.white,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // ─── Real Service Photo Asset ───
+                        Image.asset(
+                          imageAsset,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(color: AppColors.surface2),
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                        // ─── Dark Gradient Overlay ───
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: isSelected ? 0.65 : 0.85),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // ─── Title & Checkmark Badge ───
+                        Positioned(
+                          bottom: 10,
+                          right: 12,
+                          left: 12,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                spec.label,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? AppColors.gold : Colors.white,
+                                ),
+                              ),
+                              if (isSelected)
+                                Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.gold,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.check, size: 14, color: Colors.black),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
