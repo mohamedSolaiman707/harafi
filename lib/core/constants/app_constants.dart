@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'حرفي | Harafi';
+  static const String appName = 'حرفي - صنايعي تثق فيه';
 
   static const String logoPath = 'assets/images/logo2.png';
 
