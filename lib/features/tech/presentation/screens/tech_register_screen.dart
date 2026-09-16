@@ -166,15 +166,41 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
     ref.read(techRegisterLoadingProvider.notifier).state = true;
     try {
       final phone = _phoneController.text.trim();
+      final password = _passwordController.text.trim();
       final dummyEmail = '$phone@harafi.com';
 
-      final authResponse = await Supabase.instance.client.auth.signUp(
-        email: dummyEmail,
-        password: _passwordController.text.trim(),
-      );
+      String userId;
+      try {
+        final authResponse = await Supabase.instance.client.auth.signUp(
+          email: dummyEmail,
+          password: password,
+        );
 
-      if (authResponse.user == null) throw 'فشل إنشاء الحساب، يرجى المحاولة لاحقاً';
-      String userId = authResponse.user!.id;
+        if (authResponse.user == null) {
+          throw 'فشل إنشاء الحساب، يرجى المحاولة برقم هاتف آخر 📱';
+        }
+        userId = authResponse.user!.id;
+      } catch (e) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('already registered') ||
+            errStr.contains('already_exists') ||
+            errStr.contains('user_already_exists') ||
+            errStr.contains('user already exists') ||
+            errStr.contains('already exists')) {
+          throw 'هذا الرقم مسجل بالفعل في نظام حرفي! يرجى تسجيل الدخول بدلاً من التسجيل الجديد ⚠️';
+        }
+        rethrow;
+      }
+
+      // التأكد من وجود جلسة دخول نشطة لرفع الصور وتأكيد الصلاحيات
+      if (Supabase.instance.client.auth.currentSession == null) {
+        try {
+          await Supabase.instance.client.auth.signInWithPassword(
+            email: dummyEmail,
+            password: password,
+          );
+        } catch (_) {}
+      }
 
       String? avatarUrl;
       if (avatarImage != null) {
@@ -213,9 +239,9 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
         'visit_price': int.tryParse(_visitPriceController.text) ?? 50,
         'area': selectedCity,
         'photo_url': avatarUrl,
-        'identity_proof_url': frontUrl,
-        'national_id_front_url': frontUrl,
-        'national_id_back_url': backUrl,
+        'identity_proof_url': frontUrl ?? '',
+        'national_id_front_url': frontUrl ?? '',
+        'national_id_back_url': backUrl ?? '',
         'criminal_record_url': criminalUrl,
         'status': TechStatus.pending.label,
         'is_verified': false,
