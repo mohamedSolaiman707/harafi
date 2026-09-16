@@ -1,12 +1,13 @@
 {
   "version": 2,
-  "public": true,
-  "buildCommand": "flutter build web --release",
-  "outputDirectory": "build/web",
-  "rewrites": [
+  "cleanUrls": true,
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ]
 }
