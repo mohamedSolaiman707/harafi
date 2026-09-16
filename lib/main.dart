@@ -11,7 +11,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // تفعيل الروابط بدون علامة #
-  usePathUrlStrategy();
+  //usePathUrlStrategy();
 
   // Initialize Supabase
   await SupabaseConfig.initialize();
