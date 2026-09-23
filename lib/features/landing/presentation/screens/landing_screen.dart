@@ -208,19 +208,16 @@ class _LandingHeader extends StatelessWidget {
           // Logo & Brand Name
           InkWell(
             onTap: onClientAppTap,
+            borderRadius: BorderRadius.circular(12),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    gradient: AppGradients.goldButton,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: AppShadows.goldGlow,
-                  ),
-                  child: const Icon(
-                    Icons.handyman_rounded,
-                    color: Color(0xFF090D16),
-                    size: 22,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo2.png',
+                    width: 42,
+                    height: 42,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -232,7 +229,7 @@ class _LandingHeader extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  ' | Harafy',
+                  ' | Harafi',
                   style: AppTextStyles.titleMed.copyWith(
                     color: AppColors.textMuted,
                   ),
@@ -1191,21 +1188,18 @@ class _LandingFooter extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.gold,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.handyman_rounded,
-                          size: 18,
-                          color: Color(0xFF090D16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/images/logo2.png',
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.cover,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Text(
-                        'حرفي | Harafy Platform',
+                        'حرفي | Harafi Platform',
                         style: AppTextStyles.titleLarge.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
