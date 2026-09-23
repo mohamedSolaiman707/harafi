@@ -98,7 +98,7 @@ class NotificationOverlay extends ConsumerWidget {
                                       ),
                                       Text(
                                         'الآن',
-                                        style: AppTextStyles.labelSm.copyWith(
+                                        style: AppTextStyles.labelMed.copyWith(
                                           color: AppColors.textMuted,
                                         ),
                                       ),
@@ -108,7 +108,7 @@ class NotificationOverlay extends ConsumerWidget {
                                   Text(
                                     latest.body,
                                     style: AppTextStyles.bodyMed.copyWith(
-                                      color: AppColors.textSubtle,
+                                      color: AppColors.textPrimary,
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,

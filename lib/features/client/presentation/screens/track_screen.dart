@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/providers/notification_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/error_widget.dart';
@@ -149,7 +150,7 @@ class TrackScreen extends ConsumerWidget {
 
               if (order.status != OrderStatus.pending && order.status != OrderStatus.cancelled) ...[
                 const SizedBox(height: AppSpacing.xl),
-                _buildLiveChatButton(context, order),
+                _buildLiveChatButton(context, ref, order),
               ],
             ],
           ),
@@ -158,7 +159,7 @@ class TrackScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLiveChatButton(BuildContext context, Order order) {
+  Widget _buildLiveChatButton(BuildContext context, WidgetRef ref, Order order) {
     final unreadCount = ref.watch(unreadMsgCountsProvider)[order.id] ?? 0;
 
     return GestureDetector(

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart' as intl;
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/error_handler.dart';
+import '../../../../shared/providers/notification_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';

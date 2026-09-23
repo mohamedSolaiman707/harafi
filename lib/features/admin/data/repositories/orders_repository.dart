@@ -353,7 +353,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
     try {
       if (status == OrderStatus.cancelled) {
         final currentOrderRes = await getOrderById(orderId);
-        final currentOrder = currentOrderRes.valueOrNull;
+        final currentOrder = currentOrderRes.getRight();
         if (currentOrder != null &&
             (currentOrder.status == OrderStatus.completed ||
                 currentOrder.status == OrderStatus.cancelled)) {
@@ -368,8 +368,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
       if (laborFee != null) data['labor_fee'] = laborFee;
       if (partsFee != null) data['parts_fee'] = partsFee;
       if (techNotes != null) data['tech_notes'] = techNotes;
-      if (completedAt != null)
+      if (completedAt != null) {
         data['completed_at'] = completedAt.toIso8601String();
+      }
 
       final List response = await _client
           .from('orders')
@@ -377,8 +378,9 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .eq('id', orderId)
           .select(_orderSelect);
 
-      if (response.isEmpty)
+      if (response.isEmpty) {
         return Left(DatabaseFailure('فشل تحديث حالة الطلب'));
+      }
 
       await _client.from('order_logs').insert({
         'order_id': orderId,

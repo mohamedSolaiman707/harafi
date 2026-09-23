@@ -10,6 +10,7 @@ import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../core/utils/map_utils.dart';
 import '../../../../core/utils/error_handler.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../shared/providers/notification_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/loading_widget.dart';
@@ -68,7 +69,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
                         _buildTechReport(order),
                       ],
                       const SizedBox(height: AppSpacing.xxxl),
-                      _buildLiveChatButton(context, order),
+                      _buildLiveChatButton(context, ref, order),
                       const SizedBox(height: AppSpacing.lg),
                       _buildActionButtons(context, ref, order),
                       const SizedBox(height: AppSpacing.xxxl),
@@ -502,7 +503,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
     return DateTime.now().isAfter(assignedAt.add(const Duration(minutes: 3)));
   }
 
-  Widget _buildLiveChatButton(BuildContext context, Order order) {
+  Widget _buildLiveChatButton(BuildContext context, WidgetRef ref, Order order) {
     final unreadCount = ref.watch(unreadMsgCountsProvider)[order.id] ?? 0;
 
     return GestureDetector(
