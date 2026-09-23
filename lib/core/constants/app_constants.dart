@@ -2,6 +2,7 @@ class AppConstants {
   static const String appName = 'حرفي | صنايعي تثق فيه';
 
   static const String logoPath = 'assets/images/logo2.png';
+  static const String facebookUrl = 'https://www.facebook.com/profile.php?id=61590500455671';
 
   static const String supabaseUrl = 'https://afrvjkwcywbrbvzovkyi.supabase.co';
   static const String supabaseAnonKey =

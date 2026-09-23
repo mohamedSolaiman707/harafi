@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../admin/domain/enums/service_type.dart';
 
@@ -418,9 +420,9 @@ class _LandingHero extends ConsumerWidget {
 
               // Subtitle
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 700),
+                constraints: const BoxConstraints(maxWidth: 750),
                 child: Text(
-                  'احصل على فنيين موثوقين ومفحوصين جنائياً لأعمال السباكة، الكهرباء، التكييف، والدهانات بأسعار عادلة ومحددة مسبقاً مع ضمان معتمد.',
+                  'احصل على فنيين موثوقين ومفحوصين جنائياً لأعمال السباكة، الكهرباء، التكييف، والدهانات مع معاينة دقيقة للمشكلة قبل تحديد السعر وضمان معتمد لمدة 30 يوماً.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
@@ -951,25 +953,25 @@ class _LandingTrustBadges extends StatelessWidget {
                     icon: Icons.verified_rounded,
                     title: 'فنيون مفحوصون وموثوقون',
                     description:
-                        'جميع الفنيين يخضعون لفحص جنائي واختبار مهارة دقيق قبل الانضمام.',
+                        'جميع الفنيين يخضعون لفحص جنائي واختبار مهارة دقيق قبل الانضمام للمنصة.',
                   ),
                   _FeatureItem(
                     icon: Icons.request_quote_rounded,
-                    title: 'تسعير شفاف وعادل',
+                    title: 'معاينة وتسعير شفاف',
                     description:
-                        'أسعار محددة مسبقاً وتكاليف عادلة بدون أي رسوم خفية أو مفاجآت.',
+                        'يتم تحديد السعر بعد معاينة الفني للعطل وقبل البدء. وفي حال عدم الاتفاق، تُدفع رسوم الزيارة المحددة مسبقاً فقط.',
                   ),
                   _FeatureItem(
                     icon: Icons.shield_outlined,
-                    title: 'ضمان حقيقي معتمد',
+                    title: 'ضمان 30 يوماً معتمد',
                     description:
-                        'ضمان شامل على قطع الغيار وجودة العمل لإعادة الإصلاح مجاناً إذا لزم الأمر.',
+                        'ضمان كامل لمدة 30 يوماً على العطل الذي تم إصلاحه وإعادة الصيانة مجاناً في حال تكراره.',
                   ),
                   _FeatureItem(
                     icon: Icons.headset_mic_rounded,
                     title: 'دعم وتتبع مباشر',
                     description:
-                        'خدمة عملاء وتتبع حاد للطلب من وقت الحجز وحتى استلام العمل.',
+                        'خدمة عملاء وتتبع حثيث للطلب من لحظة التكليف وحتى الانتهاء بالكامل.',
                   ),
                 ],
               ),
@@ -995,7 +997,7 @@ class _FeatureItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 260,
+      width: 270,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1161,6 +1163,13 @@ class _LandingFooter extends StatelessWidget {
 
   const _LandingFooter({required this.isMobile});
 
+  Future<void> _openFacebook() async {
+    final uri = Uri.parse(AppConstants.facebookUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1175,10 +1184,12 @@ class _LandingFooter extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 1200),
           child: Column(
             children: [
-              Row(
+              Flex(
+                direction: isMobile ? Axis.vertical : Axis.horizontal,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         padding: const EdgeInsets.all(6),
@@ -1201,6 +1212,47 @@ class _LandingFooter extends StatelessWidget {
                       ),
                     ],
                   ),
+                  SizedBox(height: isMobile ? 16 : 0),
+                  // Facebook Social Button
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _openFacebook,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1877F2).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF1877F2).withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.facebook_rounded,
+                              color: Color(0xFF1877F2),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'صفحتنا على فيسبوك',
+                              style: AppTextStyles.titleMed.copyWith(
+                                color: const Color(0xFF1877F2),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 16 : 0),
                   Text(
                     'جميع الحقوق محفوظة © ${DateTime.now().year}',
                     style: AppTextStyles.labelLarge.copyWith(
