@@ -206,37 +206,44 @@ class _LandingHeader extends StatelessWidget {
       child: Row(
         children: [
           // Logo & Brand Name
-          InkWell(
-            onTap: onClientAppTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    'assets/images/logo2.png',
-                    width: 42,
-                    height: 42,
-                    fit: BoxFit.cover,
+     Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: 0.5),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.gold.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Transform.scale(
+                            scale: 1.28,
+                            child: Image.asset(
+                              'assets/images/logo2.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'حرفي | Harafi',
+                        style: AppTextStyles.titleLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'حرفي',
-                  style: AppTextStyles.headlineLarge.copyWith(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  ' | Harafi',
-                  style: AppTextStyles.titleMed.copyWith(
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
 
           const Spacer(),
 
@@ -246,8 +253,8 @@ class _LandingHeader extends StatelessWidget {
             _NavLink(label: 'كيف نعمل؟', onTap: onNavHowItWorks),
             _NavLink(label: 'لماذا حرفي؟', onTap: onNavWhy),
             _NavLink(label: 'انضم كفني', onTap: onNavTech),
-            const SizedBox(width: 24),
           ],
+          const Spacer(),
 
           // Actions
           OutlinedButton(

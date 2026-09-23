@@ -24,6 +24,9 @@ class ServiceTechsScreen extends ConsumerWidget {
 
   const ServiceTechsScreen({super.key, this.service});
 
+  static const double _maxContentWidth = 1000.0;
+  static const double _desktopBreakpoint = 750.0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final techsAsync = ref.watch(techniciansProvider);
@@ -45,49 +48,86 @@ class ServiceTechsScreen extends ConsumerWidget {
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          _buildAreaFilter(ref, selectedArea, userLocation),
-          if (service != null) ...[
-            const SizedBox(height: 8),
-            _buildSmartMatchHeader(ref, service!, selectedArea, context),
-          ],
-          Expanded(
-            child: techsAsync.when(
-              data: (techs) {
-                final filteredTechs = _filterTechnicians(
-                  techs: techs,
-                  selectedArea: selectedArea,
-                  userLocation: userLocation,
-                  service: service,
-                );
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          final isDesktop = screenWidth >= _desktopBreakpoint;
+          final horizontalPad = isDesktop
+              ? ((screenWidth - _maxContentWidth) / 2).clamp(AppSpacing.xl, double.infinity)
+              : AppSpacing.xl.toDouble();
 
-                if (filteredTechs.isEmpty) {
-                  return _buildEmptyState(context, ref, selectedArea);
-                }
+          return Column(
+            children: [
+              // Filter bar — full width always
+              _buildAreaFilter(ref, selectedArea, userLocation),
+              if (service != null) ...[
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPad),
+                  child: _buildSmartMatchHeaderInner(ref, service!, selectedArea, context),
+                ),
+              ],
+              Expanded(
+                child: techsAsync.when(
+                  data: (techs) {
+                    final filteredTechs = _filterTechnicians(
+                      techs: techs,
+                      selectedArea: selectedArea,
+                      userLocation: userLocation,
+                      service: service,
+                    );
 
-                return ListView.separated(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  itemCount: filteredTechs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
-                  itemBuilder: (context, index) => _TechListItem(
-                    tech: filteredTechs[index],
-                    service: service,
+                    if (filteredTechs.isEmpty) {
+                      return _buildEmptyState(context, ref, selectedArea);
+                    }
+
+                    if (isDesktop) {
+                      // ─── Desktop: responsive 2-col grid ───────────────────
+                      return GridView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPad,
+                          vertical: AppSpacing.xl,
+                        ),
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 480,
+                          crossAxisSpacing: AppSpacing.lg,
+                          mainAxisSpacing: AppSpacing.lg,
+                          childAspectRatio: 2.6,
+                        ),
+                        itemCount: filteredTechs.length,
+                        itemBuilder: (context, index) => _TechListItem(
+                          tech: filteredTechs[index],
+                          service: service,
+                        ),
+                      );
+                    }
+
+                    // ─── Mobile: single column list ────────────────────────
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      itemCount: filteredTechs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
+                      itemBuilder: (context, index) => _TechListItem(
+                        tech: filteredTechs[index],
+                        service: service,
+                      ),
+                    );
+                  },
+                  loading: () => const LoadingWidget(),
+                  error: (error, stack) => AppErrorWidget(
+                    message: 'خطأ في جلب الفنيين',
+                    error: error,
+                    onRetry: () => ref.invalidate(techniciansProvider),
                   ),
-                );
-              },
-              loading: () => const LoadingWidget(),
-              error: (error, stack) => AppErrorWidget(
-                message: 'خطأ في جلب الفنيين',
-                error: error,
-                onRetry: () => ref.invalidate(techniciansProvider),
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
+
 
   List<Technician> _filterTechnicians({
     required List<Technician> techs,
@@ -187,10 +227,19 @@ class ServiceTechsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSmartMatchHeader(WidgetRef ref, ServiceType service, String area, BuildContext context) {
+  Widget _buildSmartMatchHeaderInner(WidgetRef ref, ServiceType service, String area, BuildContext context) {
     final rankedAsync = ref.watch(
       smartMatchResultProvider((service: service, area: area == 'الكل' ? null : area, description: null, diagnosis: null)),
     );
+
+    // ─── حالة التحميل: skeleton شيمر جميل ───
+    if (rankedAsync.isLoading) {
+      return _SmartMatchSkeleton();
+    }
+
+    // ─── حالة الخطأ: نختفي بهدوء ───
+    if (rankedAsync.hasError) return const SizedBox.shrink();
+
     final ranked = rankedAsync.valueOrNull;
     if (ranked == null) return const SizedBox.shrink();
 
@@ -218,21 +267,19 @@ class ServiceTechsScreen extends ConsumerWidget {
 
     final isExpanded = ref.watch(smartMatchExpandedProvider);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface1,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.gold.withValues(alpha: 0.3), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
         child: Column(
           children: [
             // ─── شريط العنوان المدمج للتوسيع والطي ───
@@ -253,7 +300,7 @@ class ServiceTechsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'اقترحات المساعد الذكي',
+                      'اقتراحات المساعد الذكي',
                       style: AppTextStyles.titleMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     const SizedBox(width: 8),
@@ -370,8 +417,7 @@ class ServiceTechsScreen extends ConsumerWidget {
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref, String area) {
@@ -598,3 +644,86 @@ class _TechListItem extends ConsumerWidget {
     );
   }
 }
+
+// ─── Skeleton شيمر لبطاقة اقتراحات المساعد الذكي ──────────────────────────
+class _SmartMatchSkeleton extends StatefulWidget {
+  @override
+  State<_SmartMatchSkeleton> createState() => _SmartMatchSkeletonState();
+}
+
+class _SmartMatchSkeletonState extends State<_SmartMatchSkeleton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, _) {
+        final opacity = 0.3 + (_animation.value * 0.4);
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              // أيقونة دائرة placeholder
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: opacity),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // نص placeholder
+              Container(
+                width: 140,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: opacity * 0.6),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // badge placeholder
+              Container(
+                width: 55,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: opacity * 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const Spacer(),
+              // سهم
+              Icon(Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.gold.withValues(alpha: opacity), size: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}

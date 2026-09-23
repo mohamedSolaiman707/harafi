@@ -583,23 +583,51 @@ class _TopRatedTechsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final topTechs = ref.watch(topRatedTechsProvider);
     if (topTechs.isEmpty) return const SizedBox.shrink();
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 750;
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text('أمهر الفنيين بالقرب منك ✨', style: AppTextStyles.headlineMed.copyWith(fontWeight: FontWeight.w900)),
         TextButton(onPressed: () => context.push('/all-techs'), child: const Text('رؤية الكل', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold))),
       ]),
       const SizedBox(height: AppSpacing.lg),
-      SizedBox(height: 195, child: ListView.builder(scrollDirection: Axis.horizontal, itemCount: topTechs.length, clipBehavior: Clip.none, itemBuilder: (context, index) {
-        final tech = topTechs[index];
-        return _PremiumTechCard(tech: tech);
-      })),
+
+      if (isDesktop)
+        // ─── Desktop: grid wrapping cards ───────────────────────────────
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 320,
+            crossAxisSpacing: AppSpacing.lg,
+            mainAxisSpacing: AppSpacing.lg,
+            childAspectRatio: 1.5,
+          ),
+          itemCount: topTechs.length,
+          itemBuilder: (context, index) => _PremiumTechCard(tech: topTechs[index], isGrid: true),
+        )
+      else
+        // ─── Mobile: horizontal scroll ───────────────────────────────────
+        SizedBox(
+          height: 195,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: topTechs.length,
+            clipBehavior: Clip.none,
+            itemBuilder: (context, index) => _PremiumTechCard(tech: topTechs[index], isGrid: false),
+          ),
+        ),
     ]);
   }
 }
 
+
 class _PremiumTechCard extends StatelessWidget {
   final Technician tech;
-  const _PremiumTechCard({required this.tech});
+  final bool isGrid;
+  const _PremiumTechCard({required this.tech, this.isGrid = false});
 
   @override
   Widget build(BuildContext context) {
@@ -607,8 +635,11 @@ class _PremiumTechCard extends StatelessWidget {
     final bool canAccept = tech.canAcceptOrders;
 
     return Container(
-      width: 290,
-      margin: const EdgeInsets.only(left: 16, bottom: 12),
+      // On grid: fill the cell. On scroll: fixed 290px with left margin
+      width: isGrid ? null : 290,
+      margin: isGrid
+          ? EdgeInsets.zero
+          : const EdgeInsets.only(left: 16, bottom: 12),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -700,6 +731,7 @@ class _PremiumTechCard extends StatelessWidget {
     return Row(children: [Icon(icon, color: color, size: 14), const SizedBox(width: 4), Text(text, style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 11))]);
   }
 }
+
 
 class _LocationPickerSheet extends ConsumerWidget {
   final Function(String city, String gov) onLocationSelected;
