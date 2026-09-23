@@ -417,15 +417,39 @@ class _LandingHero extends ConsumerWidget {
 
               // Subtitle
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 750),
+                constraints: const BoxConstraints(maxWidth: 680),
                 child: Text(
-                  'احصل على فنيين موثوقين ومفحوصين جنائياً لأعمال السباكة، الكهرباء، التكييف، والدهانات مع معاينة دقيقة للمشكلة قبل تحديد السعر وضمان معتمد لمدة 30 يوماً.',
+                  'خدمات صيانة منزلية فورية وموثوقة لأعمال السباكة، الكهرباء، التكييف، والأجهزة المنزلية بأعلى معايير الجودة.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
-                    fontSize: isMobile ? 14 : 16,
+                    fontSize: isMobile ? 15 : 17,
+                    height: 1.5,
                   ),
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Key Highlights Row (Spacious & Clean Visual Chips)
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: const [
+                  _HeroHighlightChip(
+                    icon: Icons.manage_search_rounded,
+                    label: 'معاينة وتسعير عادل قبل البدء',
+                  ),
+                  _HeroHighlightChip(
+                    icon: Icons.verified_user_rounded,
+                    label: 'ضمان 30 يوماً معتمد على الإصلاح',
+                  ),
+                  _HeroHighlightChip(
+                    icon: Icons.shield_rounded,
+                    label: 'فنيون مفحوصون جنائياً وموثوقون',
+                  ),
+                ],
               ),
 
               const SizedBox(height: 36),
@@ -585,6 +609,43 @@ class _StatItem extends StatelessWidget {
           style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMuted),
         ),
       ],
+    );
+  }
+}
+
+class _HeroHighlightChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _HeroHighlightChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface1.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.gold),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTextStyles.labelLarge.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
