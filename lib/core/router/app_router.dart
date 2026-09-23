@@ -43,9 +43,23 @@ final appRouter = GoRouter(
     final isWelcomeRoute = location == '/welcome';
     final isLandingRoute = location == '/landing';
     final isAdminRoute = location.startsWith('/admin');
+    final isPublicClientRoute = location == '/' ||
+        location == '/request' ||
+        location == '/services' ||
+        location.startsWith('/service/') ||
+        location == '/all-techs' ||
+        location == '/about' ||
+        location == '/smart-assistant' ||
+        location.startsWith('/track/') ||
+        location.startsWith('/tech/portfolio/');
 
-    // 1. السماح للمسارات العامة المسجلة (الLanding والAuth والAdmin والWelcome)
-    if (isLandingRoute) return null;
+    // 1. السماح للمسارات العامة والعملاء بدون تحويل تعسفي
+    if (isLandingRoute || isPublicClientRoute) {
+      if (userRole == null && isPublicClientRoute) {
+        prefs.setString('user_role', 'client');
+      }
+      return null;
+    }
 
     if (userRole == null && !isWelcomeRoute && !isAuthRoute && !isAdminRoute) {
       return kIsWeb ? '/landing' : '/welcome';
@@ -113,7 +127,10 @@ final appRouter = GoRouter(
         if (typeStr == 'all') {
           return AppAnimations.fadeSlide(child: const ServiceTechsScreen(service: null));
         }
-        final service = ServiceType.values.firstWhere((e) => e.name == typeStr);
+        final service = ServiceType.values.firstWhere(
+          (e) => e.name == typeStr,
+          orElse: () => ServiceType.plumbing,
+        );
         return AppAnimations.fadeSlide(child: ServiceTechsScreen(service: service));
       },
     ),
