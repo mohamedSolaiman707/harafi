@@ -330,14 +330,12 @@ class _NavLink extends StatelessWidget {
 }
 
 // ─── Hero Section ──────────────────────────────────────────────────────────
-// ─── Hero Section ──────────────────────────────────────────────────────────
 class _LandingHero extends ConsumerWidget {
   final bool isMobile;
   final VoidCallback onBookTap;
   final VoidCallback onTechJoinTap;
 
   const _LandingHero({
-    super.key,
     required this.isMobile,
     required this.onBookTap,
     required this.onTechJoinTap,
