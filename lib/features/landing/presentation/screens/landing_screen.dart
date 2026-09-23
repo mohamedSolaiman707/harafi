@@ -1249,18 +1249,35 @@ class _LandingFooter extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          'assets/images/logo2.png',
-                          width: 28,
-                          height: 28,
-                          fit: BoxFit.cover,
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: 0.5),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.gold.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Transform.scale(
+                            scale: 1.28,
+                            child: Image.asset(
+                              'assets/images/logo2.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        'حرفي | Harafi Platform',
+                        'حرفي | Harafi',
                         style: AppTextStyles.titleLarge.copyWith(
                           fontWeight: FontWeight.bold,
                         ),

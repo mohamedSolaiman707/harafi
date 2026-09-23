@@ -120,15 +120,27 @@ class ClientDrawer extends ConsumerWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(3),
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.6), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.gold.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-            child: const CircleAvatar(
-              radius: 42, // تصغير بسيط
-              backgroundColor: Color(0xFF131B2A),
-              backgroundImage: AssetImage('assets/images/logo1.png'),
+            child: ClipOval(
+              child: Transform.scale(
+                scale: 1.28,
+                child: Image.asset(
+                  'assets/images/logo2.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 12),
