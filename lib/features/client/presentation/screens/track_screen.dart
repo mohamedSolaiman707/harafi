@@ -159,17 +159,22 @@ class TrackScreen extends ConsumerWidget {
   }
 
   Widget _buildLiveChatButton(BuildContext context, Order order) {
+    final unreadCount = ref.watch(unreadMsgCountsProvider)[order.id] ?? 0;
+
     return GestureDetector(
-      onTap: () => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _OrderLiveChatSheet(
-          order: order,
-          senderType: 'client',
-          senderName: order.clientName,
-        ),
-      ),
+      onTap: () {
+        ref.read(notificationProvider.notifier).clearUnreadForOrder(order.id);
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => _OrderLiveChatSheet(
+            order: order,
+            senderType: 'client',
+            senderName: order.clientName,
+          ),
+        );
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         decoration: BoxDecoration(
@@ -182,10 +187,35 @@ class TrackScreen extends ConsumerWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.chat_bubble_outline_rounded, color: Colors.black, size: 22),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.chat_bubble_outline_rounded, color: Colors.black, size: 22),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.error,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                      ),
+                      child: Text(
+                        '$unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(width: 8),
             Text(
-              'تواصل مع الفني مباشرة 💬',
+              unreadCount > 0
+                  ? 'تواصل مع الفني ($unreadCount رسالة جديدة) 💬'
+                  : 'تواصل مع الفني مباشرة 💬',
               style: AppTextStyles.titleMed.copyWith(color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ],
@@ -1078,6 +1108,14 @@ class _OrderLiveChatSheetState extends ConsumerState<_OrderLiveChatSheet> {
   final _msgController = TextEditingController();
   final _scrollController = ScrollController();
   bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationProvider.notifier).clearUnreadForOrder(widget.order.id);
+    });
+  }
 
   @override
   void dispose() {

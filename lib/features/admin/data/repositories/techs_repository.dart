@@ -42,14 +42,20 @@ class SupabaseTechniciansRepository implements TechniciansRepository {
   Future<List<Technician>> getAll() async {
     try {
       final data = await _client
-          .from('technicians')
+          .from('technicians_public')
           .select()
           .order('name', ascending: true);
       return (data as List).map((e) => Technician.fromJson(e)).toList();
-    } catch (e, stack) {
-      // debugPrint error
-      print('Error in getAll technicians: $e\n$stack');
-      return [];
+    } catch (e) {
+      try {
+        final data = await _client
+            .from('technicians')
+            .select()
+            .order('name', ascending: true);
+        return (data as List).map((e) => Technician.fromJson(e)).toList();
+      } catch (_) {
+        return [];
+      }
     }
   }
 

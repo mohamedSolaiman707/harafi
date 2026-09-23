@@ -299,11 +299,21 @@ class SupabaseOrdersRepository implements OrdersRepository {
     DateTime? estimatedArrival,
   }) async {
     try {
+      try {
+        final res = await _client.rpc('claim_order', params: {
+          'p_order_id': orderId,
+          'p_tech_id': techId,
+        });
+
+        if (res == true) {
+          return await getOrderById(orderId);
+        }
+      } catch (_) {}
+
       final Map<String, dynamic> data = {
         'tech_id': techId,
         'status': OrderStatus.assigned.label,
       };
-      // هنا برضه ممكن تضرب لو العمود مش موجود، يفضل تظيفه في الداتابيز
       if (estimatedArrival != null) {
         data['estimated_arrival'] = estimatedArrival.toIso8601String();
       }
@@ -314,7 +324,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .eq('id', orderId)
           .select(_orderSelect);
 
-      if (response.isEmpty) return Left(DatabaseFailure('لم يتم تحديث الطلب'));
+      if (response.isEmpty) return Left(DatabaseFailure('لم يتم تحديث الطلب أو تم قبوله من قبل فني آخر'));
 
       await _client.from('order_logs').insert({
         'order_id': orderId,
@@ -341,6 +351,16 @@ class SupabaseOrdersRepository implements OrdersRepository {
     String? logMessage,
   }) async {
     try {
+      if (status == OrderStatus.cancelled) {
+        final currentOrderRes = await getOrderById(orderId);
+        final currentOrder = currentOrderRes.valueOrNull;
+        if (currentOrder != null &&
+            (currentOrder.status == OrderStatus.completed ||
+                currentOrder.status == OrderStatus.cancelled)) {
+          return Left(DatabaseFailure('لا يمكن إلغاء الطلب بعد إتمامه أو إلغائه بالفعل'));
+        }
+      }
+
       final Map<String, dynamic> data = {'status': status.label};
 
       if (finalPrice != null) data['final_price'] = finalPrice;

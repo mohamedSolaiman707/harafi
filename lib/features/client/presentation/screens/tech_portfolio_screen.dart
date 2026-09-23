@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,7 +9,6 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/domain/models/technician.dart';
-import '../../../admin/domain/enums/tech_status.dart';
 import '../../../admin/domain/models/order.dart';
 
 class TechPortfolioScreen extends ConsumerWidget {

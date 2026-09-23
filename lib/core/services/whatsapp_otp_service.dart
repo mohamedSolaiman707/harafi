@@ -1,16 +1,13 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../features/admin/domain/models/order.dart';
 import '../../features/admin/domain/models/technician.dart';
 
 class WhatsAppOtpService {
-  static const String instanceId = 'instance188485';
-  static const String token = '2f92w8s3fow0ofku';
-
   static String _cleanPhoneNumber(String phone) {
     String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     if (cleanPhone.startsWith('0')) cleanPhone = '2$cleanPhone';
@@ -22,7 +19,7 @@ class WhatsAppOtpService {
     return (1000 + Random().nextInt(9000)).toString();
   }
 
-  /// إرسال الكود في الخلفية عبر UltraMsg API
+  /// إرسال الكود عبر Supabase Edge Function (send-whatsapp-otp)
   static Future<bool> sendOtpViaWhatsApp(String phone, String otp) async {
     final cleanPhone = _cleanPhoneNumber(phone);
     final message = 'كود التحقق الخاص بك لمنصة حرفي هو: *$otp*\n\nيرجى إدخال الكود في التطبيق لإتمام طلبك. 🛠️';
@@ -90,15 +87,19 @@ $reasonText
 
   static Future<bool> _sendMessage({required String to, required String body}) async {
     try {
-      final url = Uri.parse('https://api.ultramsg.com/$instanceId/messages/chat');
-      final response = await http.post(url, body: {
-        'token': token,
-        'to': to,
-        'body': body,
-      });
-      return response.statusCode == 200;
+      final res = await Supabase.instance.client.functions.invoke(
+        'send-whatsapp-otp',
+        body: {'to': to, 'body': body},
+      );
+      if (res.status == 200) {
+        final data = res.data;
+        if (data is Map && data['success'] == true) {
+          return true;
+        }
+      }
+      return false;
     } catch (e) {
-      debugPrint('WhatsApp API Error: $e');
+      debugPrint('WhatsApp Edge Function Invocation Error: $e');
       return false;
     }
   }

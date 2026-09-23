@@ -20,7 +20,6 @@ import '../../../admin/domain/models/order.dart';
 import '../../../../core/utils/whatsapp_utils.dart';
 import '../../../../core/utils/map_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TechDashboardScreen extends ConsumerStatefulWidget {
   const TechDashboardScreen({super.key});
@@ -1077,20 +1076,25 @@ class _TechStatusCard extends ConsumerWidget {
   }
 }
 
-class _TechOrderCard extends StatelessWidget {
+class _TechOrderCard extends ConsumerWidget {
   final Order order;
   const _TechOrderCard({required this.order});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isScheduled = order.isScheduled;
     final dateFormatted = order.scheduledDate != null
         ? intl.DateFormat('d MMM yyyy').format(order.scheduledDate!)
         : '';
 
+    final unreadCount = ref.watch(unreadMsgCountsProvider)[order.id] ?? 0;
+
     return AppCard(
       color: AppColors.surface1,
       padding: const EdgeInsets.all(14),
-      onTap: () => context.push('/tech/order/${order.id}'),
+      onTap: () {
+        ref.read(notificationProvider.notifier).clearUnreadForOrder(order.id);
+        context.push('/tech/order/${order.id}');
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1215,9 +1219,12 @@ class _TechOrderCard extends StatelessWidget {
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'تفاصيل الطلب ⚡',
+                  label: unreadCount > 0 ? 'تفاصيل الطلب ($unreadCount جديد) 💬' : 'تفاصيل الطلب ⚡',
                   size: ButtonSize.sm,
-                  onTap: () => context.push('/tech/order/${order.id}'),
+                  onTap: () {
+                    ref.read(notificationProvider.notifier).clearUnreadForOrder(order.id);
+                    context.push('/tech/order/${order.id}');
+                  },
                 ),
               ),
               const SizedBox(width: 8),
