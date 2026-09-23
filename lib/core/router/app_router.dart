@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/presentation/screens/login_screen.dart';
 import '../../../features/auth/presentation/screens/role_selection_screen.dart';
+import '../../../features/landing/presentation/screens/landing_screen.dart';
 import '../../../features/client/presentation/screens/home_screen.dart';
 import '../../../features/client/presentation/screens/request_screen.dart';
 import '../../../features/client/presentation/screens/track_screen.dart';
@@ -29,7 +31,7 @@ import '../../../features/admin/domain/enums/service_type.dart';
 import '../../../features/smart_assistant/presentation/screens/smart_assistant_screen.dart';
 
 final appRouter = GoRouter(
-  initialLocation: '/welcome',
+  initialLocation: kIsWeb ? '/landing' : '/welcome',
   overridePlatformDefaultLocation: true,
   redirect: (context, state) async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,11 +41,14 @@ final appRouter = GoRouter(
 
     final isAuthRoute = location == '/login' || location == '/tech/login' || location == '/tech/register';
     final isWelcomeRoute = location == '/welcome';
+    final isLandingRoute = location == '/landing';
     final isAdminRoute = location.startsWith('/admin');
 
-    // 1. إذا لم يتم اختيار دور والمستخدم ليس في مسار مسموح، وجهه للترحيب
+    // 1. السماح للمسارات العامة المسجلة (الLanding والAuth والAdmin والWelcome)
+    if (isLandingRoute) return null;
+
     if (userRole == null && !isWelcomeRoute && !isAuthRoute && !isAdminRoute) {
-      return '/welcome';
+      return kIsWeb ? '/landing' : '/welcome';
     }
 
     // 2. إذا كان في صفحة الترحيب وتم تحديد الدور بالفعل، وجهه لمساره الصحيح
@@ -66,6 +71,11 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/landing',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const LandingScreen()),
+    ),
     GoRoute(
       path: '/welcome',
       pageBuilder: (context, state) =>
