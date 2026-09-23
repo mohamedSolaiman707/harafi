@@ -172,16 +172,16 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
               return Stack(
                 children: [
                   Positioned(
-                    top: -120 + (pulseValue * 20),
-                    right: -100 + (pulseValue * 15),
+                    top: -100 + (pulseValue * 20),
+                    right: -80 + (pulseValue * 15),
                     child: Container(
-                      width: 320,
-                      height: 320,
+                      width: 380,
+                      height: 380,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: [
-                            AppColors.gold.withValues(alpha: 0.18 + (pulseValue * 0.08)),
+                            AppColors.gold.withValues(alpha: 0.16 + (pulseValue * 0.08)),
                             AppColors.gold.withValues(alpha: 0.0),
                           ],
                         ),
@@ -189,11 +189,11 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                     ),
                   ),
                   Positioned(
-                    bottom: -150 + (pulseValue * 25),
-                    left: -100,
+                    bottom: -120 + (pulseValue * 25),
+                    left: -80,
                     child: Container(
-                      width: 360,
-                      height: 360,
+                      width: 400,
+                      height: 400,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
@@ -220,12 +220,12 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                   vertical: AppSpacing.xxl,
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
+                  constraints: const BoxConstraints(maxWidth: 520),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ─── Animated Logo & Hidden Admin Trigger ──────────
+                      // ─── Ultra-Luxury Brand Emblem & Hidden Admin Trigger ──────────
                       AnimatedBuilder(
                         animation: _pulseController,
                         builder: (context, child) {
@@ -239,62 +239,71 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                                 child: Column(
                                   children: [
                                     Container(
-                                      width: 110,
-                                      height: 110,
+                                      width: 104,
+                                      height: 104,
                                       decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: LinearGradient(
+                                        borderRadius: BorderRadius.circular(28),
+                                        gradient: const LinearGradient(
                                           colors: [
-                                            AppColors.surface2,
-                                            AppColors.surface1,
+                                            Color(0xFFFFD700),
+                                            Color(0xFFFF9800),
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
-                                        border: Border.all(
-                                          color: adminTapCount > 0
-                                              ? AppColors.gold
-                                              : AppColors.gold.withValues(alpha: 0.3 + (pulse * 0.2)),
-                                          width: adminTapCount > 0 ? 2.5 : 1.5,
-                                        ),
                                         boxShadow: [
                                           BoxShadow(
                                             color: AppColors.gold.withValues(
-                                              alpha: adminTapCount > 0 ? 0.4 : 0.12 + (pulse * 0.08),
+                                              alpha: adminTapCount > 0 ? 0.5 : 0.25 + (pulse * 0.12),
                                             ),
-                                            blurRadius: 28 + (pulse * 10),
+                                            blurRadius: 32 + (pulse * 10),
                                             spreadRadius: 2,
+                                            offset: const Offset(0, 8),
                                           ),
                                         ],
                                       ),
                                       child: Stack(
                                         alignment: Alignment.center,
                                         children: [
-                                          Icon(
-                                            Icons.engineering_rounded,
-                                            size: 54,
-                                            color: adminTapCount > 0
-                                                ? AppColors.gold
-                                                : AppColors.textPrimary,
+                                          Container(
+                                            width: 96,
+                                            height: 96,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(24),
+                                              color: const Color(0xFF090D16),
+                                            ),
+                                            child: Center(
+                                              child: ShaderMask(
+                                                shaderCallback: (bounds) => AppGradients.goldButton.createShader(bounds),
+                                                child: const Icon(
+                                                  Icons.handyman_rounded,
+                                                  size: 52,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                           if (adminTapCount > 0)
                                             Positioned(
-                                              bottom: 10,
+                                              bottom: 8,
                                               child: Container(
                                                 padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 2,
+                                                  horizontal: 10,
+                                                  vertical: 3,
                                                 ),
                                                 decoration: BoxDecoration(
                                                   color: AppColors.gold,
-                                                  borderRadius: BorderRadius.circular(10),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  boxShadow: const [
+                                                    BoxShadow(color: Colors.black38, blurRadius: 4),
+                                                  ],
                                                 ),
                                                 child: Text(
                                                   '${5 - adminTapCount}',
                                                   style: const TextStyle(
-                                                    color: Colors.black,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF090D16),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w900,
                                                   ),
                                                 ),
                                               ),
@@ -310,7 +319,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                         },
                       ),
 
-                      const SizedBox(height: AppSpacing.xxl),
+                      const SizedBox(height: AppSpacing.xl),
 
                       // ─── Header Titles ─────────────────────────────────
                       SlideTransition(
@@ -319,25 +328,36 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                           opacity: _headerOpacity,
                           child: Column(
                             children: [
-                              ShaderMask(
-                                shaderCallback: (bounds) => AppGradients.goldButton.createShader(bounds),
-                                child: Text(
-                                  'أهلاً بك في حرفي',
-                                  style: AppTextStyles.displayMedium.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 34,
-                                    letterSpacing: -0.5,
-                                    color: Colors.white,
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'أهلاً بك في ',
+                                    style: AppTextStyles.displayMedium.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 32,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
+                                  ShaderMask(
+                                    shaderCallback: (bounds) => AppGradients.goldButton.createShader(bounds),
+                                    child: Text(
+                                      'حرفي',
+                                      style: AppTextStyles.displayMedium.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 34,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'اختر كيف تريد استخدام التطبيق اليوم للبدء',
+                                'اختر نوع الحساب للانتقال السريع إلى المنصة',
                                 style: AppTextStyles.bodyLarge.copyWith(
                                   color: AppColors.textSecondary,
-                                  fontSize: 15,
+                                  fontSize: 14.5,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -346,7 +366,7 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                         ),
                       ),
 
-                      const SizedBox(height: AppSpacing.xxxl),
+                      const SizedBox(height: AppSpacing.xxl),
 
                       // ─── Option 1: Client Card ──────────────────────────
                       SlideTransition(
@@ -355,9 +375,10 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                           opacity: _clientCardOpacity,
                           child: _CreativeRoleCard(
                             title: 'أنا عميل',
-                            subtitle: 'أبحث عن فني موثوق لإصلاح أعطال منزلي بسرعة وأمان',
-                            badgeText: 'طلب خدمة ⚡',
-                            icon: Icons.person_search_rounded,
+                            subtitle: 'أبحث عن فني موثوق لإصلاح الأعطال المنزلية بضمان وحجز سريع',
+                            badgeLabel: 'طلب خدمة صيانة',
+                            badgeIcon: Icons.bolt_rounded,
+                            icon: Icons.person_pin_rounded,
                             accentColor: AppColors.accentCyan,
                             isHighlight: false,
                             onTap: () => _setRole('client', context),
@@ -374,9 +395,10 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                           opacity: _techCardOpacity,
                           child: _CreativeRoleCard(
                             title: 'أنا فني (حرفي)',
-                            subtitle: 'أريد استقبال طلبات العمل وزيادة دخلي اليومي',
-                            badgeText: 'انضم إلينا 🛠️',
-                            icon: Icons.construction_rounded,
+                            subtitle: 'أريد استقبال طلبات العمل اليومية وتنمية دخلي بحرية كاملة',
+                            badgeLabel: 'انضم لشبكة الفنيين',
+                            badgeIcon: Icons.engineering_rounded,
+                            icon: Icons.handyman_rounded,
                             accentColor: AppColors.gold,
                             isHighlight: true,
                             onTap: () => _setRole('tech', context),
@@ -384,26 +406,26 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
                         ),
                       ),
 
-                      const SizedBox(height: AppSpacing.xxxl),
+                      const SizedBox(height: AppSpacing.xxl),
 
                       // ─── Footer Trust Badges ───────────────────────────
                       FadeTransition(
                         opacity: _footerOpacity,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
                           children: const [
                             _TrustChip(
-                              icon: Icons.shield_outlined,
-                              label: 'ضمان 30 يوم',
+                              icon: Icons.verified_user_rounded,
+                              label: 'فنيون مفحوصون',
                             ),
-                            SizedBox(width: 8),
                             _TrustChip(
-                              icon: Icons.verified_outlined,
-                              label: 'فنيون معتمدون',
+                              icon: Icons.shield_rounded,
+                              label: 'ضمان معتمد',
                             ),
-                            SizedBox(width: 8),
                             _TrustChip(
-                              icon: Icons.bolt_outlined,
+                              icon: Icons.speed_rounded,
                               label: 'استجابة فورية',
                             ),
                           ],
@@ -424,7 +446,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
 class _CreativeRoleCard extends StatefulWidget {
   final String title;
   final String subtitle;
-  final String badgeText;
+  final String badgeLabel;
+  final IconData badgeIcon;
   final IconData icon;
   final Color accentColor;
   final bool isHighlight;
@@ -433,7 +456,8 @@ class _CreativeRoleCard extends StatefulWidget {
   const _CreativeRoleCard({
     required this.title,
     required this.subtitle,
-    required this.badgeText,
+    required this.badgeLabel,
+    required this.badgeIcon,
     required this.icon,
     required this.accentColor,
     required this.isHighlight,
@@ -462,7 +486,7 @@ class _CreativeRoleCardState extends State<_CreativeRoleCard> {
         onTapCancel: () => setState(() => _isPressed = false),
         onTap: widget.onTap,
         child: AnimatedScale(
-          scale: _isPressed ? 0.97 : (_isHovered ? 1.02 : 1.0),
+          scale: _isPressed ? 0.98 : (_isHovered ? 1.02 : 1.0),
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
@@ -470,55 +494,55 @@ class _CreativeRoleCardState extends State<_CreativeRoleCard> {
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
               gradient: highlight
-                  ? LinearGradient(
+                  ? const LinearGradient(
                       colors: [
-                        AppColors.surface2,
-                        const Color(0xFF1E2613),
+                        Color(0xFF1E293B),
+                        Color(0xFF131C2E),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     )
-                  : LinearGradient(
+                  : const LinearGradient(
                       colors: [
-                        AppColors.surface1,
-                        AppColors.surface2,
+                        Color(0xFF131B2A),
+                        Color(0xFF0F172A),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-              borderRadius: BorderRadius.circular(AppRadius.xxl),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: _isHovered
                     ? accent
                     : (highlight
-                        ? accent.withValues(alpha: 0.6)
+                        ? accent.withValues(alpha: 0.5)
                         : AppColors.borderSubtle),
                 width: _isHovered ? 2.0 : (highlight ? 1.5 : 1.0),
               ),
               boxShadow: [
                 if (highlight || _isHovered)
                   BoxShadow(
-                    color: accent.withValues(alpha: _isHovered ? 0.3 : 0.15),
+                    color: accent.withValues(alpha: _isHovered ? 0.28 : 0.14),
                     blurRadius: _isHovered ? 24 : 16,
                     spreadRadius: -2,
                     offset: const Offset(0, 8),
                   )
                 else
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                  const BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 14,
+                    offset: Offset(0, 4),
                   ),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header Row
+                // Header Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Icon Container
+                    // Icon Emblem Container
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -527,22 +551,22 @@ class _CreativeRoleCardState extends State<_CreativeRoleCard> {
                             : accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: accent.withValues(alpha: highlight ? 0.8 : 0.3),
+                          color: accent.withValues(alpha: highlight ? 0.9 : 0.3),
                           width: 1,
                         ),
                         boxShadow: [
                           if (highlight)
                             BoxShadow(
-                              color: accent.withValues(alpha: 0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 2),
+                              color: accent.withValues(alpha: 0.35),
+                              blurRadius: 14,
+                              offset: const Offset(0, 3),
                             ),
                         ],
                       ),
                       child: Icon(
                         widget.icon,
-                        color: highlight ? Colors.black : accent,
-                        size: 28,
+                        color: highlight ? const Color(0xFF090D16) : accent,
+                        size: 26,
                       ),
                     ),
 
@@ -556,17 +580,24 @@ class _CreativeRoleCardState extends State<_CreativeRoleCard> {
                         color: accent.withValues(alpha: highlight ? 0.2 : 0.1),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: accent.withValues(alpha: 0.3),
+                          color: accent.withValues(alpha: 0.35),
                           width: 0.8,
                         ),
                       ),
-                      child: Text(
-                        widget.badgeText,
-                        style: TextStyle(
-                          color: accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(widget.badgeIcon, size: 14, color: accent),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.badgeLabel,
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -580,6 +611,7 @@ class _CreativeRoleCardState extends State<_CreativeRoleCard> {
                   style: AppTextStyles.headlineLarge.copyWith(
                     fontWeight: FontWeight.w900,
                     fontSize: 22,
+                    color: Colors.white,
                   ),
                 ),
 
@@ -596,29 +628,42 @@ class _CreativeRoleCardState extends State<_CreativeRoleCard> {
 
                 const SizedBox(height: AppSpacing.lg),
 
-                // Action Callout Row
+                // Action Callout Button
                 Row(
                   children: [
-                    Text(
-                      'اضغط هنا للبدء',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: accent.withValues(alpha: 0.3)),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      transform: Matrix4.translationValues(
-                        _isHovered || _isPressed ? -6 : 0,
-                        0,
-                        0,
-                      ),
-                      child: Icon(
-                        Icons.arrow_back_rounded,
-                        size: 18,
-                        color: accent,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'اضغط للبدء الآن',
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            transform: Matrix4.translationValues(
+                              _isHovered || _isPressed ? -4 : 0,
+                              0,
+                              0,
+                            ),
+                            child: Icon(
+                              Icons.arrow_back_rounded,
+                              size: 16,
+                              color: accent,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -641,9 +686,9 @@ class _TrustChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface2.withValues(alpha: 0.6),
+        color: AppColors.surface2.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppColors.borderSubtle,
@@ -654,12 +699,12 @@ class _TrustChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: AppColors.gold),
-          const SizedBox(width: 5),
+          const SizedBox(width: 6),
           Text(
             label,
             style: const TextStyle(
               color: AppColors.textMuted,
-              fontSize: 11,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -668,3 +713,4 @@ class _TrustChip extends StatelessWidget {
     );
   }
 }
+
