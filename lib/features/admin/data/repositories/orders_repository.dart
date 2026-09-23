@@ -379,7 +379,7 @@ class SupabaseOrdersRepository implements OrdersRepository {
           .select(_orderSelect);
 
       if (response.isEmpty) {
-        return Left(DatabaseFailure('فشل تحديث حالة الطلب'));
+        return Left(DatabaseFailure('.فشل تحديث حالة الطلب'));
       }
 
       await _client.from('order_logs').insert({
