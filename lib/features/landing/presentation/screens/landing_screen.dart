@@ -238,7 +238,7 @@ class _LandingHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    isMobile ? 'حرفي' : 'حرفي | Harafi',
+                    isMobile ? 'حرفي' : 'حرفي',
                     style: AppTextStyles.titleLarge.copyWith(
                       fontWeight: FontWeight.w800,
                       fontSize: isMobile ? 16 : 18,
@@ -497,6 +497,8 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                     ),
 
                     SizedBox(height: isMobile ? 20 : 36),
+
+
 
                     // Title
                     Text(
