@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -58,12 +56,13 @@ class ServiceTechsScreen extends ConsumerWidget {
                 pinned: true,
                 backgroundColor: AppColors.background,
                 elevation: 0,
-                leading: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: _GlassIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () => context.pop(),
+                leading: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textPrimary,
+                    size: 20,
                   ),
+                  onPressed: () => context.pop(),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
                   collapseMode: CollapseMode.pin,
@@ -442,21 +441,16 @@ class _StickyFilterDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.background.withValues(alpha: 0.85),
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.borderSubtle.withValues(alpha: 0.6),
-              ),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.borderSubtle,
           ),
-          child: child,
         ),
       ),
+      child: child,
     );
   }
 
@@ -537,34 +531,7 @@ class _AreaFilterBar extends StatelessWidget {
   }
 }
 
-// ─── Glass Icon Button ────────────────────────────────────────────────────────
-class _GlassIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _GlassIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface1.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            child: Icon(icon, color: AppColors.textPrimary, size: 18),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// ─── Glass Icon Button (removed, using plain IconButton) ─────────────────────
 
 // ─── Smart Match VIP Carousel Section ────────────────────────────────────────
 class _SmartMatchSection extends ConsumerWidget {
