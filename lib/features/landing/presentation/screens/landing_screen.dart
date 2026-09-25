@@ -293,30 +293,58 @@ class _LandingHeader extends StatelessWidget {
                 ),
               ),
               SizedBox(width: isMobile ? 4 : 8),
-              ElevatedButton(
-                onPressed: onClientAppTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.gold,
-                  foregroundColor: const Color(0xFF090D16),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+              if (isMobile)
+                OutlinedButton(
+                  onPressed: onClientAppTap,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.gold,
+                    side: BorderSide(
+                      color: AppColors.gold.withValues(alpha: 0.6),
+                      width: 1,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    minimumSize: const Size(0, 34),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 14 : 18,
-                    vertical: isMobile ? 10 : 12,
+                  child: Text(
+                    'المنصة',
+                    style: AppTextStyles.labelMed.copyWith(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                   ),
-                  minimumSize: Size(0, isMobile ? 40 : 0),
+                )
+              else
+                ElevatedButton(
+                  onPressed: onClientAppTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: const Color(0xFF090D16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: Text(
+                    'المنصة',
+                    style: AppTextStyles.titleMed.copyWith(
+                      color: const Color(0xFF090D16),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  'المنصة',
-                  style: AppTextStyles.titleMed.copyWith(
-                    color: const Color(0xFF090D16),
-                    fontWeight: FontWeight.bold,
-                    fontSize: isMobile ? 13 : 14,
-                  ),
-                ),
-              ),
             ],
           ),
         ),
