@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -324,7 +326,7 @@ class _NavLink extends StatelessWidget {
 }
 
 // ─── Hero Section ──────────────────────────────────────────────────────────
-class _LandingHero extends ConsumerWidget {
+class _LandingHero extends ConsumerStatefulWidget {
   final bool isMobile;
   final VoidCallback onBookTap;
   final VoidCallback onTechJoinTap;
@@ -336,7 +338,37 @@ class _LandingHero extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LandingHero> createState() => _LandingHeroState();
+}
+
+class _LandingHeroState extends ConsumerState<_LandingHero> {
+  static const _bgImages = [
+    'assets/images/landing_hero_bg.png',
+    'assets/images/landing_hero_bg_electrical.png',
+    'assets/images/landing_hero_bg_plumbing.png',
+  ];
+
+  int _bgIndex = 0;
+  Timer? _bgTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _bgTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      setState(() => _bgIndex = (_bgIndex + 1) % _bgImages.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _bgTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = widget.isMobile;
     final statsAsync = ref.watch(landingStatsProvider);
     final statsMap = statsAsync.valueOrNull ?? {
       'techCount': '+15',
@@ -346,255 +378,299 @@ class _LandingHero extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        isMobile ? 24 : 64,
-        isMobile ? 48 : 72,
-        isMobile ? 24 : 64,
-        isMobile ? 56 : 88,
-      ),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.background, Color(0xFF0F172A)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
-          child: Column(
-            children: [
-              // Compact trust badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
+      color: AppColors.background,
+      child: Stack(
+        children: [
+          // Auto-scrolling specialty backgrounds
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 900),
+              switchInCurve: Curves.easeInOut,
+              switchOutCurve: Curves.easeInOut,
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
+              child: Image.asset(
+                _bgImages[_bgIndex],
+                key: ValueKey(_bgImages[_bgIndex]),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                gaplessPlayback: true,
+              ),
+            ),
+          ),
+          // Dark scrim so centered white/gold text stays readable
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.background.withValues(alpha: 0.78),
+                    AppColors.background.withValues(alpha: 0.62),
+                    AppColors.background.withValues(alpha: 0.88),
+                  ],
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? 24 : 64,
+              isMobile ? 48 : 72,
+              isMobile ? 24 : 64,
+              isMobile ? 56 : 88,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Column(
                   children: [
-                    const Icon(
-                      Icons.verified_rounded,
-                      size: 15,
-                      color: AppColors.gold,
+                    // Compact trust badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified_rounded,
+                            size: 15,
+                            color: AppColors.gold,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              isMobile
+                                  ? 'منصة معتمدة لصيانة المنزل'
+                                  : 'المنصة الأولى المعتمدة لصيانة المنزل والخدمات الفنية',
+                              style: AppTextStyles.labelLarge.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 6),
-                    Flexible(
+
+                    SizedBox(height: isMobile ? 28 : 36),
+
+                    // Title — room to breathe
+                    Text(
+                      isMobile
+                          ? 'صيانة منزلك أسرع وأسهل\nمع فنيين معتمدين'
+                          : 'صيانة منزلك أسرع وأسهل\nمع أفضل الفنيين المعتمدين',
+                      textAlign: TextAlign.center,
+                      style:
+                          (isMobile
+                                  ? AppTextStyles.displayMedium
+                                  : AppTextStyles.displayLarge)
+                              .copyWith(
+                                fontWeight: FontWeight.w900,
+                                height: 1.4,
+                                fontSize: isMobile ? 26 : null,
+                                letterSpacing: -0.3,
+                              ),
+                    ),
+
+                    SizedBox(height: isMobile ? 16 : 20),
+
+                    // Shorter subtitle
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
                       child: Text(
                         isMobile
-                            ? 'منصة معتمدة لصيانة المنزل'
-                            : 'المنصة الأولى المعتمدة لصيانة المنزل والخدمات الفنية',
-                        style: AppTextStyles.labelLarge.copyWith(
-                          color: AppColors.gold,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                            ? 'سباكة · كهرباء · تكييف · أجهزة منزلية'
+                            : 'خدمات صيانة فورية وموثوقة — سباكة، كهرباء، تكييف، وأجهزة منزلية بأعلى معايير الجودة.',
                         textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: isMobile ? 14 : 17,
+                          height: 1.7,
+                        ),
                       ),
+                    ),
+
+                    SizedBox(height: isMobile ? 20 : 24),
+
+                    // Trust before CTA — one quiet line, not bordered pills
+                    _HeroTrustStrip(isMobile: isMobile),
+
+                    SizedBox(height: isMobile ? 32 : 40),
+
+                    // Primary CTA — single dominant action
+                    SizedBox(
+                      width: isMobile ? double.infinity : null,
+                      child: ElevatedButton(
+                        onPressed: widget.onBookTap,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.gold,
+                          foregroundColor: const Color(0xFF090D16),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 24 : 36,
+                            vertical: isMobile ? 16 : 18,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                          minimumSize: isMobile
+                              ? const Size(double.infinity, 52)
+                              : null,
+                        ),
+                        child: Text(
+                          'اطلب فني الآن',
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: const Color(0xFF090D16),
+                            fontWeight: FontWeight.w900,
+                            fontSize: isMobile ? 16 : 17,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Secondary as quiet text link — no competing outline button
+                    TextButton(
+                      onPressed: widget.onTechJoinTap,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.gold,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: Text(
+                        'انضم كفني إلى المنصة',
+                        style: AppTextStyles.titleMed.copyWith(
+                          color: AppColors.gold.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: isMobile ? 44 : 56),
+
+                    // Stats — airy grid on mobile
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isMobile ? 28 : 28,
+                        horizontal: isMobile ? 16 : 40,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface1.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: isMobile
+                          ? Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _StatItem(
+                                        icon: Icons.groups_rounded,
+                                        value: statsMap['techCount'] ?? '+15',
+                                        label: 'فني معتمد',
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _StatItem(
+                                        icon: Icons.task_alt_rounded,
+                                        value:
+                                            statsMap['completedCount'] ?? '+24',
+                                        label: 'خدمة مكتملة',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 20,
+                                  ),
+                                  child: Divider(
+                                    color: AppColors.borderSubtle,
+                                    height: 1,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _StatItem(
+                                        icon: Icons.star_rounded,
+                                        value: statsMap['satisfactionRate'] ??
+                                            '99.2%',
+                                        label: 'رضا العملاء',
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _StatItem(
+                                        icon: Icons.shield_rounded,
+                                        value: '100%',
+                                        label: 'ضمان الجودة',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : Wrap(
+                              spacing: 56,
+                              runSpacing: 24,
+                              alignment: WrapAlignment.spaceAround,
+                              children: [
+                                _StatItem(
+                                  icon: Icons.groups_rounded,
+                                  value: statsMap['techCount'] ?? '+15',
+                                  label: 'فني معتمد ومفحوص',
+                                ),
+                                _StatItem(
+                                  icon: Icons.task_alt_rounded,
+                                  value: statsMap['completedCount'] ?? '+24',
+                                  label: 'خدمة صيانة مكتملة',
+                                ),
+                                _StatItem(
+                                  icon: Icons.star_rounded,
+                                  value:
+                                      statsMap['satisfactionRate'] ?? '99.2%',
+                                  label: 'نسبة رضا العملاء',
+                                ),
+                                _StatItem(
+                                  icon: Icons.shield_rounded,
+                                  value: '100%',
+                                  label: 'ضمان سلامة وجودة',
+                                ),
+                              ],
+                            ),
                     ),
                   ],
                 ),
               ),
-
-              SizedBox(height: isMobile ? 28 : 36),
-
-              // Title — room to breathe
-              Text(
-                isMobile
-                    ? 'صيانة منزلك أسرع وأسهل\nمع فنيين معتمدين'
-                    : 'صيانة منزلك أسرع وأسهل\nمع أفضل الفنيين المعتمدين',
-                textAlign: TextAlign.center,
-                style:
-                    (isMobile
-                            ? AppTextStyles.displayMedium
-                            : AppTextStyles.displayLarge)
-                        .copyWith(
-                          fontWeight: FontWeight.w900,
-                          height: 1.4,
-                          fontSize: isMobile ? 26 : null,
-                          letterSpacing: -0.3,
-                        ),
-              ),
-
-              SizedBox(height: isMobile ? 16 : 20),
-
-              // Shorter subtitle
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Text(
-                  isMobile
-                      ? 'سباكة · كهرباء · تكييف · أجهزة منزلية'
-                      : 'خدمات صيانة فورية وموثوقة — سباكة، كهرباء، تكييف، وأجهزة منزلية بأعلى معايير الجودة.',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textSecondary,
-                    fontSize: isMobile ? 14 : 17,
-                    height: 1.7,
-                  ),
-                ),
-              ),
-
-              SizedBox(height: isMobile ? 20 : 24),
-
-              // Trust before CTA — one quiet line, not bordered pills
-              _HeroTrustStrip(isMobile: isMobile),
-
-              SizedBox(height: isMobile ? 32 : 40),
-
-              // Primary CTA — single dominant action
-              SizedBox(
-                width: isMobile ? double.infinity : null,
-                child: ElevatedButton(
-                  onPressed: onBookTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.gold,
-                    foregroundColor: const Color(0xFF090D16),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 24 : 36,
-                      vertical: isMobile ? 16 : 18,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 0,
-                    minimumSize: isMobile
-                        ? const Size(double.infinity, 52)
-                        : null,
-                  ),
-                  child: Text(
-                    'اطلب فني الآن',
-                    style: AppTextStyles.titleLarge.copyWith(
-                      color: const Color(0xFF090D16),
-                      fontWeight: FontWeight.w900,
-                      fontSize: isMobile ? 16 : 17,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Secondary as quiet text link — no competing outline button
-              TextButton(
-                onPressed: onTechJoinTap,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.gold,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-                child: Text(
-                  'انضم كفني إلى المنصة',
-                  style: AppTextStyles.titleMed.copyWith(
-                    color: AppColors.gold.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-
-              SizedBox(height: isMobile ? 44 : 56),
-
-              // Stats — airy grid on mobile
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  vertical: isMobile ? 28 : 28,
-                  horizontal: isMobile ? 16 : 40,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface1.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderSubtle),
-                ),
-                child: isMobile
-                    ? Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatItem(
-                                  icon: Icons.groups_rounded,
-                                  value: statsMap['techCount'] ?? '+15',
-                                  label: 'فني معتمد',
-                                ),
-                              ),
-                              Expanded(
-                                child: _StatItem(
-                                  icon: Icons.task_alt_rounded,
-                                  value: statsMap['completedCount'] ?? '+24',
-                                  label: 'خدمة مكتملة',
-                                ),
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Divider(
-                              color: AppColors.borderSubtle,
-                              height: 1,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _StatItem(
-                                  icon: Icons.star_rounded,
-                                  value:
-                                      statsMap['satisfactionRate'] ?? '99.2%',
-                                  label: 'رضا العملاء',
-                                ),
-                              ),
-                              Expanded(
-                                child: _StatItem(
-                                  icon: Icons.shield_rounded,
-                                  value: '100%',
-                                  label: 'ضمان الجودة',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      )
-                    : Wrap(
-                        spacing: 56,
-                        runSpacing: 24,
-                        alignment: WrapAlignment.spaceAround,
-                        children: [
-                          _StatItem(
-                            icon: Icons.groups_rounded,
-                            value: statsMap['techCount'] ?? '+15',
-                            label: 'فني معتمد ومفحوص',
-                          ),
-                          _StatItem(
-                            icon: Icons.task_alt_rounded,
-                            value: statsMap['completedCount'] ?? '+24',
-                            label: 'خدمة صيانة مكتملة',
-                          ),
-                          _StatItem(
-                            icon: Icons.star_rounded,
-                            value: statsMap['satisfactionRate'] ?? '99.2%',
-                            label: 'نسبة رضا العملاء',
-                          ),
-                          _StatItem(
-                            icon: Icons.shield_rounded,
-                            value: '100%',
-                            label: 'ضمان سلامة وجودة',
-                          ),
-                        ],
-                      ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
