@@ -414,7 +414,6 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
 
     return Container(
       width: double.infinity,
-      constraints: BoxConstraints(minHeight: minHeroHeight),
       color: AppColors.background,
       child: Stack(
         children: [
@@ -467,14 +466,17 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
               ),
             ),
           ),
-          IntrinsicHeight(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                isMobile ? 20 : 48,
-                isMobile ? 28 : 40,
-                isMobile ? 20 : 48,
-                16,
-              ),
+          Container(
+            width: double.infinity,
+            constraints: BoxConstraints(minHeight: minHeroHeight),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isMobile ? 20 : 48,
+                  isMobile ? 28 : 40,
+                  isMobile ? 20 : 48,
+                  isMobile ? 24 : 32,
+                ),
               child: Column(
                 children: [
                   Expanded(
@@ -689,7 +691,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
               ),
             ),
           ),
-        ],
+                )  ],
       ),
     );
   }
