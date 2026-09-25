@@ -111,7 +111,10 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final topInset = MediaQuery.paddingOf(context).top;
     final isMobile = screenWidth < 800;
+    final headerBodyHeight = isMobile ? 56.0 : 80.0;
+    final headerTotalHeight = headerBodyHeight + topInset;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -123,7 +126,7 @@ class _LandingScreenState extends State<LandingScreen> {
               controller: _scrollController,
               child: Column(
                 children: [
-                  SizedBox(height: isMobile ? 64 : 80), // Space for fixed header
+                  SizedBox(height: headerTotalHeight),
                   _LandingHero(
                     isMobile: isMobile,
                     onBookTap: () => _navigateToClientRoute(context, '/request'),
@@ -152,6 +155,8 @@ class _LandingScreenState extends State<LandingScreen> {
               right: 0,
               child: _LandingHeader(
                 isMobile: isMobile,
+                topInset: topInset,
+                bodyHeight: headerBodyHeight,
                 onNavServices: () => _scrollToKey(_servicesKey),
                 onNavHowItWorks: () => _scrollToKey(_howItWorksKey),
                 onNavWhy: () => _scrollToKey(_whyKey),
@@ -170,6 +175,8 @@ class _LandingScreenState extends State<LandingScreen> {
 // ─── Sticky Header ─────────────────────────────────────────────────────────
 class _LandingHeader extends StatelessWidget {
   final bool isMobile;
+  final double topInset;
+  final double bodyHeight;
   final VoidCallback onNavServices;
   final VoidCallback onNavHowItWorks;
   final VoidCallback onNavWhy;
@@ -179,6 +186,8 @@ class _LandingHeader extends StatelessWidget {
 
   const _LandingHeader({
     required this.isMobile,
+    required this.topInset,
+    required this.bodyHeight,
     required this.onNavServices,
     required this.onNavHowItWorks,
     required this.onNavWhy,
@@ -190,108 +199,114 @@ class _LandingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: isMobile ? 64 : 80,
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 48),
+      padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.94),
         border: const Border(
           bottom: BorderSide(color: AppColors.borderSubtle, width: 1),
         ),
       ),
-      child: Row(
-        children: [
-          // Logo & Brand Name
-          Row(
-            mainAxisSize: MainAxisSize.min,
+      child: SizedBox(
+        height: bodyHeight,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 48),
+          child: Row(
             children: [
-              Container(
-                width: isMobile ? 28 : 32,
-                height: isMobile ? 28 : 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.5),
-                    width: 1.2,
-                  ),
-                ),
-                child: ClipOval(
-                  child: Transform.scale(
-                    scale: 1.28,
-                    child: Image.asset(
-                      'assets/images/logo2.png',
-                      fit: BoxFit.cover,
+              // Logo & Brand Name
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: isMobile ? 28 : 32,
+                    height: isMobile ? 28 : 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.5),
+                        width: 1.2,
+                      ),
                     ),
+                    child: ClipOval(
+                      child: Transform.scale(
+                        scale: 1.28,
+                        child: Image.asset(
+                          'assets/images/logo2.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    isMobile ? 'حرفي' : 'حرفي | Harafi',
+                    style: AppTextStyles.titleLarge.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: isMobile ? 16 : 18,
+                    ),
+                  ),
+                ],
+              ),
+
+              const Spacer(),
+
+              // Navigation Links (Desktop)
+              if (!isMobile) ...[
+                _NavLink(label: 'الخدمات', onTap: onNavServices),
+                _NavLink(label: 'كيف نعمل؟', onTap: onNavHowItWorks),
+                _NavLink(label: 'لماذا حرفي؟', onTap: onNavWhy),
+                _NavLink(label: 'انضم كفني', onTap: onNavTech),
+                const Spacer(),
+              ],
+
+              // Actions — one quiet text + one solid CTA
+              TextButton(
+                onPressed: onLoginTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 10 : 14,
+                    vertical: isMobile ? 12 : 10,
+                  ),
+                  minimumSize: Size(isMobile ? 44 : 0, isMobile ? 44 : 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  'دخول',
+                  style: AppTextStyles.titleMed.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: isMobile ? 13 : 14,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                isMobile ? 'حرفي' : 'حرفي | Harafi',
-                style: AppTextStyles.titleLarge.copyWith(
-                  fontWeight: FontWeight.w800,
-                  fontSize: isMobile ? 16 : 18,
+              SizedBox(width: isMobile ? 4 : 8),
+              ElevatedButton(
+                onPressed: onClientAppTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: const Color(0xFF090D16),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 14 : 18,
+                    vertical: isMobile ? 10 : 12,
+                  ),
+                  minimumSize: Size(0, isMobile ? 40 : 0),
+                ),
+                child: Text(
+                  'المنصة',
+                  style: AppTextStyles.titleMed.copyWith(
+                    color: const Color(0xFF090D16),
+                    fontWeight: FontWeight.bold,
+                    fontSize: isMobile ? 13 : 14,
+                  ),
                 ),
               ),
             ],
           ),
-
-          const Spacer(),
-
-          // Navigation Links (Desktop)
-          if (!isMobile) ...[
-            _NavLink(label: 'الخدمات', onTap: onNavServices),
-            _NavLink(label: 'كيف نعمل؟', onTap: onNavHowItWorks),
-            _NavLink(label: 'لماذا حرفي؟', onTap: onNavWhy),
-            _NavLink(label: 'انضم كفني', onTap: onNavTech),
-            const Spacer(),
-          ],
-
-          // Actions — one quiet text + one solid CTA (avoids competing yellows)
-          TextButton(
-            onPressed: onLoginTap,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.textSecondary,
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 8 : 14,
-                vertical: 10,
-              ),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'دخول',
-              style: AppTextStyles.titleMed.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-                fontSize: isMobile ? 13 : 14,
-              ),
-            ),
-          ),
-          SizedBox(width: isMobile ? 4 : 8),
-          ElevatedButton(
-            onPressed: onClientAppTap,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.gold,
-              foregroundColor: const Color(0xFF090D16),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 14 : 18,
-                vertical: isMobile ? 10 : 12,
-              ),
-            ),
-            child: Text(
-              'المنصة',
-              style: AppTextStyles.titleMed.copyWith(
-                color: const Color(0xFF090D16),
-                fontWeight: FontWeight.bold,
-                fontSize: isMobile ? 13 : 14,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -400,33 +415,42 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                 _bgImages[_bgIndex],
                 key: ValueKey(_bgImages[_bgIndex]),
                 fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
+                // Mobile: keep subject in frame; desktop: right-weighted composition
+                alignment: isMobile
+                    ? const Alignment(0.35, 0)
+                    : Alignment.centerRight,
                 gaplessPlayback: true,
               ),
             ),
           ),
-          // Dark scrim so centered white/gold text stays readable
+          // Darker scrim on mobile — busy photo + small screen needs stronger contrast
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.background.withValues(alpha: 0.78),
-                    AppColors.background.withValues(alpha: 0.62),
-                    AppColors.background.withValues(alpha: 0.88),
-                  ],
+                  colors: isMobile
+                      ? [
+                          AppColors.background.withValues(alpha: 0.88),
+                          AppColors.background.withValues(alpha: 0.78),
+                          AppColors.background.withValues(alpha: 0.94),
+                        ]
+                      : [
+                          AppColors.background.withValues(alpha: 0.78),
+                          AppColors.background.withValues(alpha: 0.62),
+                          AppColors.background.withValues(alpha: 0.88),
+                        ],
                 ),
               ),
             ),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(
-              isMobile ? 24 : 64,
-              isMobile ? 48 : 72,
-              isMobile ? 24 : 64,
-              isMobile ? 56 : 88,
+              isMobile ? 20 : 64,
+              isMobile ? 28 : 72,
+              isMobile ? 20 : 64,
+              isMobile ? 32 : 88,
             ),
             child: Center(
               child: ConstrainedBox(
@@ -435,15 +459,15 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                   children: [
                     // Compact trust badge
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 12 : 14,
+                        vertical: isMobile ? 5 : 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.gold.withValues(alpha: 0.1),
+                        color: AppColors.gold.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: AppColors.gold.withValues(alpha: 0.28),
+                          color: AppColors.gold.withValues(alpha: 0.35),
                         ),
                       ),
                       child: Row(
@@ -463,7 +487,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                               style: AppTextStyles.labelLarge.copyWith(
                                 color: AppColors.gold,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12,
+                                fontSize: isMobile ? 11.5 : 12,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -472,12 +496,12 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 28 : 36),
+                    SizedBox(height: isMobile ? 20 : 36),
 
-                    // Title — room to breathe
+                    // Title
                     Text(
                       isMobile
-                          ? 'صيانة منزلك أسرع وأسهل\nمع فنيين معتمدين'
+                          ? 'صيانة منزلك\nأسرع وأسهل'
                           : 'صيانة منزلك أسرع وأسهل\nمع أفضل الفنيين المعتمدين',
                       textAlign: TextAlign.center,
                       style:
@@ -486,38 +510,43 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                                   : AppTextStyles.displayLarge)
                               .copyWith(
                                 fontWeight: FontWeight.w900,
-                                height: 1.4,
-                                fontSize: isMobile ? 26 : null,
+                                height: isMobile ? 1.35 : 1.4,
+                                fontSize: isMobile ? 28 : null,
                                 letterSpacing: -0.3,
                               ),
                     ),
 
-                    SizedBox(height: isMobile ? 16 : 20),
+                    SizedBox(height: isMobile ? 12 : 20),
 
-                    // Shorter subtitle
+                    // One supporting line — keep hero light on mobile
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 520),
                       child: Text(
                         isMobile
-                            ? 'سباكة · كهرباء · تكييف · أجهزة منزلية'
+                            ? 'فنيون معتمدون · سباكة · كهرباء · تكييف'
                             : 'خدمات صيانة فورية وموثوقة — سباكة، كهرباء، تكييف، وأجهزة منزلية بأعلى معايير الجودة.',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: isMobile ? 14 : 17,
-                          height: 1.7,
+                          color: isMobile
+                              ? const Color(0xFFE2E8F0)
+                              : AppColors.textSecondary,
+                          fontSize: isMobile ? 14.5 : 17,
+                          height: 1.6,
+                          fontWeight:
+                              isMobile ? FontWeight.w500 : FontWeight.w400,
                         ),
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 20 : 24),
+                    // Desktop-only trust strip (mobile already has badge + subtitle)
+                    if (!isMobile) ...[
+                      const SizedBox(height: 24),
+                      const _HeroTrustStrip(isMobile: false),
+                      const SizedBox(height: 40),
+                    ] else
+                      const SizedBox(height: 28),
 
-                    // Trust before CTA — one quiet line, not bordered pills
-                    _HeroTrustStrip(isMobile: isMobile),
-
-                    SizedBox(height: isMobile ? 32 : 40),
-
-                    // Primary CTA — single dominant action
+                    // Primary CTA
                     SizedBox(
                       width: isMobile ? double.infinity : null,
                       child: ElevatedButton(
@@ -548,123 +577,78 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    SizedBox(height: isMobile ? 8 : 12),
 
-                    // Secondary as quiet text link — no competing outline button
                     TextButton(
                       onPressed: widget.onTechJoinTap,
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.gold,
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 8,
+                          vertical: isMobile ? 10 : 8,
                         ),
+                        minimumSize: Size(0, isMobile ? 44 : 0),
                       ),
                       child: Text(
                         'انضم كفني إلى المنصة',
                         style: AppTextStyles.titleMed.copyWith(
-                          color: AppColors.gold.withValues(alpha: 0.9),
+                          color: AppColors.gold.withValues(alpha: 0.95),
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: isMobile ? 13.5 : 14,
                         ),
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 44 : 56),
+                    SizedBox(height: isMobile ? 28 : 56),
 
-                    // Stats — airy grid on mobile
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        vertical: isMobile ? 28 : 28,
-                        horizontal: isMobile ? 16 : 40,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface1.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.borderSubtle),
-                      ),
-                      child: isMobile
-                          ? Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _StatItem(
-                                        icon: Icons.groups_rounded,
-                                        value: statsMap['techCount'] ?? '+15',
-                                        label: 'فني معتمد',
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: _StatItem(
-                                        icon: Icons.task_alt_rounded,
-                                        value:
-                                            statsMap['completedCount'] ?? '+24',
-                                        label: 'خدمة مكتملة',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
-                                  ),
-                                  child: Divider(
-                                    color: AppColors.borderSubtle,
-                                    height: 1,
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _StatItem(
-                                        icon: Icons.star_rounded,
-                                        value: statsMap['satisfactionRate'] ??
-                                            '99.2%',
-                                        label: 'رضا العملاء',
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: _StatItem(
-                                        icon: Icons.shield_rounded,
-                                        value: '100%',
-                                        label: 'ضمان الجودة',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            )
-                          : Wrap(
-                              spacing: 56,
-                              runSpacing: 24,
-                              alignment: WrapAlignment.spaceAround,
-                              children: [
-                                _StatItem(
-                                  icon: Icons.groups_rounded,
-                                  value: statsMap['techCount'] ?? '+15',
-                                  label: 'فني معتمد ومفحوص',
-                                ),
-                                _StatItem(
-                                  icon: Icons.task_alt_rounded,
-                                  value: statsMap['completedCount'] ?? '+24',
-                                  label: 'خدمة صيانة مكتملة',
-                                ),
-                                _StatItem(
-                                  icon: Icons.star_rounded,
-                                  value:
-                                      statsMap['satisfactionRate'] ?? '99.2%',
-                                  label: 'نسبة رضا العملاء',
-                                ),
-                                _StatItem(
-                                  icon: Icons.shield_rounded,
-                                  value: '100%',
-                                  label: 'ضمان سلامة وجودة',
-                                ),
-                              ],
+                    // Stats — compact strip on mobile, full grid on desktop
+                    if (isMobile)
+                      _MobileStatsStrip(
+                        techCount: statsMap['techCount'] ?? '+15',
+                        completedCount: statsMap['completedCount'] ?? '+24',
+                        satisfactionRate:
+                            statsMap['satisfactionRate'] ?? '99.2%',
+                      )
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 28,
+                          horizontal: 40,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface1.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.borderSubtle),
+                        ),
+                        child: Wrap(
+                          spacing: 56,
+                          runSpacing: 24,
+                          alignment: WrapAlignment.spaceAround,
+                          children: [
+                            _StatItem(
+                              icon: Icons.groups_rounded,
+                              value: statsMap['techCount'] ?? '+15',
+                              label: 'فني معتمد ومفحوص',
                             ),
-                    ),
+                            _StatItem(
+                              icon: Icons.task_alt_rounded,
+                              value: statsMap['completedCount'] ?? '+24',
+                              label: 'خدمة صيانة مكتملة',
+                            ),
+                            _StatItem(
+                              icon: Icons.star_rounded,
+                              value: statsMap['satisfactionRate'] ?? '99.2%',
+                              label: 'نسبة رضا العملاء',
+                            ),
+                            _StatItem(
+                              icon: Icons.shield_rounded,
+                              value: '100%',
+                              label: 'ضمان سلامة وجودة',
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -672,6 +656,91 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Compact 3-stat row for mobile — keeps social proof without eating the fold.
+class _MobileStatsStrip extends StatelessWidget {
+  final String techCount;
+  final String completedCount;
+  final String satisfactionRate;
+
+  const _MobileStatsStrip({
+    required this.techCount,
+    required this.completedCount,
+    required this.satisfactionRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface1.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _CompactStat(value: techCount, label: 'فني معتمد'),
+          ),
+          Container(
+            width: 1,
+            height: 32,
+            color: AppColors.borderSubtle,
+          ),
+          Expanded(
+            child: _CompactStat(value: completedCount, label: 'خدمة مكتملة'),
+          ),
+          Container(
+            width: 1,
+            height: 32,
+            color: AppColors.borderSubtle,
+          ),
+          Expanded(
+            child: _CompactStat(value: satisfactionRate, label: 'رضا العملاء'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactStat extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _CompactStat({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: AppTextStyles.headlineLarge.copyWith(
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            fontSize: 17,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.labelLarge.copyWith(
+            color: const Color(0xFFCBD5E1),
+            fontSize: 11,
+            height: 1.2,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -781,9 +850,11 @@ class _LandingServices extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 64,
-        vertical: 64,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 20 : 64,
+        isMobile ? 40 : 64,
+        isMobile ? 20 : 64,
+        isMobile ? 48 : 64,
       ),
       color: AppColors.background,
       child: Center(
@@ -795,21 +866,25 @@ class _LandingServices extends StatelessWidget {
                 'خدماتنا المعتمدة',
                 style: AppTextStyles.displayMedium.copyWith(
                   fontWeight: FontWeight.w900,
+                  fontSize: isMobile ? 22 : null,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'اختر الخدمة المطلوبة ليصلك أفضل الفنيين المتخصصين في أسرع وقت',
+                isMobile
+                    ? 'اختر الخدمة ويوصلك أقرب فني متخصص'
+                    : 'اختر الخدمة المطلوبة ليصلك أفضل الفنيين المتخصصين في أسرع وقت',
                 style: AppTextStyles.bodyLarge.copyWith(
                   color: AppColors.textMuted,
+                  fontSize: isMobile ? 14 : null,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
+              SizedBox(height: isMobile ? 28 : 48),
 
               Wrap(
                 spacing: 20,
-                runSpacing: 20,
+                runSpacing: isMobile ? 14 : 20,
                 children: ServiceType.values.map((service) {
                   return SizedBox(
                     width: isMobile ? double.infinity : 360,
