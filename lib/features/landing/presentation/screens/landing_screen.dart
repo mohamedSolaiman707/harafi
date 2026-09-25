@@ -235,13 +235,6 @@ class _LandingHeader extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'حرفي | Harafi',
-                        style: AppTextStyles.titleLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ],
                   ),
 
