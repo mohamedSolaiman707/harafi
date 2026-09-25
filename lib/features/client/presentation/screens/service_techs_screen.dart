@@ -32,7 +32,9 @@ class ServiceTechsScreen extends ConsumerWidget {
     final techsAsync = ref.watch(techniciansProvider);
     final selectedArea = ref.watch(selectedAreaProvider);
     final userLocation = ref.watch(userLocationProvider);
-    final titleText = service != null ? 'فني ${service!.label}' : 'أفضل الفنيين بالقرب منك';
+    final titleText = service != null
+        ? 'فني ${service!.label}'
+        : 'أفضل الفنيين بالقرب منك';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -53,7 +55,10 @@ class ServiceTechsScreen extends ConsumerWidget {
           final screenWidth = constraints.maxWidth;
           final isDesktop = screenWidth >= _desktopBreakpoint;
           final horizontalPad = isDesktop
-              ? ((screenWidth - _maxContentWidth) / 2).clamp(AppSpacing.xl, double.infinity)
+              ? ((screenWidth - _maxContentWidth) / 2).clamp(
+                  AppSpacing.xl,
+                  double.infinity,
+                )
               : AppSpacing.xl.toDouble();
 
           return Column(
@@ -64,7 +69,12 @@ class ServiceTechsScreen extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalPad),
-                  child: _buildSmartMatchHeaderInner(ref, service!, selectedArea, context),
+                  child: _buildSmartMatchHeaderInner(
+                    ref,
+                    service!,
+                    selectedArea,
+                    context,
+                  ),
                 ),
               ],
               Expanded(
@@ -88,12 +98,13 @@ class ServiceTechsScreen extends ConsumerWidget {
                           horizontal: horizontalPad,
                           vertical: AppSpacing.xl,
                         ),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 480,
-                          crossAxisSpacing: AppSpacing.lg,
-                          mainAxisSpacing: AppSpacing.lg,
-                          childAspectRatio: 2.6,
-                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 480,
+                              crossAxisSpacing: AppSpacing.lg,
+                              mainAxisSpacing: AppSpacing.lg,
+                              childAspectRatio: 2.6,
+                            ),
                         itemCount: filteredTechs.length,
                         itemBuilder: (context, index) => _TechListItem(
                           tech: filteredTechs[index],
@@ -106,7 +117,8 @@ class ServiceTechsScreen extends ConsumerWidget {
                     return ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.xl),
                       itemCount: filteredTechs.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpacing.lg),
                       itemBuilder: (context, index) => _TechListItem(
                         tech: filteredTechs[index],
                         service: service,
@@ -127,7 +139,6 @@ class ServiceTechsScreen extends ConsumerWidget {
       ),
     );
   }
-
 
   List<Technician> _filterTechnicians({
     required List<Technician> techs,
@@ -151,19 +162,18 @@ class ServiceTechsScreen extends ConsumerWidget {
       return _normalize(techArea).contains(_normalize(area)) ||
           _normalize(area).contains(_normalize(techArea)) ||
           (_normalize(techArea) == _normalize(userCity) && area == userCity);
-    }).toList()
-      ..sort((a, b) {
-        int statusRank(TechStatus status) {
-          if (status == TechStatus.available) return 0;
-          if (status == TechStatus.busy) return 1;
-          return 2;
-        }
+    }).toList()..sort((a, b) {
+      int statusRank(TechStatus status) {
+        if (status == TechStatus.available) return 0;
+        if (status == TechStatus.busy) return 1;
+        return 2;
+      }
 
-        final aRank = statusRank(a.status);
-        final bRank = statusRank(b.status);
-        if (aRank != bRank) return aRank - bRank;
-        return b.rating.compareTo(a.rating);
-      });
+      final aRank = statusRank(a.status);
+      final bRank = statusRank(b.status);
+      if (aRank != bRank) return aRank - bRank;
+      return b.rating.compareTo(a.rating);
+    });
   }
 
   String _normalize(String value) {
@@ -178,8 +188,13 @@ class ServiceTechsScreen extends ConsumerWidget {
         .replaceAll(' ', '');
   }
 
-  Widget _buildAreaFilter(WidgetRef ref, String currentArea, UserLocation userLocation) {
-    final governorateCities = AppConstants.governoratesAndCities[userLocation.governorate] ?? [];
+  Widget _buildAreaFilter(
+    WidgetRef ref,
+    String currentArea,
+    UserLocation userLocation,
+  ) {
+    final governorateCities =
+        AppConstants.governoratesAndCities[userLocation.governorate] ?? [];
     final filterAreas = ['الكل', ...governorateCities];
 
     return Container(
@@ -191,7 +206,10 @@ class ServiceTechsScreen extends ConsumerWidget {
       ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: 10,
+        ),
         itemCount: filterAreas.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
@@ -204,18 +222,25 @@ class ServiceTechsScreen extends ConsumerWidget {
               onTap: () => ref.read(selectedAreaProvider.notifier).state = area,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: selected ? AppColors.gold : AppColors.surface2,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: selected ? AppColors.gold : Colors.white.withValues(alpha: 0.08),
+                    color: selected
+                        ? AppColors.gold
+                        : Colors.white.withValues(alpha: 0.08),
                   ),
                 ),
                 child: Text(
                   area,
                   style: AppTextStyles.labelLarge.copyWith(
-                    color: selected ? const Color(0xFF090D16) : AppColors.textSecondary,
+                    color: selected
+                        ? const Color(0xFF090D16)
+                        : AppColors.textSecondary,
                     fontWeight: selected ? FontWeight.bold : FontWeight.w600,
                   ),
                 ),
@@ -227,17 +252,25 @@ class ServiceTechsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSmartMatchHeaderInner(WidgetRef ref, ServiceType service, String area, BuildContext context) {
+  Widget _buildSmartMatchHeaderInner(
+    WidgetRef ref,
+    ServiceType service,
+    String area,
+    BuildContext context,
+  ) {
     final rankedAsync = ref.watch(
-      smartMatchResultProvider((service: service, area: area == 'الكل' ? null : area, description: null, diagnosis: null)),
+      smartMatchResultProvider((
+        service: service,
+        area: area == 'الكل' ? null : area,
+        description: null,
+        diagnosis: null,
+      )),
     );
 
-    // ─── حالة التحميل: skeleton شيمر جميل ───
     if (rankedAsync.isLoading) {
-      return _SmartMatchSkeleton();
+      return const _SmartMatchSkeleton();
     }
 
-    // ─── حالة الخطأ: نختفي بهدوء ───
     if (rankedAsync.hasError) return const SizedBox.shrink();
 
     final ranked = rankedAsync.valueOrNull;
@@ -245,179 +278,185 @@ class ServiceTechsScreen extends ConsumerWidget {
 
     final techs = ref.watch(techniciansProvider).valueOrNull ?? [];
 
-    // تصفية النتائج والتأكد من أن الفني موجود بالفعل في قاعدة البيانات
-    final validItems = ranked.topTechnicians.where((item) {
-      final techId = item['technicianId']?.toString();
-      return techs.any((t) => t.id == techId);
-    }).take(3).toList();
+    final validItems = ranked.topTechnicians
+        .where((item) {
+          final techId = item['technicianId']?.toString();
+          return techs.any((t) => t.id == techId);
+        })
+        .take(3)
+        .toList();
 
-    // إذا لم توجد فنيين مطابقين، لا تعرض الكارت أصلًا
     if (validItems.isEmpty) return const SizedBox.shrink();
 
-    final recommendedId = ranked.recommendedTechnicianId;
-    final recommendedTech = recommendedId == null
-        ? null
-        : techs.where((t) => t.id == recommendedId).firstOrNull;
-    final recommendedItem = validItems
-        .where((item) => item['technicianId']?.toString() == recommendedId)
-        .firstOrNull;
-    final canAutoPick = recommendedItem != null &&
-        (recommendedItem['reliabilityScore'] as num?) != null &&
-        (recommendedItem['reliabilityScore'] as num).toDouble() >= ranked.autoPickThreshold;
-
-    final isExpanded = ref.watch(smartMatchExpandedProvider);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.3), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-        child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            // ─── شريط العنوان المدمج للتوسيع والطي ───
-            InkWell(
-              onTap: () => ref.read(smartMatchExpandedProvider.notifier).state = !isExpanded,
-              borderRadius: BorderRadius.circular(14),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: AppColors.gold.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.auto_awesome_rounded, color: AppColors.gold, size: 16),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'اقتراحات المساعد الذكي',
-                      style: AppTextStyles.titleMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.gold.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${validItems.length} ترشيحات',
-                        style: const TextStyle(color: AppColors.gold, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.gold,
-                      size: 22,
-                    ),
-                  ],
-                ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                color: AppColors.gold,
+                size: 20,
               ),
             ),
+            const SizedBox(width: 12),
+            Text(
+              'اقتراحات المساعد الذكي',
+              style: AppTextStyles.titleLarge.copyWith(
+                color: AppColors.gold,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 170,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: validItems.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            itemBuilder: (context, index) {
+              final item = validItems[index];
+              final tech = techs
+                  .where((t) => t.id == item['technicianId']?.toString())
+                  .firstOrNull;
+              if (tech == null) return const SizedBox.shrink();
 
-            // ─── محتوى الترشيحات عند التوسيع ───
-            if (isExpanded) ...[
-              const Divider(height: 1, color: AppColors.borderSubtle),
-              Padding(
-                padding: const EdgeInsets.all(12),
+              final isTopRecommended =
+                  item['technicianId']?.toString() ==
+                  ranked.recommendedTechnicianId;
+              final score =
+                  (item['reliabilityScore'] as num?)?.toStringAsFixed(0) ?? '0';
+
+              return Container(
+                width: 280,
+                decoration: BoxDecoration(
+                  color: AppColors.surface1,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isTopRecommended
+                        ? AppColors.gold
+                        : AppColors.gold.withValues(alpha: 0.2),
+                    width: isTopRecommended ? 2 : 1,
+                  ),
+                  boxShadow: [
+                    if (isTopRecommended)
+                      BoxShadow(
+                        color: AppColors.gold.withValues(alpha: 0.1),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (recommendedTech != null && canAutoPick) ...[
-                      SizedBox(
-                        height: 36,
-                        child: AppButton(
-                          label: 'اختيار تلقائي للأفضل ⚡',
-                          icon: Icons.flash_on_rounded,
-                          variant: ButtonVariant.secondary,
-                          size: ButtonSize.sm,
-                          onTap: () => context.push('/request', extra: {
-                            'service': service,
-                            'techId': recommendedTech.id,
-                            'fallbackTechIds': ranked.fallbackTechnicianIds,
-                          }),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: AppColors.surface2,
+                          backgroundImage: tech.photoUrl != null
+                              ? NetworkImage(tech.photoUrl!)
+                              : null,
+                          child: tech.photoUrl == null
+                              ? Text(
+                                  tech.spec.icon,
+                                  style: const TextStyle(fontSize: 20),
+                                )
+                              : null,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    ...validItems.map((item) {
-                      final tech = techs.where((t) => t.id == item['technicianId']?.toString()).firstOrNull;
-                      if (tech == null) return const SizedBox.shrink();
-                      final rank = validItems.indexOf(item) + 1;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface2,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: AppColors.gold.withValues(alpha: 0.18),
-                                shape: BoxShape.circle,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tech.name,
+                                style: AppTextStyles.titleMed.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              child: Text('$rank', style: AppTextStyles.labelMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 11)),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              const SizedBox(height: 4),
+                              Row(
                                 children: [
-                                  Text(tech.name, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  const SizedBox(height: 2),
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: AppColors.gold,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    'ثقة ${(item['reliabilityScore'] as num?)?.toStringAsFixed(0) ?? '0'}% • ${tech.area ?? "كفر الزيات"}',
-                                    style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11),
+                                    tech.rating.toStringAsFixed(1),
+                                    style: AppTextStyles.labelMed.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.gold.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      'ثقة $score%',
+                                      style: AppTextStyles.labelMed.copyWith(
+                                        color: AppColors.gold,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            SizedBox(
-                              height: 32,
-                              child: AppButton(
-                                label: 'اختيار',
-                                size: ButtonSize.sm,
-                                onTap: () => context.push('/request', extra: {
-                                  'service': service,
-                                  'techId': tech.id,
-                                  'fallbackTechIds': ranked.fallbackTechnicianIds,
-                                }),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      );
-                    }),
-                    if (recommendedTech != null && !canAutoPick) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'لا يوجد فني مؤهل للـ Auto-pick الآن، وسيبقى الترشيح اليدوي فقط.',
-                        style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11),
+                      ],
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppButton(
+                        label: 'اطلب هذا الفني',
+                        icon: Icons.flash_on_rounded,
+                        variant: isTopRecommended
+                            ? ButtonVariant.primary
+                            : ButtonVariant.secondary,
+                        size: ButtonSize.sm,
+                        onTap: () => context.push(
+                          '/request',
+                          extra: {
+                            'service': service,
+                            'techId': tech.id,
+                            'fallbackTechIds': ranked.fallbackTechnicianIds,
+                          },
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ],
+              );
+            },
+          ),
         ),
-      );
+      ],
+    );
   }
 
   Widget _buildEmptyState(BuildContext context, WidgetRef ref, String area) {
@@ -428,10 +467,16 @@ class ServiceTechsScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.person_search_outlined, size: 80, color: AppColors.textMuted.withValues(alpha: 0.5)),
+            Icon(
+              Icons.person_search_outlined,
+              size: 80,
+              color: AppColors.textMuted.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 24),
             Text(
-              isLocalFilter ? 'لا يوجد فنيون في $area حاليًا' : 'لا يوجد فنيون متوفرون حاليًا',
+              isLocalFilter
+                  ? 'لا يوجد فنيون في $area حاليًا'
+                  : 'لا يوجد فنيون متوفرون حاليًا',
               textAlign: TextAlign.center,
               style: AppTextStyles.titleLarge,
             ),
@@ -451,7 +496,8 @@ class ServiceTechsScreen extends ConsumerWidget {
                   label: 'عرض كل المناطق',
                   icon: Icons.public_rounded,
                   variant: ButtonVariant.secondary,
-                  onTap: () => ref.read(selectedAreaProvider.notifier).state = 'الكل',
+                  onTap: () =>
+                      ref.read(selectedAreaProvider.notifier).state = 'الكل',
                 ),
               ),
               const SizedBox(height: 12),
@@ -479,17 +525,25 @@ class _TechListItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasInsufficientBalance = tech.walletBalance < AppConstants.platformFee;
-    final effectiveAvailable = tech.status == TechStatus.available && !hasInsufficientBalance;
-    final effectiveBusy = tech.status == TechStatus.busy || (tech.status == TechStatus.available && hasInsufficientBalance);
+    final hasInsufficientBalance =
+        tech.walletBalance < AppConstants.platformFee;
+    final effectiveAvailable =
+        tech.status == TechStatus.available && !hasInsufficientBalance;
+    final effectiveBusy =
+        tech.status == TechStatus.busy ||
+        (tech.status == TechStatus.available && hasInsufficientBalance);
     final isOnLeave = tech.status == TechStatus.onLeave;
-    final isUnavailable = isOnLeave || (hasInsufficientBalance && tech.status == TechStatus.available);
+    final isUnavailable =
+        isOnLeave ||
+        (hasInsufficientBalance && tech.status == TechStatus.available);
     final isFav = ref.watch(favoritesProvider).contains(tech.id);
 
     return Opacity(
       opacity: isUnavailable ? 0.6 : 1.0,
       child: AppCard(
-        onTap: isUnavailable ? null : () => context.push('/tech/portfolio/${tech.id}'),
+        onTap: isUnavailable
+            ? null
+            : () => context.push('/tech/portfolio/${tech.id}'),
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           children: [
@@ -500,8 +554,15 @@ class _TechListItem extends ConsumerWidget {
                     CircleAvatar(
                       radius: 30,
                       backgroundColor: AppColors.surface2,
-                      backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
-                      child: tech.photoUrl == null ? Text(tech.spec.icon, style: const TextStyle(fontSize: 24)) : null,
+                      backgroundImage: tech.photoUrl != null
+                          ? NetworkImage(tech.photoUrl!)
+                          : null,
+                      child: tech.photoUrl == null
+                          ? Text(
+                              tech.spec.icon,
+                              style: const TextStyle(fontSize: 24),
+                            )
+                          : null,
                     ),
                     Positioned(
                       bottom: 0,
@@ -510,9 +571,16 @@ class _TechListItem extends ConsumerWidget {
                         width: 14,
                         height: 14,
                         decoration: BoxDecoration(
-                          color: effectiveAvailable ? AppColors.success : (effectiveBusy ? AppColors.warning : AppColors.textMuted),
+                          color: effectiveAvailable
+                              ? AppColors.success
+                              : (effectiveBusy
+                                    ? AppColors.warning
+                                    : AppColors.textMuted),
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.surface1, width: 2),
+                          border: Border.all(
+                            color: AppColors.surface1,
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -528,13 +596,19 @@ class _TechListItem extends ConsumerWidget {
                           Flexible(
                             child: Text(
                               tech.name,
-                              style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
+                              style: AppTextStyles.titleLarge.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (tech.isVerified) ...[
                             const SizedBox(width: 4),
-                            const Icon(Icons.verified_rounded, color: AppColors.info, size: 16),
+                            const Icon(
+                              Icons.verified_rounded,
+                              color: AppColors.info,
+                              size: 16,
+                            ),
                           ],
                         ],
                       ),
@@ -542,7 +616,10 @@ class _TechListItem extends ConsumerWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: tech.rankColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
@@ -558,7 +635,10 @@ class _TechListItem extends ConsumerWidget {
                           ),
                           const SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.gold.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
@@ -574,17 +654,32 @@ class _TechListItem extends ConsumerWidget {
                           ),
                           const SizedBox(width: 6),
                           Icon(
-                            effectiveAvailable ? Icons.circle : (effectiveBusy ? Icons.access_time_filled : Icons.pause_circle_filled_rounded),
+                            effectiveAvailable
+                                ? Icons.circle
+                                : (effectiveBusy
+                                      ? Icons.access_time_filled
+                                      : Icons.pause_circle_filled_rounded),
                             size: 10,
-                            color: effectiveAvailable ? AppColors.success : (effectiveBusy ? AppColors.warning : AppColors.textMuted),
+                            color: effectiveAvailable
+                                ? AppColors.success
+                                : (effectiveBusy
+                                      ? AppColors.warning
+                                      : AppColors.textMuted),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             isOnLeave
                                 ? 'في استراحة 😴'
-                                : (hasInsufficientBalance && tech.status == TechStatus.available ? 'غير متاح حاليًا' : tech.status.label),
+                                : (hasInsufficientBalance &&
+                                          tech.status == TechStatus.available
+                                      ? 'غير متاح حاليًا'
+                                      : tech.status.label),
                             style: AppTextStyles.labelMed.copyWith(
-                              color: effectiveAvailable ? AppColors.success : (effectiveBusy ? AppColors.warning : AppColors.textMuted),
+                              color: effectiveAvailable
+                                  ? AppColors.success
+                                  : (effectiveBusy
+                                        ? AppColors.warning
+                                        : AppColors.textMuted),
                               fontSize: 10,
                             ),
                           ),
@@ -593,20 +688,40 @@ class _TechListItem extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.star_rounded, color: AppColors.gold, size: 16),
+                          const Icon(
+                            Icons.star_rounded,
+                            color: AppColors.gold,
+                            size: 16,
+                          ),
                           const SizedBox(width: 2),
-                          Text(tech.rating.toStringAsFixed(1), style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            tech.rating.toStringAsFixed(1),
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(width: 10),
-                          Text('📍 ${tech.area ?? "كفر الزيات"}', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted)),
+                          Text(
+                            '📍 ${tech.area ?? "كفر الزيات"}',
+                            style: AppTextStyles.labelMed.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  onPressed: isUnavailable ? null : () => ref.read(favoritesProvider.notifier).toggleFavorite(tech.id),
+                  onPressed: isUnavailable
+                      ? null
+                      : () => ref
+                            .read(favoritesProvider.notifier)
+                            .toggleFavorite(tech.id),
                   icon: Icon(
-                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    isFav
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
                     color: isFav ? Colors.red : AppColors.textMuted,
                     size: 20,
                   ),
@@ -620,19 +735,29 @@ class _TechListItem extends ConsumerWidget {
                   child: SizedBox(
                     height: 36,
                     child: AppButton(
-                      label: isUnavailable ? 'غير متاح حاليًا' : (effectiveAvailable ? 'حجز مباشر' : 'حجز موعد'),
+                      label: isUnavailable
+                          ? 'غير متاح حاليًا'
+                          : (effectiveAvailable ? 'حجز مباشر' : 'حجز موعد'),
                       size: ButtonSize.sm,
-                      icon: isUnavailable ? Icons.timer_off_outlined : (effectiveAvailable ? Icons.flash_on_rounded : Icons.event_available),
-                      variant: isUnavailable ? ButtonVariant.ghost : (effectiveAvailable ? ButtonVariant.primary : ButtonVariant.secondary),
+                      icon: isUnavailable
+                          ? Icons.timer_off_outlined
+                          : (effectiveAvailable
+                                ? Icons.flash_on_rounded
+                                : Icons.event_available),
+                      variant: isUnavailable
+                          ? ButtonVariant.ghost
+                          : (effectiveAvailable
+                                ? ButtonVariant.primary
+                                : ButtonVariant.secondary),
                       onTap: isUnavailable
                           ? null
                           : () => context.push(
-                        '/request',
-                        extra: {
-                          'service': service ?? tech.spec,
-                          'techId': tech.id,
-                        },
-                      ),
+                              '/request',
+                              extra: {
+                                'service': service ?? tech.spec,
+                                'techId': tech.id,
+                              },
+                            ),
                     ),
                   ),
                 ),
@@ -646,84 +771,96 @@ class _TechListItem extends ConsumerWidget {
 }
 
 // ─── Skeleton شيمر لبطاقة اقتراحات المساعد الذكي ──────────────────────────
-class _SmartMatchSkeleton extends StatefulWidget {
-  @override
-  State<_SmartMatchSkeleton> createState() => _SmartMatchSkeletonState();
-}
-
-class _SmartMatchSkeletonState extends State<_SmartMatchSkeleton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _SmartMatchSkeleton extends StatelessWidget {
+  const _SmartMatchSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, _) {
-        final opacity = 0.3 + (_animation.value * 0.4);
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surface2,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 180,
+              height: 20,
+              decoration: BoxDecoration(
+                color: AppColors.surface2,
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 170,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            itemBuilder: (context, index) {
+              return Container(
+                width: 280,
+                decoration: BoxDecoration(
+                  color: AppColors.surface1,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.gold.withValues(alpha: 0.1),
+                  ),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 24,
+                          backgroundColor: AppColors.surface2,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 100,
+                                height: 14,
+                                color: AppColors.surface2,
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: 60,
+                                height: 12,
+                                color: AppColors.surface2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: double.infinity,
+                      height: 40,
+                      color: AppColors.surface2,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              // أيقونة دائرة placeholder
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: opacity),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
-              // نص placeholder
-              Container(
-                width: 140,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: opacity * 0.6),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // badge placeholder
-              Container(
-                width: 55,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: opacity * 0.4),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              const Spacer(),
-              // سهم
-              Icon(Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.gold.withValues(alpha: opacity), size: 20),
-            ],
-          ),
-        );
-      },
+        ),
+      ],
     );
   }
-}
+}
