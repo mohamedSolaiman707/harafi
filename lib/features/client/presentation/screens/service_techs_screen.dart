@@ -16,7 +16,6 @@ import '../providers/favorites_provider.dart';
 import '../providers/smart_match_edge_provider.dart';
 
 final selectedAreaProvider = StateProvider<String>((ref) => 'الكل');
-final smartMatchExpandedProvider = StateProvider<bool>((ref) => false);
 
 class ServiceTechsScreen extends ConsumerWidget {
   final ServiceType? service;
@@ -32,10 +31,22 @@ class ServiceTechsScreen extends ConsumerWidget {
     final selectedArea = ref.watch(selectedAreaProvider);
     final userLocation = ref.watch(userLocationProvider);
     final titleText =
-        service != null ? 'فني ${service!.label}' : 'أفضل الفنيين بالقرب منك';
+        service != null ? 'فني ${service!.label}' : 'أفضل الفنيين';
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Column(
+          children: [
+            Text(titleText),
+            Text(
+              '📍 ${userLocation.fullLocation}',
+              style: AppTextStyles.labelMed.copyWith(color: AppColors.gold),
+            ),
+          ],
+        ),
+        centerTitle: true,
+      ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final screenWidth = constraints.maxWidth;
@@ -47,208 +58,48 @@ class ServiceTechsScreen extends ConsumerWidget {
                 )
               : AppSpacing.lg.toDouble();
 
-          return CustomScrollView(
-            slivers: [
-              // ─── Premium Gradient Header ─────────────────────────────────
-              SliverAppBar(
-                expandedHeight: 140,
-                collapsedHeight: 60,
-                pinned: true,
-                backgroundColor: AppColors.background,
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: AppColors.textPrimary,
-                    size: 20,
-                  ),
-                  onPressed: () => context.pop(),
-                ),
-                flexibleSpace: FlexibleSpaceBar(
-                  collapseMode: CollapseMode.pin,
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Gradient background
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              AppColors.background,
-                              AppColors.surface1,
-                              AppColors.gold.withValues(alpha: 0.08),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Decorative glow
-                      Positioned(
-                        top: -40,
-                        right: -40,
-                        child: Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.gold.withValues(alpha: 0.06),
-                          ),
-                        ),
-                      ),
-                      // Content
-                      Positioned(
-                        bottom: 20,
-                        left: horizontalPad,
-                        right: horizontalPad,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (service != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.gold.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color:
-                                        AppColors.gold.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      service!.icon,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      service!.label,
-                                      style: AppTextStyles.labelMed.copyWith(
-                                        color: AppColors.gold,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            const SizedBox(height: 8),
-                            Text(
-                              titleText,
-                              style: AppTextStyles.displayMedium.copyWith(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 24,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on_rounded,
-                                  color: AppColors.gold,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  userLocation.fullLocation,
-                                  style: AppTextStyles.labelMed.copyWith(
-                                    color: AppColors.gold,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+          return Column(
+            children: [
+              // ─── Area Filter Bar ───────────────────────────────────────────
+              _AreaFilterBar(
+                ref: ref,
+                selectedArea: selectedArea,
+                userLocation: userLocation,
               ),
 
-              // ─── Glassmorphism Area Filter ────────────────────────────────
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _StickyFilterDelegate(
-                  child: _AreaFilterBar(
-                    ref: ref,
-                    selectedArea: selectedArea,
-                    userLocation: userLocation,
-                  ),
-                ),
-              ),
-
-              // ─── Smart Match VIP Carousel ─────────────────────────────────
+              // ─── Smart Match VIP Carousel ──────────────────────────────────
               if (service != null)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPad,
-                      20,
-                      0,
-                      8,
-                    ),
-                    child: _SmartMatchSection(
-                      service: service!,
-                      area: selectedArea,
-                    ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(horizontalPad, 16, 0, 0),
+                  child: _SmartMatchSection(
+                    service: service!,
+                    area: selectedArea,
                   ),
                 ),
 
-              // ─── Section title ─────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(horizontalPad, 20, horizontalPad, 12),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.people_rounded,
-                        color: AppColors.textSecondary,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'كل الفنيين المتاحين',
-                        style: AppTextStyles.titleLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ─── Techs List ───────────────────────────────────────────────
-              techsAsync.when(
-                data: (techs) {
-                  final filteredTechs = _filterTechnicians(
-                    techs: techs,
-                    selectedArea: selectedArea,
-                    userLocation: userLocation,
-                    service: service,
-                  );
-
-                  if (filteredTechs.isEmpty) {
-                    return SliverFillRemaining(
-                      child: _buildEmptyState(context, ref, selectedArea),
+              // ─── Techs List ────────────────────────────────────────────────
+              Expanded(
+                child: techsAsync.when(
+                  data: (techs) {
+                    final filteredTechs = _filterTechnicians(
+                      techs: techs,
+                      selectedArea: selectedArea,
+                      userLocation: userLocation,
+                      service: service,
                     );
-                  }
 
-                  if (isDesktop) {
-                    return SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        horizontalPad,
-                        0,
-                        horizontalPad,
-                        32,
-                      ),
-                      sliver: SliverGrid(
+                    if (filteredTechs.isEmpty) {
+                      return _buildEmptyState(context, ref, selectedArea);
+                    }
+
+                    if (isDesktop) {
+                      return GridView.builder(
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPad,
+                          16,
+                          horizontalPad,
+                          32,
+                        ),
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 500,
@@ -256,43 +107,33 @@ class ServiceTechsScreen extends ConsumerWidget {
                           mainAxisSpacing: AppSpacing.lg,
                           childAspectRatio: 2.8,
                         ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _TechListItem(
-                            tech: filteredTechs[index],
-                            service: service,
-                          ),
-                          childCount: filteredTechs.length,
+                        itemCount: filteredTechs.length,
+                        itemBuilder: (context, index) => _TechListItem(
+                          tech: filteredTechs[index],
+                          service: service,
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPad,
+                        16,
+                        horizontalPad,
+                        32,
+                      ),
+                      itemCount: filteredTechs.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _TechListItem(
+                          tech: filteredTechs[index],
+                          service: service,
                         ),
                       ),
                     );
-                  }
-
-                  return SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      horizontalPad,
-                      0,
-                      horizontalPad,
-                      32,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _TechListItem(
-                            tech: filteredTechs[index],
-                            service: service,
-                          ),
-                        ),
-                        childCount: filteredTechs.length,
-                      ),
-                    ),
-                  );
-                },
-                loading: () => const SliverFillRemaining(
-                  child: LoadingWidget(),
-                ),
-                error: (error, stack) => SliverFillRemaining(
-                  child: AppErrorWidget(
+                  },
+                  loading: () => const LoadingWidget(),
+                  error: (error, stack) => AppErrorWidget(
                     message: 'خطأ في جلب الفنيين',
                     error: error,
                     onRetry: () => ref.invalidate(techniciansProvider),
@@ -367,8 +208,8 @@ class ServiceTechsScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 100,
-              height: 100,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 color: AppColors.surface1,
                 shape: BoxShape.circle,
@@ -376,7 +217,7 @@ class ServiceTechsScreen extends ConsumerWidget {
               ),
               child: Icon(
                 Icons.person_search_outlined,
-                size: 48,
+                size: 44,
                 color: AppColors.textMuted.withValues(alpha: 0.5),
               ),
             ),
@@ -425,39 +266,6 @@ class ServiceTechsScreen extends ConsumerWidget {
   }
 }
 
-// ─── Sticky Filter Delegate ───────────────────────────────────────────────────
-class _StickyFilterDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  const _StickyFilterDelegate({required this.child});
-
-  @override
-  double get minExtent => 56;
-  @override
-  double get maxExtent => 56;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          bottom: BorderSide(
-            color: AppColors.borderSubtle,
-          ),
-        ),
-      ),
-      child: child,
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _StickyFilterDelegate oldDelegate) => false;
-}
-
 // ─── Area Filter Bar ──────────────────────────────────────────────────────────
 class _AreaFilterBar extends StatelessWidget {
   final WidgetRef ref;
@@ -476,8 +284,14 @@ class _AreaFilterBar extends StatelessWidget {
         AppConstants.governoratesAndCities[userLocation.governorate] ?? [];
     final filterAreas = ['الكل', ...governorateCities];
 
-    return SizedBox(
+    return Container(
       height: 56,
+      decoration: const BoxDecoration(
+        color: AppColors.surface1,
+        border: Border(
+          bottom: BorderSide(color: AppColors.borderSubtle),
+        ),
+      ),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -489,29 +303,16 @@ class _AreaFilterBar extends StatelessWidget {
           return GestureDetector(
             onTap: () => ref.read(selectedAreaProvider.notifier).state = area,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.gold
-                    : AppColors.surface1.withValues(alpha: 0.8),
+                color: selected ? AppColors.gold : AppColors.surface2,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: selected
                       ? AppColors.gold
-                      : AppColors.borderSubtle,
-                  width: selected ? 0 : 1,
+                      : Colors.white.withValues(alpha: 0.08),
                 ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.gold.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null,
               ),
               child: Text(
                 area,
@@ -519,7 +320,8 @@ class _AreaFilterBar extends StatelessWidget {
                   color: selected
                       ? const Color(0xFF090D16)
                       : AppColors.textSecondary,
-                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  fontWeight:
+                      selected ? FontWeight.bold : FontWeight.w500,
                   fontSize: 13,
                 ),
               ),
@@ -530,8 +332,6 @@ class _AreaFilterBar extends StatelessWidget {
     );
   }
 }
-
-// ─── Glass Icon Button (removed, using plain IconButton) ─────────────────────
 
 // ─── Smart Match VIP Carousel Section ────────────────────────────────────────
 class _SmartMatchSection extends ConsumerWidget {
@@ -571,45 +371,38 @@ class _SmartMatchSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Header
         Padding(
           padding: const EdgeInsets.only(right: 16),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.gold.withValues(alpha: 0.25),
-                      AppColors.gold.withValues(alpha: 0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.gold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.4),
+                    color: AppColors.gold.withValues(alpha: 0.3),
                   ),
                 ),
                 child: const Icon(
                   Icons.auto_awesome_rounded,
                   color: AppColors.gold,
-                  size: 18,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'ترشيحات المساعد الذكي',
-                    style: AppTextStyles.titleLarge.copyWith(
+                    style: AppTextStyles.titleMed.copyWith(
                       color: AppColors.gold,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
                     ),
                   ),
                   Text(
-                    'الأفضل لك بناءً على تقييماتهم وموقعك',
+                    'الأفضل بناءً على تقييماتهم وموقعك',
                     style: AppTextStyles.labelMed.copyWith(
                       color: AppColors.textMuted,
                       fontSize: 11,
@@ -620,15 +413,14 @@ class _SmartMatchSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        // VIP Cards Carousel
+        const SizedBox(height: 12),
         SizedBox(
-          height: 185,
+          height: 180,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(right: 16),
             itemCount: validItems.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final item = validItems[index];
               final tech = techs
@@ -640,7 +432,8 @@ class _SmartMatchSection extends ConsumerWidget {
                   item['technicianId']?.toString() ==
                   ranked.recommendedTechnicianId;
               final score =
-                  (item['reliabilityScore'] as num?)?.toStringAsFixed(0) ?? '0';
+                  (item['reliabilityScore'] as num?)?.toStringAsFixed(0) ??
+                  '0';
 
               return _VipTechCard(
                 tech: tech,
@@ -652,6 +445,28 @@ class _SmartMatchSection extends ConsumerWidget {
             },
           ),
         ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.people_rounded,
+                color: AppColors.textMuted,
+                size: 15,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'كل الفنيين المتاحين',
+                style: AppTextStyles.titleMed.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -682,48 +497,36 @@ class _VipTechCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => context.push('/tech/portfolio/${tech.id}'),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 200,
+      child: Container(
+        width: 195,
         decoration: BoxDecoration(
-          color: isTop
-              ? AppColors.gold.withValues(alpha: 0.06)
-              : AppColors.surface1,
-          borderRadius: BorderRadius.circular(20),
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isTop
-                ? AppColors.gold
-                : AppColors.borderSubtle,
+            color: isTop ? AppColors.gold : AppColors.borderSubtle,
             width: isTop ? 1.5 : 1,
           ),
           boxShadow: isTop
               ? [
                   BoxShadow(
-                    color: AppColors.gold.withValues(alpha: 0.18),
-                    blurRadius: 20,
+                    color: AppColors.gold.withValues(alpha: 0.15),
+                    blurRadius: 16,
                     spreadRadius: 0,
                     offset: const Offset(0, 4),
                   ),
                 ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+              : null,
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row: avatar + status
             Row(
               children: [
                 Stack(
                   children: [
                     CircleAvatar(
-                      radius: 26,
+                      radius: 24,
                       backgroundColor: AppColors.surface2,
                       backgroundImage: tech.photoUrl != null
                           ? NetworkImage(tech.photoUrl!)
@@ -731,7 +534,7 @@ class _VipTechCard extends StatelessWidget {
                       child: tech.photoUrl == null
                           ? Text(
                               tech.spec.icon,
-                              style: const TextStyle(fontSize: 22),
+                              style: const TextStyle(fontSize: 20),
                             )
                           : null,
                     ),
@@ -739,17 +542,15 @@ class _VipTechCard extends StatelessWidget {
                       bottom: 0,
                       right: 0,
                       child: Container(
-                        width: 12,
-                        height: 12,
+                        width: 11,
+                        height: 11,
                         decoration: BoxDecoration(
                           color: isAvailable
                               ? AppColors.success
                               : AppColors.warning,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.surface1,
-                            width: 2,
-                          ),
+                          border:
+                              Border.all(color: AppColors.surface1, width: 2),
                         ),
                       ),
                     ),
@@ -778,18 +579,16 @@ class _VipTechCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            // Name
             Text(
               tech.name,
               style: AppTextStyles.titleMed.copyWith(
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 13,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            // Rating + trust
             Row(
               children: [
                 const Icon(Icons.star_rounded, color: AppColors.gold, size: 13),
@@ -803,19 +602,17 @@ class _VipTechCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 1,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     'ثقة $score%',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.gold,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -823,7 +620,6 @@ class _VipTechCard extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            // Book button
             SizedBox(
               width: double.infinity,
               child: AppButton(
@@ -848,7 +644,7 @@ class _VipTechCard extends StatelessWidget {
   }
 }
 
-// ─── Tech List Item (Premium Wide Card) ──────────────────────────────────────
+// ─── Tech List Item ───────────────────────────────────────────────────────────
 class _TechListItem extends ConsumerWidget {
   final Technician tech;
   final ServiceType? service;
@@ -879,7 +675,7 @@ class _TechListItem extends ConsumerWidget {
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.borderSubtle),
           ),
           padding: const EdgeInsets.all(14),
@@ -889,7 +685,7 @@ class _TechListItem extends ConsumerWidget {
               Stack(
                 children: [
                   CircleAvatar(
-                    radius: 32,
+                    radius: 30,
                     backgroundColor: AppColors.surface2,
                     backgroundImage: tech.photoUrl != null
                         ? NetworkImage(tech.photoUrl!)
@@ -897,7 +693,7 @@ class _TechListItem extends ConsumerWidget {
                     child: tech.photoUrl == null
                         ? Text(
                             tech.spec.icon,
-                            style: const TextStyle(fontSize: 26),
+                            style: const TextStyle(fontSize: 24),
                           )
                         : null,
                   ),
@@ -905,8 +701,8 @@ class _TechListItem extends ConsumerWidget {
                     bottom: 0,
                     right: 0,
                     child: Container(
-                      width: 14,
-                      height: 14,
+                      width: 13,
+                      height: 13,
                       decoration: BoxDecoration(
                         color: effectiveAvailable
                             ? AppColors.success
@@ -914,13 +710,14 @@ class _TechListItem extends ConsumerWidget {
                                   ? AppColors.warning
                                   : AppColors.textMuted),
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface1, width: 2),
+                        border:
+                            Border.all(color: AppColors.surface1, width: 2),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               // Info
               Expanded(
                 child: Column(
@@ -933,7 +730,6 @@ class _TechListItem extends ConsumerWidget {
                             tech.name,
                             style: AppTextStyles.titleLarge.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -943,21 +739,17 @@ class _TechListItem extends ConsumerWidget {
                           const Icon(
                             Icons.verified_rounded,
                             color: AppColors.info,
-                            size: 16,
+                            size: 15,
                           ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 5),
-                    // Badges row
+                    const SizedBox(height: 4),
                     Wrap(
-                      spacing: 5,
+                      spacing: 4,
                       runSpacing: 4,
                       children: [
-                        _Badge(
-                          label: tech.rank,
-                          color: tech.rankColor,
-                        ),
+                        _Badge(label: tech.rank, color: tech.rankColor),
                         _Badge(
                           label: '${tech.spec.icon} ${tech.spec.label}',
                           color: AppColors.gold,
@@ -983,7 +775,7 @@ class _TechListItem extends ConsumerWidget {
                         const Icon(
                           Icons.star_rounded,
                           color: AppColors.gold,
-                          size: 15,
+                          size: 14,
                         ),
                         const SizedBox(width: 3),
                         Text(
@@ -992,7 +784,7 @@ class _TechListItem extends ConsumerWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         const Icon(
                           Icons.location_on_rounded,
                           color: AppColors.textMuted,
@@ -1010,7 +802,7 @@ class _TechListItem extends ConsumerWidget {
                   ],
                 ),
               ),
-              // Actions column
+              // Actions
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1028,9 +820,8 @@ class _TechListItem extends ConsumerWidget {
                       size: 20,
                     ),
                   ),
-                  const SizedBox(height: 4),
                   SizedBox(
-                    width: 90,
+                    width: 88,
                     height: 36,
                     child: AppButton(
                       label: isUnavailable
@@ -1068,7 +859,7 @@ class _TechListItem extends ConsumerWidget {
   }
 }
 
-// ─── Small badge chip ─────────────────────────────────────────────────────────
+// ─── Badge ────────────────────────────────────────────────────────────────────
 class _Badge extends StatelessWidget {
   final String label;
   final Color color;
@@ -1096,7 +887,7 @@ class _Badge extends StatelessWidget {
   }
 }
 
-// ─── Smart Match Loading Skeleton ─────────────────────────────────────────────
+// ─── Smart Match Skeleton ─────────────────────────────────────────────────────
 class _SmartMatchSkeleton extends StatelessWidget {
   const _SmartMatchSkeleton();
 
@@ -1110,98 +901,39 @@ class _SmartMatchSkeleton extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 160,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: 200,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 10),
+              Container(
+                width: 160,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: AppColors.surface2,
+                  borderRadius: BorderRadius.circular(6),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 185,
-          child: ListView.separated(
+          height: 180,
+          child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.only(right: 16),
             itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, index) => Container(
-              width: 200,
+              width: 195,
+              margin: const EdgeInsets.only(left: 12),
               decoration: BoxDecoration(
                 color: AppColors.surface1,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: AppColors.borderSubtle),
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: const BoxDecoration(
-                          color: AppColors.surface2,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 120,
-                    height: 13,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 80,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    width: double.infinity,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
