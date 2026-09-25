@@ -21,11 +21,15 @@ final landingStatsProvider = FutureProvider<Map<String, String>>((ref) async {
     // 2. Real completed & total orders count
     final ordersRes = await supabase.from('orders').select('id, status');
     final ordersList = ordersRes as List;
-    final completedCount = ordersList.where((o) => o['status'] == 'completed').length;
+    final completedCount = ordersList
+        .where((o) => o['status'] == 'completed')
+        .length;
     final totalCount = ordersList.length;
 
     // 3. Real average satisfaction rating
-    final ratingRes = await supabase.from('technicians_public').select('rating');
+    final ratingRes = await supabase
+        .from('technicians_public')
+        .select('rating');
     final ratingList = ratingRes as List;
     double avgRating = 4.9;
     if (ratingList.isNotEmpty) {
@@ -42,8 +46,12 @@ final landingStatsProvider = FutureProvider<Map<String, String>>((ref) async {
     }
 
     final realTechDisplay = techCount > 0 ? techCount : 15;
-    final realCompletedDisplay = completedCount > 0 ? completedCount : (totalCount > 0 ? totalCount : 24);
-    final realSatisfactionDisplay = (avgRating / 5.0 * 100).clamp(95.0, 99.9).toStringAsFixed(1);
+    final realCompletedDisplay = completedCount > 0
+        ? completedCount
+        : (totalCount > 0 ? totalCount : 24);
+    final realSatisfactionDisplay = (avgRating / 5.0 * 100)
+        .clamp(95.0, 99.9)
+        .toStringAsFixed(1);
 
     return {
       'techCount': '+$realTechDisplay',
@@ -129,21 +137,26 @@ class _LandingScreenState extends State<LandingScreen> {
                   SizedBox(height: headerTotalHeight),
                   _LandingHero(
                     isMobile: isMobile,
-                    onBookTap: () => _navigateToClientRoute(context, '/request'),
-                    onTechJoinTap: () => _navigateToTechRoute(context, '/tech/register'),
+                    onBookTap: () =>
+                        _navigateToClientRoute(context, '/request'),
+                    onTechJoinTap: () =>
+                        _navigateToTechRoute(context, '/tech/register'),
                   ),
                   _LandingServices(
                     key: _servicesKey,
                     isMobile: isMobile,
-                    onServiceTap: (service) =>
-                        _navigateToClientRoute(context, '/service/${service.name}'),
+                    onServiceTap: (service) => _navigateToClientRoute(
+                      context,
+                      '/service/${service.name}',
+                    ),
                   ),
                   _LandingHowItWorks(key: _howItWorksKey, isMobile: isMobile),
                   _LandingTrustBadges(key: _whyKey, isMobile: isMobile),
                   _LandingTechCTA(
                     key: _techKey,
                     isMobile: isMobile,
-                    onJoinTap: () => _navigateToTechRoute(context, '/tech/register'),
+                    onJoinTap: () =>
+                        _navigateToTechRoute(context, '/tech/register'),
                   ),
                   _LandingFooter(isMobile: isMobile),
                 ],
@@ -385,11 +398,13 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
   Widget build(BuildContext context) {
     final isMobile = widget.isMobile;
     final statsAsync = ref.watch(landingStatsProvider);
-    final statsMap = statsAsync.valueOrNull ?? {
-      'techCount': '+15',
-      'completedCount': '+24',
-      'satisfactionRate': '99.2%',
-    };
+    final statsMap =
+        statsAsync.valueOrNull ??
+        {
+          'techCount': '+15',
+          'completedCount': '+24',
+          'satisfactionRate': '99.2%',
+        };
 
     return Container(
       width: double.infinity,
@@ -447,10 +462,10 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(
-              isMobile ? 20 : 64,
-              isMobile ? 28 : 72,
-              isMobile ? 20 : 64,
-              isMobile ? 32 : 88,
+              isMobile ? 20 : 48,
+              isMobile ? 28 : 40,
+              isMobile ? 20 : 48,
+              isMobile ? 32 : 40,
             ),
             child: Center(
               child: ConstrainedBox(
@@ -496,9 +511,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 20 : 36),
-
-
+                    SizedBox(height: isMobile ? 20 : 24),
 
                     // Title
                     Text(
@@ -512,13 +525,13 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                                   : AppTextStyles.displayLarge)
                               .copyWith(
                                 fontWeight: FontWeight.w900,
-                                height: isMobile ? 1.35 : 1.4,
+                                height: 1.35,
                                 fontSize: isMobile ? 28 : null,
                                 letterSpacing: -0.3,
                               ),
                     ),
 
-                    SizedBox(height: isMobile ? 12 : 20),
+                    SizedBox(height: isMobile ? 12 : 14),
 
                     // One supporting line — keep hero light on mobile
                     ConstrainedBox(
@@ -532,19 +545,20 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                           color: isMobile
                               ? const Color(0xFFE2E8F0)
                               : AppColors.textSecondary,
-                          fontSize: isMobile ? 14.5 : 17,
-                          height: 1.6,
-                          fontWeight:
-                              isMobile ? FontWeight.w500 : FontWeight.w400,
+                          fontSize: isMobile ? 14.5 : 16,
+                          height: 1.55,
+                          fontWeight: isMobile
+                              ? FontWeight.w500
+                              : FontWeight.w400,
                         ),
                       ),
                     ),
 
                     // Desktop-only trust strip (mobile already has badge + subtitle)
                     if (!isMobile) ...[
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       const _HeroTrustStrip(isMobile: false),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 28),
                     ] else
                       const SizedBox(height: 28),
 
@@ -558,7 +572,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                           foregroundColor: const Color(0xFF090D16),
                           padding: EdgeInsets.symmetric(
                             horizontal: isMobile ? 24 : 36,
-                            vertical: isMobile ? 16 : 18,
+                            vertical: 16,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -579,7 +593,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 8 : 12),
+                    SizedBox(height: isMobile ? 8 : 6),
 
                     TextButton(
                       onPressed: widget.onTechJoinTap,
@@ -587,7 +601,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                         foregroundColor: AppColors.gold,
                         padding: EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: isMobile ? 10 : 8,
+                          vertical: isMobile ? 10 : 6,
                         ),
                         minimumSize: Size(0, isMobile ? 44 : 0),
                       ),
@@ -601,7 +615,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 28 : 56),
+                    SizedBox(height: isMobile ? 28 : 28),
 
                     // Stats — compact strip on mobile, full grid on desktop
                     if (isMobile)
@@ -615,8 +629,8 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
-                          vertical: 28,
-                          horizontal: 40,
+                          vertical: 20,
+                          horizontal: 32,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surface1.withValues(alpha: 0.72),
@@ -624,8 +638,8 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                           border: Border.all(color: AppColors.borderSubtle),
                         ),
                         child: Wrap(
-                          spacing: 56,
-                          runSpacing: 24,
+                          spacing: 48,
+                          runSpacing: 16,
                           alignment: WrapAlignment.spaceAround,
                           children: [
                             _StatItem(
@@ -689,19 +703,11 @@ class _MobileStatsStrip extends StatelessWidget {
           Expanded(
             child: _CompactStat(value: techCount, label: 'فني معتمد'),
           ),
-          Container(
-            width: 1,
-            height: 32,
-            color: AppColors.borderSubtle,
-          ),
+          Container(width: 1, height: 32, color: AppColors.borderSubtle),
           Expanded(
             child: _CompactStat(value: completedCount, label: 'خدمة مكتملة'),
           ),
-          Container(
-            width: 1,
-            height: 32,
-            color: AppColors.borderSubtle,
-          ),
+          Container(width: 1, height: 32, color: AppColors.borderSubtle),
           Expanded(
             child: _CompactStat(value: satisfactionRate, label: 'رضا العملاء'),
           ),
@@ -761,26 +767,27 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: AppColors.gold, size: 22),
-        const SizedBox(height: 10),
+        Icon(icon, color: AppColors.gold, size: 20),
+        const SizedBox(height: 6),
         Text(
           value,
           style: AppTextStyles.headlineLarge.copyWith(
             fontWeight: FontWeight.w900,
             color: Colors.white,
-            fontSize: 22,
+            fontSize: 20,
             height: 1.1,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
           style: AppTextStyles.labelLarge.copyWith(
             color: AppColors.textMuted,
             fontSize: 12,
-            height: 1.3,
+            height: 1.25,
           ),
         ),
       ],
@@ -911,30 +918,30 @@ class _ServiceCard extends StatelessWidget {
 
   const _ServiceCard({required this.service, required this.onTap});
 
-  IconData _getServiceVectorIcon(ServiceType service) {
+  String _getServiceImagePath(ServiceType service) {
     switch (service) {
       case ServiceType.plumbing:
-        return Icons.plumbing_rounded;
+        return 'assets/images/screen1.png';
       case ServiceType.electrical:
-        return Icons.bolt_rounded;
+        return 'assets/images/screen2.png';
       case ServiceType.carpentry:
-        return Icons.handyman_rounded;
+        return 'assets/images/screen3.png';
       case ServiceType.ac:
-        return Icons.ac_unit_rounded;
+        return 'assets/images/screen5.png';
       case ServiceType.refrigerators:
-        return Icons.kitchen_rounded;
+        return 'assets/images/screen6.png';
       case ServiceType.washingMachines:
-        return Icons.local_laundry_service_rounded;
+        return 'assets/images/screen7.png';
       case ServiceType.screens:
-        return Icons.tv_rounded;
+        return 'assets/images/screen8.png';
       case ServiceType.stoves:
-        return Icons.local_fire_department_rounded;
+        return 'assets/images/screen9.png';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final iconData = _getServiceVectorIcon(service);
+    final imagePath = _getServiceImagePath(service);
 
     return Material(
       color: Colors.transparent,
@@ -963,7 +970,7 @@ class _ServiceCard extends StatelessWidget {
                         color: AppColors.gold.withValues(alpha: 0.3),
                       ),
                     ),
-                    child: Icon(iconData, color: AppColors.gold, size: 28),
+                    child: Image.asset(imagePath, width: 28, height: 28),
                   ),
                   const Spacer(),
                   Container(
@@ -1490,10 +1497,14 @@ class _LandingFooter extends StatelessWidget {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1877F2).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF1877F2,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFF1877F2).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFF1877F2,
+                            ).withValues(alpha: 0.4),
                           ),
                         ),
                         child: Row(
