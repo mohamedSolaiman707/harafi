@@ -406,8 +406,15 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
           'satisfactionRate': '99.2%',
         };
 
+    final screenHeight = MediaQuery.of(context).size.height;
+    final topInset = MediaQuery.paddingOf(context).top;
+    final headerBodyHeight = isMobile ? 56.0 : 80.0;
+    final headerTotalHeight = headerBodyHeight + topInset;
+    final minHeroHeight = screenHeight - headerTotalHeight;
+
     return Container(
       width: double.infinity,
+      constraints: BoxConstraints(minHeight: minHeroHeight),
       color: AppColors.background,
       child: Stack(
         children: [
@@ -460,18 +467,23 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              isMobile ? 20 : 48,
-              isMobile ? 28 : 40,
-              isMobile ? 20 : 48,
-              isMobile ? 32 : 40,
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
-                child: Column(
-                  children: [
+          IntrinsicHeight(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isMobile ? 20 : 48,
+                isMobile ? 28 : 40,
+                isMobile ? 20 : 48,
+                16,
+              ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 900),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                     // Compact trust badge
                     Container(
                       padding: EdgeInsets.symmetric(
@@ -525,7 +537,7 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                                   : AppTextStyles.displayLarge)
                               .copyWith(
                                 fontWeight: FontWeight.w900,
-                                height: 1.35,
+                                height: 1.5,
                                 fontSize: isMobile ? 28 : null,
                                 letterSpacing: -0.3,
                               ),
@@ -615,58 +627,65 @@ class _LandingHeroState extends ConsumerState<_LandingHero> {
                       ),
                     ),
 
-                    SizedBox(height: isMobile ? 28 : 28),
-
-                    // Stats — compact strip on mobile, full grid on desktop
-                    if (isMobile)
-                      _MobileStatsStrip(
-                        techCount: statsMap['techCount'] ?? '+15',
-                        completedCount: statsMap['completedCount'] ?? '+24',
-                        satisfactionRate:
-                            statsMap['satisfactionRate'] ?? '99.2%',
-                      )
-                    else
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 20,
-                          horizontal: 32,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface1.withValues(alpha: 0.72),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.borderSubtle),
-                        ),
-                        child: Wrap(
-                          spacing: 48,
-                          runSpacing: 16,
-                          alignment: WrapAlignment.spaceAround,
-                          children: [
-                            _StatItem(
-                              icon: Icons.groups_rounded,
-                              value: statsMap['techCount'] ?? '+15',
-                              label: 'فني معتمد ومفحوص',
-                            ),
-                            _StatItem(
-                              icon: Icons.task_alt_rounded,
-                              value: statsMap['completedCount'] ?? '+24',
-                              label: 'خدمة صيانة مكتملة',
-                            ),
-                            _StatItem(
-                              icon: Icons.star_rounded,
-                              value: statsMap['satisfactionRate'] ?? '99.2%',
-                              label: 'نسبة رضا العملاء',
-                            ),
-                            _StatItem(
-                              icon: Icons.shield_rounded,
-                              value: '100%',
-                              label: 'ضمان سلامة وجودة',
-                            ),
                           ],
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                  ),
+
+                  SizedBox(height: isMobile ? 28 : 28),
+
+                  // Stats — compact strip on mobile, full grid on desktop
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: isMobile
+                        ? _MobileStatsStrip(
+                            techCount: statsMap['techCount'] ?? '+15',
+                            completedCount: statsMap['completedCount'] ?? '+24',
+                            satisfactionRate:
+                                statsMap['satisfactionRate'] ?? '99.2%',
+                          )
+                        : Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 20,
+                              horizontal: 32,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface1.withValues(alpha: 0.72),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderSubtle),
+                            ),
+                            child: Wrap(
+                              spacing: 48,
+                              runSpacing: 16,
+                              alignment: WrapAlignment.spaceAround,
+                              children: [
+                                _StatItem(
+                                  icon: Icons.groups_rounded,
+                                  value: statsMap['techCount'] ?? '+15',
+                                  label: 'فني معتمد ومفحوص',
+                                ),
+                                _StatItem(
+                                  icon: Icons.task_alt_rounded,
+                                  value: statsMap['completedCount'] ?? '+24',
+                                  label: 'خدمة صيانة مكتملة',
+                                ),
+                                _StatItem(
+                                  icon: Icons.star_rounded,
+                                  value: statsMap['satisfactionRate'] ?? '99.2%',
+                                  label: 'نسبة رضا العملاء',
+                                ),
+                                _StatItem(
+                                  icon: Icons.shield_rounded,
+                                  value: '100%',
+                                  label: 'ضمان سلامة وجودة',
+                                ),
+                              ],
+                            ),
+                          ),
+                  ),
+                ],
               ),
             ),
           ),
