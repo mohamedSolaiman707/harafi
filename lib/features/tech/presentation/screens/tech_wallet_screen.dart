@@ -464,30 +464,27 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
   }
 
   Future<void> _insertRechargeWithFallback(Map<String, dynamic> data) async {
+    // Clean non-existent table columns upfront so Supabase insert doesn't fail & trigger retry duplicate
+    final cleanData = Map<String, dynamic>.from(data)
+      ..remove('tech_name')
+      ..remove('tech_phone');
+
     final client = Supabase.instance.client.from('wallet_recharges');
     try {
-      await client.insert(data);
-    } on PostgrestException catch (_) {
-      // First fallback: remove redundant tech_name and tech_phone columns
-      final fallback1 = Map<String, dynamic>.from(data)
-        ..remove('tech_name')
-        ..remove('tech_phone');
-      try {
-        await client.insert(fallback1);
-      } on PostgrestException catch (_) {
-        // Second fallback: remove optional payment method fields
-        final fallback2 = Map<String, dynamic>.from(fallback1)
+      await client.insert(cleanData);
+    } on PostgrestException catch (e) {
+      if (e.message.contains('payment_method') || e.message.contains('fawry_ref_code')) {
+        final fallback = Map<String, dynamic>.from(cleanData)
           ..remove('payment_method')
           ..remove('fawry_ref_code');
-        try {
-          await client.insert(fallback2);
-        } on PostgrestException catch (_) {
-          // Third fallback: remove optional phone/receipt fields if legacy DB lacks them
-          final fallback3 = Map<String, dynamic>.from(fallback2)
-            ..remove('sender_phone')
-            ..remove('receipt_url');
-          await client.insert(fallback3);
-        }
+        await client.insert(fallback);
+      } else if (e.message.contains('sender_phone') || e.message.contains('receipt_url')) {
+        final fallback = Map<String, dynamic>.from(cleanData)
+          ..remove('sender_phone')
+          ..remove('receipt_url');
+        await client.insert(fallback);
+      } else {
+        rethrow;
       }
     }
   }
