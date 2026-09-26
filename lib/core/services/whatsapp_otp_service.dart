@@ -37,7 +37,9 @@ class WhatsAppOtpService {
 📍 العنوان: ${order.area}
 🛡️ *طلبك محمّي بضمان صيانة مجاني لمدة 30 يوم ضد أي عيوب تصليح.*
 
-يمكنك متابعة حالة طلبك مباشرة عبر التطبيق باستخدام كود التتبع.
+🔗 يمكنك تتبع حالة طلبك مباشرة عبر الرابط:
+https://harafi.vercel.app/track/${order.trackingCode}
+
 شكراً لثقتك بـ *منصة حرفي* ✨
 ''';
     return await _sendMessage(to: cleanPhone, body: message);

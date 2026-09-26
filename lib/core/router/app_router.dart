@@ -32,7 +32,6 @@ import '../../../features/smart_assistant/presentation/screens/smart_assistant_s
 
 final appRouter = GoRouter(
   initialLocation: kIsWeb ? '/landing' : '/welcome',
-  overridePlatformDefaultLocation: true,
   redirect: (context, state) async {
     final prefs = await SharedPreferences.getInstance();
     final userRole = prefs.getString('user_role');
@@ -43,8 +42,7 @@ final appRouter = GoRouter(
     final isWelcomeRoute = location == '/welcome';
     final isLandingRoute = location == '/landing';
     final isAdminRoute = location.startsWith('/admin');
-    final isPublicClientRoute = location == '/' ||
-        location == '/request' ||
+    final isPublicClientRoute = location == '/request' ||
         location == '/services' ||
         location.startsWith('/service/') ||
         location == '/all-techs' ||
@@ -53,9 +51,14 @@ final appRouter = GoRouter(
         location.startsWith('/track/') ||
         location.startsWith('/tech/portfolio/');
 
-    // 1. السماح للمسارات العامة والعملاء بدون تحويل تعسفي
-    if (isLandingRoute || isPublicClientRoute) {
-      if (userRole == null && isPublicClientRoute) {
+    // 1. للمستخدمين الجدد على الويب الذين يفتحون الرئيسية / مباشرة، وجههم للـ landing
+    if (kIsWeb && location == '/' && userRole == null) {
+      return '/landing';
+    }
+
+    // 2. السماح للمسارات العامة والعملاء بدون تحويل تعسفي
+    if (isLandingRoute || isPublicClientRoute || location == '/') {
+      if (userRole == null) {
         prefs.setString('user_role', 'client');
       }
       return null;
