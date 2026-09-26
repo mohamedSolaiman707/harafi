@@ -174,7 +174,7 @@ class _LandingScreenState extends State<LandingScreen> {
                 onNavHowItWorks: () => _scrollToKey(_howItWorksKey),
                 onNavWhy: () => _scrollToKey(_whyKey),
                 onNavTech: () => _scrollToKey(_techKey),
-                onLoginTap: () => context.push('/login'),
+                onLoginTap: () => context.push('/welcome'),
                 onClientAppTap: () => _navigateToClientRoute(context, '/'),
               ),
             ),

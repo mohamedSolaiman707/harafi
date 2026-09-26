@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../landing/presentation/screens/landing_screen.dart';
 import '../providers/auth_screen_providers.dart';
 
 class RoleSelectionScreen extends ConsumerStatefulWidget {
@@ -521,10 +522,17 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen>
   // ─── Stats & Trust Bar Widget ────────────────────────────────────────────────
 
   Widget _buildStatsTrustBar(bool isDesktop) {
+    final statsAsync = ref.watch(landingStatsProvider);
+    final statsMap = statsAsync.valueOrNull ?? {
+      'techCount': '+15',
+      'completedCount': '+24',
+      'satisfactionRate': '99.2%',
+    };
+
     final stats = [
-      {'val': '+1,500', 'label': 'طلب منجز بنجاح'},
-      {'val': '+150', 'label': 'فني معتمد ومفحوص'},
-      {'val': '99.4%', 'label': 'نسبة رضا العملاء'},
+      {'val': statsMap['completedCount'] ?? '+24', 'label': 'طلب منجز بنجاح'},
+      {'val': statsMap['techCount'] ?? '+15', 'label': 'فني معتمد ومفحوص'},
+      {'val': statsMap['satisfactionRate'] ?? '99.2%', 'label': 'نسبة رضا العملاء'},
       {'val': '30 يوماً', 'label': 'ضمان مجاني معتمد'},
     ];
 

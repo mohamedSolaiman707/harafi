@@ -64,10 +64,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         title: const Text('دخول الإدارة'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () async {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.remove('user_role');
-            if (context.mounted) context.go('/welcome');
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/welcome');
+            }
           },
         ),
       ),
