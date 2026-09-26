@@ -32,7 +32,10 @@ class GeolocationService {
         final region = data['region']?.toString() ?? '';
 
         if (lat != null && lng != null && lat != 0 && lng != 0) {
-          final addressParts = [city, region].where((s) => s.isNotEmpty).join('، ');
+          final addressParts = [
+            city,
+            region,
+          ].where((s) => s.isNotEmpty).join('، ');
           return GeoPosition(
             latitude: lat,
             longitude: lng,
