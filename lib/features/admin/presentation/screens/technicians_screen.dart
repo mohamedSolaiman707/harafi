@@ -15,6 +15,7 @@ import '../../domain/dtos/technician_dtos.dart';
 import '../../domain/enums/service_type.dart';
 import '../../domain/enums/tech_status.dart';
 import '../../domain/models/technician.dart';
+import '../../domain/models/wallet_recharge.dart';
 import '../providers/wallet_recharges_provider.dart';
 import 'package:intl/intl.dart' as intl;
 
@@ -711,6 +712,9 @@ class _PendingWalletRechargesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rechargesAsync = ref.watch(walletRechargesStreamProvider);
+    final techsAsync = ref.watch(techsStreamProvider);
+    final allTechs = techsAsync.value ?? [];
+
     final width = MediaQuery.of(context).size.width;
     final sidePadding = width > 1200 ? AppSpacing.xl : AppSpacing.lg;
 
@@ -753,6 +757,22 @@ class _PendingWalletRechargesSection extends ConsumerWidget {
                   itemCount: pendingList.length,
                   itemBuilder: (context, index) {
                     final item = pendingList[index];
+
+                    // Resolve Tech name if missing from recharge record
+                    Technician? techMatch;
+                    try {
+                      techMatch = allTechs.firstWhere((t) => t.id == item.techId);
+                    } catch (_) {}
+
+                    final displayName = item.techName.isNotEmpty
+                        ? item.techName
+                        : (techMatch?.name ?? 'فني رقم ${item.techId.length > 8 ? item.techId.substring(0, 8) : item.techId}');
+                    final displayPhone = item.techPhone.isNotEmpty
+                        ? item.techPhone
+                        : (techMatch?.phone ?? item.senderPhone);
+
+                    final hasImage = item.receiptUrl.trim().isNotEmpty && item.receiptUrl.startsWith('http');
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.all(12),
@@ -764,18 +784,24 @@ class _PendingWalletRechargesSection extends ConsumerWidget {
                       child: Row(
                         children: [
                           GestureDetector(
-                            onTap: () => _showImageDialog(context, item.receiptUrl),
+                            onTap: () => _showReceiptDetailsDialog(context, item, displayName),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                width: 60,
-                                height: 60,
+                                width: 56,
+                                height: 56,
                                 color: AppColors.surface2,
-                                child: Image.network(
-                                  item.receiptUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (c, e, s) => const Icon(Icons.receipt_outlined, color: AppColors.gold),
-                                ),
+                                child: hasImage
+                                    ? Image.network(
+                                        item.receiptUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (c, e, s) => const Icon(Icons.receipt_outlined, color: AppColors.gold),
+                                      )
+                                    : Icon(
+                                        item.isFawry ? Icons.qr_code_2_rounded : Icons.phone_android_rounded,
+                                        color: AppColors.gold,
+                                        size: 28,
+                                      ),
                               ),
                             ),
                           ),
@@ -784,13 +810,30 @@ class _PendingWalletRechargesSection extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  '${item.techName} (${item.techPhone})',
-                                  style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '$displayName ($displayPhone)',
+                                        style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (item.isFawry)
+                                      Container(
+                                        margin: const EdgeInsets.only(right: 6),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.gold.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text('فوري', style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.bold)),
+                                      ),
+                                  ],
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
-                                  'المبلغ: ${item.amount} ج.م • محفظة المحول: ${item.senderPhone}',
+                                  'المبلغ: ${item.amount} ج.م ${item.isFawry && item.fawryRefCode != null ? "• كود: ${item.fawryRefCode}" : "• المحول: ${item.senderPhone}"}',
                                   style: AppTextStyles.bodyMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
                                 ),
                                 Text(
@@ -813,7 +856,7 @@ class _PendingWalletRechargesSection extends ConsumerWidget {
                                   final res = await ref.read(adminActionsProvider).approveWalletRechargeRequest(item);
                                   res.when(
                                     left: (f) => AppErrorHandler.showSnackBar(context, f.message),
-                                    right: (_) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم اعتماد شحن محفظة ${item.techName} بمبلغ ${item.amount} ج.م ⚡'))),
+                                    right: (_) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم اعتماد شحن محفظة $displayName بمبلغ ${item.amount} ج.م ⚡'))),
                                   );
                                 },
                                 icon: const Icon(Icons.check, size: 16),
@@ -848,25 +891,86 @@ class _PendingWalletRechargesSection extends ConsumerWidget {
     );
   }
 
-  void _showImageDialog(BuildContext context, String url) {
+  void _showReceiptDetailsDialog(BuildContext context, WalletRecharge item, String techName) {
+    final hasImage = item.receiptUrl.trim().isNotEmpty && item.receiptUrl.startsWith('http');
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Stack(
-          alignment: Alignment.topRight,
-          children: [
-            InteractiveViewer(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(url, fit: BoxFit.contain),
-              ),
+        backgroundColor: AppColors.surface1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      item.isFawry ? 'تفاصيل طلب فوري ⚡' : 'تفاصيل شحن فودافون كاش 📱',
+                      style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.textMuted),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (hasImage)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: InteractiveViewer(
+                      child: Image.network(item.receiptUrl, fit: BoxFit.contain),
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          item.isFawry ? Icons.qr_code_2_rounded : Icons.receipt_long_rounded,
+                          size: 48,
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'الفني: $techName',
+                          style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.isFawry
+                              ? 'كود دفع فوري المولد: ${item.fawryRefCode ?? "غير محدد"}'
+                              : 'تحويل مباشر عبر فودافون كاش (بدون إيصال مرفق)',
+                          style: AppTextStyles.bodyLarge.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'رقم محفظة المحول: ${item.senderPhone}',
+                          style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'مبلغ الشحن: ${item.amount} ج.م',
+                          style: AppTextStyles.headlineMed.copyWith(color: AppColors.success, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
-            IconButton(
-              icon: const CircleAvatar(backgroundColor: AppColors.surface3, child: Icon(Icons.close, color: Colors.white)),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+          ),
         ),
       ),
     );

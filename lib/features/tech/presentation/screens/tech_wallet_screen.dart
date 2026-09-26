@@ -493,6 +493,7 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
   }
 
   Future<void> _submitVodafoneCash() async {
+    if (_isLoading) return;
     final amount = int.tryParse(_amountController.text.trim());
     final senderPhone = _senderPhoneController.text.trim();
 
@@ -549,6 +550,7 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
   }
 
   Future<void> _generateFawryPayCode() async {
+    if (_isLoading) return;
     final amount = int.tryParse(_amountController.text.trim());
 
     if (amount == null || amount <= 0) {
