@@ -206,8 +206,8 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
                 _buildEmptyState(
                   isActive
                       ? (tech.status == TechStatus.pending
-                          ? 'حسابك قيد المراجعة والتدقيق حالياً، وسيتم تفعيل إمكانية استقبال الطلبات فور اعتماد أوراقك من الإدارة ⏳'
-                          : 'أنت جاهز لاستقبال الطلبات، سيصلك تنبيه فور طلب عميل بالقرب منك 🟢')
+                            ? 'حسابك قيد المراجعة والتدقيق حالياً، وسيتم تفعيل إمكانية استقبال الطلبات فور اعتماد أوراقك من الإدارة ⏳'
+                            : 'أنت جاهز لاستقبال الطلبات، سيصلك تنبيه فور طلب عميل بالقرب منك 🟢')
                       : 'سجل المهام فارغ',
                   isActive ? Icons.radar_rounded : Icons.history,
                 )
@@ -259,11 +259,14 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (hasNote ? AppColors.error : AppColors.gold).withValues(alpha: 0.2),
+                  color: (hasNote ? AppColors.error : AppColors.gold)
+                      .withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  hasNote ? Icons.info_outline_rounded : Icons.hourglass_top_rounded,
+                  hasNote
+                      ? Icons.info_outline_rounded
+                      : Icons.hourglass_top_rounded,
                   color: hasNote ? AppColors.error : AppColors.gold,
                   size: 22,
                 ),
@@ -275,8 +278,8 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
                   children: [
                     Text(
                       hasNote
-                        ? 'ملاحظة من الإدارة – يرجى الاطلاع ⚠️'
-                        : 'حسابك غير مفعل بعد (قيد المراجعة) ⏳',
+                          ? 'ملاحظة من الإدارة – يرجى الاطلاع ⚠️'
+                          : 'حسابك غير مفعل بعد (قيد المراجعة) ⏳',
                       style: AppTextStyles.titleMed.copyWith(
                         fontWeight: FontWeight.bold,
                         color: hasNote ? AppColors.error : AppColors.gold,
@@ -285,14 +288,16 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
                     const SizedBox(height: 2),
                     Text(
                       hasNote
-                        ? tech.adminNote!
-                        : 'يقوم فريق حرفي بمراجعة بياناتك ومستنداتك لضمان الجودة والأمان. يرجى الانتظار حتى يتم الاعتماد وسيصلك إشعار فور التفعيل.',
+                          ? tech.adminNote!
+                          : 'يقوم فريق حرفي بمراجعة بياناتك ومستنداتك لضمان الجودة والأمان. يرجى الانتظار حتى يتم الاعتماد وسيصلك إشعار فور التفعيل.',
                       style: TextStyle(
                         fontSize: 12,
                         color: hasNote
                             ? AppColors.error.withValues(alpha: 0.9)
                             : AppColors.textSecondary,
-                        fontWeight: hasNote ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: hasNote
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -307,29 +312,38 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
               InkWell(
                 onTap: () {
                   final message = hasNote
-                    ? 'السلام عليكم، أنا الفني ${tech.name} أريد الرد على ملاحظة الإدارة برقم ${tech.phone}'
-                    : 'السلام عليكم، أنا الفني ${tech.name} أريد الاستفسار عن حالة تفعيل حسابي برقم ${tech.phone}';
+                      ? 'السلام عليكم، أنا الفني ${tech.name} أريد الرد على ملاحظة الإدارة برقم ${tech.phone}'
+                      : 'السلام عليكم، أنا الفني ${tech.name} أريد الاستفسار عن حالة تفعيل حسابي برقم ${tech.phone}';
                   launchUrl(
                     WhatsAppUtils.buildUri('201014250577', message),
                     mode: LaunchMode.externalApplication,
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.success.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.chat_rounded, color: AppColors.success, size: 16),
+                      const Icon(
+                        Icons.chat_rounded,
+                        color: AppColors.success,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         hasNote
-                          ? 'الرد على الإدارة 💬'
-                          : 'تواصل مع الإدارة للتفعيل السريع 💬',
+                            ? 'الرد على الإدارة 💬'
+                            : 'تواصل مع الإدارة للتفعيل السريع 💬',
                         style: const TextStyle(
                           color: AppColors.success,
                           fontSize: 12,
@@ -358,7 +372,11 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.error,
+            size: 24,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -453,11 +471,7 @@ class _TechDashboardScreenState extends ConsumerState<TechDashboardScreen>
               color: AppColors.gold.withOpacity(0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 56,
-              color: AppColors.gold,
-            ),
+            child: Icon(icon, size: 56, color: AppColors.gold),
           ),
           const SizedBox(height: 16),
           Padding(
@@ -567,7 +581,10 @@ class _QuickStatItem extends StatelessWidget {
               InkWell(
                 onTap: onAction,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -906,8 +923,6 @@ class _NewTechOnboarding extends StatelessWidget {
   }
 }
 
-
-
 class _TechStatusCard extends ConsumerWidget {
   final Technician tech;
   const _TechStatusCard({required this.tech});
@@ -922,8 +937,11 @@ class _TechStatusCard extends ConsumerWidget {
           colors: isPending
               ? [AppColors.gold.withValues(alpha: 0.15), AppColors.surface1]
               : (isAvailable
-                  ? [AppColors.success.withValues(alpha: 0.15), AppColors.surface1]
-                  : [AppColors.surface2, AppColors.surface1]),
+                    ? [
+                        AppColors.success.withValues(alpha: 0.15),
+                        AppColors.surface1,
+                      ]
+                    : [AppColors.surface2, AppColors.surface1]),
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
         ),
@@ -932,8 +950,8 @@ class _TechStatusCard extends ConsumerWidget {
           color: isPending
               ? AppColors.gold.withValues(alpha: 0.4)
               : (isAvailable
-                  ? AppColors.success.withValues(alpha: 0.4)
-                  : AppColors.borderSubtle),
+                    ? AppColors.success.withValues(alpha: 0.4)
+                    : AppColors.borderSubtle),
           width: 1.5,
         ),
         boxShadow: isAvailable
@@ -942,7 +960,7 @@ class _TechStatusCard extends ConsumerWidget {
                   color: AppColors.success.withValues(alpha: 0.1),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
-                )
+                ),
               ]
             : [],
       ),
@@ -954,17 +972,19 @@ class _TechStatusCard extends ConsumerWidget {
               color: isPending
                   ? AppColors.gold.withValues(alpha: 0.2)
                   : (isAvailable
-                      ? AppColors.success.withValues(alpha: 0.2)
-                      : AppColors.surface2),
+                        ? AppColors.success.withValues(alpha: 0.2)
+                        : AppColors.surface2),
               shape: BoxShape.circle,
             ),
             child: Icon(
               isPending
                   ? Icons.hourglass_top_rounded
                   : (isAvailable
-                      ? Icons.sensors_rounded
-                      : Icons.pause_circle_filled_rounded),
-              color: isPending ? AppColors.gold : (isAvailable ? AppColors.success : AppColors.textMuted),
+                        ? Icons.sensors_rounded
+                        : Icons.pause_circle_filled_rounded),
+              color: isPending
+                  ? AppColors.gold
+                  : (isAvailable ? AppColors.success : AppColors.textMuted),
               size: 24,
             ),
           ),
@@ -1015,11 +1035,15 @@ class _TechStatusCard extends ConsumerWidget {
                   isPending
                       ? 'حسابك غير مفعل بعد (قيد المراجعة) ⏳'
                       : (isAvailable
-                          ? 'أنت متاح الآن لاستقبال طلبات العملاء 🟢'
-                          : 'أنت في وضع الاستراحة 🔴'),
+                            ? 'أنت متاح الآن لاستقبال طلبات العملاء 🟢'
+                            : 'أنت في وضع الاستراحة 🔴'),
                   style: TextStyle(
                     fontSize: 12,
-                    color: isPending ? AppColors.gold : (isAvailable ? AppColors.success : AppColors.textMuted),
+                    color: isPending
+                        ? AppColors.gold
+                        : (isAvailable
+                              ? AppColors.success
+                              : AppColors.textMuted),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1039,7 +1063,10 @@ class _TechStatusCard extends ConsumerWidget {
                           backgroundColor: AppColors.gold,
                           content: Text(
                             'حسابك قيد المراجعة حالياً، وسيتم تفعيل إمكانية استقبال الطلبات فور موافقة الإدارة 🛡️',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       );
@@ -1052,17 +1079,24 @@ class _TechStatusCard extends ConsumerWidget {
                             val ? TechStatus.available : TechStatus.onLeave,
                           );
                       result.when(
-                        left: (f) => AppErrorHandler.showSnackBar(context, f.message),
+                        left: (f) =>
+                            AppErrorHandler.showSnackBar(context, f.message),
                         right: (ut) {
-                          ref.read(currentTechnicianProvider.notifier).updateTech(ut);
+                          ref
+                              .read(currentTechnicianProvider.notifier)
+                              .updateTech(ut);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: val ? AppColors.success : AppColors.surface2,
+                              backgroundColor: val
+                                  ? AppColors.success
+                                  : AppColors.surface2,
                               content: Text(
                                 val
                                     ? 'أنت متاح الآن لاستقبال الطلبات 🚀'
                                     : 'أنت الآن في وضع الاستراحة 😴',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           );
@@ -1200,7 +1234,7 @@ class _TechOrderCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 3),
                         Text(
-                          order.area ?? 'كفر الزيات',
+                          order.area ?? 'عنوان غير محدد',
                           style: AppTextStyles.bodyMed.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -1220,10 +1254,14 @@ class _TechOrderCard extends ConsumerWidget {
             children: [
               Expanded(
                 child: AppButton(
-                  label: unreadCount > 0 ? 'تفاصيل الطلب ($unreadCount جديد) 💬' : 'تفاصيل الطلب ⚡',
+                  label: unreadCount > 0
+                      ? 'تفاصيل الطلب ($unreadCount جديد) 💬'
+                      : 'تفاصيل الطلب ⚡',
                   size: ButtonSize.sm,
                   onTap: () {
-                    ref.read(notificationProvider.notifier).clearUnreadForOrder(order.id);
+                    ref
+                        .read(notificationProvider.notifier)
+                        .clearUnreadForOrder(order.id);
                     context.push('/tech/order/${order.id}');
                   },
                 ),
@@ -1241,10 +1279,10 @@ class _TechOrderCard extends ConsumerWidget {
                 color: AppColors.gold,
                 tooltip: 'فتح الموقع في الخريطة',
                 onTap: () => MapUtils.openNavigationToClient(
-                      lat: order.clientLat,
-                      lng: order.clientLng,
-                      address: order.area ?? 'كفر الزيات',
-                    ),
+                  lat: order.clientLat,
+                  lng: order.clientLng,
+                  address: order.area,
+                ),
               ),
               if (order.clientPhone.isNotEmpty) ...[
                 const SizedBox(width: 4),
@@ -1253,7 +1291,8 @@ class _TechOrderCard extends ConsumerWidget {
                   color: AppColors.info,
                   tooltip: 'مراسلة العميل عبر واتساب',
                   onTap: () {
-                    final message = 'السلام عليكم أ/ ${order.clientName}، مع حضرتك الفني لمتابعة طلب رقم ${order.trackingCode}';
+                    final message =
+                        'السلام عليكم أ/ ${order.clientName}، مع حضرتك الفني لمتابعة طلب رقم ${order.trackingCode}';
                     launchUrl(
                       WhatsAppUtils.buildUri(order.clientPhone, message),
                       mode: LaunchMode.externalApplication,
@@ -1328,4 +1367,3 @@ class _StatusBadge extends StatelessWidget {
     );
   }
 }
-

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
+import '../../features/admin/presentation/providers/orders_provider.dart';
 import '../providers/notification_provider.dart';
 
 class NotificationSheet extends ConsumerWidget {
@@ -106,7 +109,7 @@ class NotificationSheet extends ConsumerWidget {
             child: Icon(
               Icons.notifications_none_rounded, 
               size: 56, 
-              color: AppColors.textMuted.withOpacity(0.4)
+              color: AppColors.textMuted.withValues(alpha: 0.4)
             ),
           ),
           const SizedBox(height: 20),
@@ -136,10 +139,10 @@ class _NotificationItem extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
-        color: n.isRead ? Colors.transparent : AppColors.gold.withOpacity(0.03),
+        color: n.isRead ? Colors.transparent : AppColors.gold.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: n.isRead ? AppColors.borderSubtle : AppColors.gold.withOpacity(0.25),
+          color: n.isRead ? AppColors.borderSubtle : AppColors.gold.withValues(alpha: 0.25),
           width: n.isRead ? 1 : 1.5,
         ),
       ),
@@ -148,7 +151,7 @@ class _NotificationItem extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: n.isRead ? AppColors.surface3 : AppColors.gold.withOpacity(0.1),
+            color: n.isRead ? AppColors.surface3 : AppColors.gold.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -175,7 +178,7 @@ class _NotificationItem extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.access_time_rounded, size: 12, color: AppColors.textMuted),
+                const Icon(Icons.access_time_rounded, size: 12, color: AppColors.textMuted),
                 const SizedBox(width: 4),
                 Text(
                   DateFormat('HH:mm - yyyy/MM/dd').format(n.timestamp),
@@ -195,8 +198,34 @@ class _NotificationItem extends StatelessWidget {
             ),
           ],
         ),
-        onTap: () {
+        onTap: () async {
           ref.read(notificationProvider.notifier).markAsRead(n.id);
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+
+          final orderId = n.orderId;
+          if (orderId != null && orderId.toString().isNotEmpty) {
+            ref.read(notificationProvider.notifier).clearUnreadForOrder(orderId);
+            
+            final prefs = await SharedPreferences.getInstance();
+            final role = prefs.getString('user_role') ?? 'client';
+            if (!context.mounted) return;
+
+            if (role == 'tech') {
+              context.push('/tech/order/$orderId');
+            } else if (role == 'admin') {
+              context.push('/admin/order/$orderId');
+            } else {
+              final orders = ref.read(ordersStreamProvider).valueOrNull ?? [];
+              final order = orders.where((o) => o.id == orderId).firstOrNull;
+              if (order != null) {
+                context.push('/track/${order.trackingCode}');
+              } else {
+                context.push('/my-orders');
+              }
+            }
+          }
         },
       ),
     );

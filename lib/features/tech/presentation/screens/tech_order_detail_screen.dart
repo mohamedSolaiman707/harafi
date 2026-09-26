@@ -260,7 +260,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.location_on_outlined, color: AppColors.textSecondary, size: 18),
               const SizedBox(width: 8),
-              Expanded(child: Text(order.area ?? 'كفر الزيات', style: AppTextStyles.bodyLarge)),
+              Expanded(child: Text(order.area ?? 'عنوان غير محدد', style: AppTextStyles.bodyLarge)),
             ],
           ),
           const Divider(height: AppSpacing.xl),
@@ -296,7 +296,7 @@ class TechOrderDetailScreen extends ConsumerWidget {
             onTap: () => MapUtils.openNavigationToClient(
                   lat: order.clientLat,
                   lng: order.clientLng,
-                  address: order.area ?? 'كفر الزيات',
+                  address: order.area,
                 ),
           ),
         ],

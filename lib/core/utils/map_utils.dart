@@ -6,7 +6,7 @@ class MapUtils {
     double? lat,
     double? lng,
     String? address,
-    String city = 'كفر الزيات',
+    String? city,
   }) async {
     if (lat != null && lng != null && lat != 0 && lng != 0) {
       // توجيه قيادة حي ومباشر بالـ GPS لنقطة المنزل الحقيقية
@@ -17,13 +17,20 @@ class MapUtils {
       }
     }
 
-    // Fallback: البحث بالعنوان والمدينة إذا لم تكن الإحداثيات متاحة
-    final cleanAddress = (address ?? '').trim().isEmpty ? city : '$city $address';
-    return await openMapWithAddress(cleanAddress, city: city);
+    // Fallback: البحث بالعنوان والمدينة الديناميكية إذا لم تكن الإحداثيات متاحة
+    final String cleanQuery = [city, address]
+        .where((s) => s != null && s.trim().isNotEmpty)
+        .join(' ');
+    return await openMapWithAddress(cleanQuery);
   }
 
-  static Future<bool> openMapWithAddress(String address, {String city = 'كفر الزيات'}) async {
-    final query = Uri.encodeComponent('$city $address');
+  static Future<bool> openMapWithAddress(String address, {String? city}) async {
+    final fullQuery = [city, address]
+        .where((s) => s != null && s.trim().isNotEmpty)
+        .join(' ');
+    if (fullQuery.trim().isEmpty) return false;
+
+    final query = Uri.encodeComponent(fullQuery);
     final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$query';
     final uri = Uri.parse(googleMapsUrl);
 

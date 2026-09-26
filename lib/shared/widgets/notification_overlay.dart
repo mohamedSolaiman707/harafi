@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/notification_provider.dart';
 
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/admin/presentation/providers/orders_provider.dart';
+
 class NotificationOverlay extends ConsumerWidget {
   const NotificationOverlay({super.key});
 
@@ -59,10 +63,28 @@ class NotificationOverlay extends ConsumerWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () {
+                      onTap: () async {
                         ref.read(notificationProvider.notifier).clearLatest();
-                        if (latest.orderId != null) {
-                          ref.read(notificationProvider.notifier).clearUnreadForOrder(latest.orderId!);
+                        final orderId = latest.orderId;
+                        if (orderId != null && orderId.isNotEmpty) {
+                          ref.read(notificationProvider.notifier).clearUnreadForOrder(orderId);
+                          final prefs = await SharedPreferences.getInstance();
+                          final role = prefs.getString('user_role') ?? 'client';
+                          if (!context.mounted) return;
+
+                          if (role == 'tech') {
+                            context.push('/tech/order/$orderId');
+                          } else if (role == 'admin') {
+                            context.push('/admin/order/$orderId');
+                          } else {
+                            final orders = ref.read(ordersStreamProvider).valueOrNull ?? [];
+                            final order = orders.where((o) => o.id == orderId).firstOrNull;
+                            if (order != null) {
+                              context.push('/track/${order.trackingCode}');
+                            } else {
+                              context.push('/my-orders');
+                            }
+                          }
                         }
                       },
                       child: Padding(
