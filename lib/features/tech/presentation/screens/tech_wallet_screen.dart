@@ -500,7 +500,15 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      await Supabase.instance.client.from('wallet_recharges').insert(rechargeData);
+      try {
+        await Supabase.instance.client.from('wallet_recharges').insert(rechargeData);
+      } on PostgrestException catch (_) {
+        // Fallback: If DB schema doesn't have payment_method column yet
+        final fallbackData = Map<String, dynamic>.from(rechargeData)
+          ..remove('payment_method')
+          ..remove('fawry_ref_code');
+        await Supabase.instance.client.from('wallet_recharges').insert(fallbackData);
+      }
       ref.invalidate(techWalletRechargesStreamProvider(widget.tech.id));
 
       if (mounted) {
@@ -545,7 +553,15 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      await Supabase.instance.client.from('wallet_recharges').insert(rechargeData);
+      try {
+        await Supabase.instance.client.from('wallet_recharges').insert(rechargeData);
+      } on PostgrestException catch (_) {
+        // Fallback: If DB schema doesn't have payment_method/fawry_ref_code columns yet
+        final fallbackData = Map<String, dynamic>.from(rechargeData)
+          ..remove('payment_method')
+          ..remove('fawry_ref_code');
+        await Supabase.instance.client.from('wallet_recharges').insert(fallbackData);
+      }
       ref.invalidate(techWalletRechargesStreamProvider(widget.tech.id));
 
       if (mounted) {
