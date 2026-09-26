@@ -432,6 +432,7 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
   late final TextEditingController _senderPhoneController;
   XFile? _receiptImage;
   bool _isLoading = false;
+  bool _isSubmitting = false;
   String? _generatedFawryCode;
   final _picker = ImagePicker();
 
@@ -464,45 +465,29 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
   }
 
   Future<void> _insertRechargeWithFallback(Map<String, dynamic> data) async {
-    // Clean non-existent table columns upfront so Supabase insert doesn't fail & trigger retry duplicate
     final cleanData = Map<String, dynamic>.from(data)
       ..remove('tech_name')
       ..remove('tech_phone');
 
-    final client = Supabase.instance.client.from('wallet_recharges');
-    try {
-      await client.insert(cleanData);
-    } on PostgrestException catch (e) {
-      if (e.message.contains('payment_method') || e.message.contains('fawry_ref_code')) {
-        final fallback = Map<String, dynamic>.from(cleanData)
-          ..remove('payment_method')
-          ..remove('fawry_ref_code');
-        await client.insert(fallback);
-      } else if (e.message.contains('sender_phone') || e.message.contains('receipt_url')) {
-        final fallback = Map<String, dynamic>.from(cleanData)
-          ..remove('sender_phone')
-          ..remove('receipt_url');
-        await client.insert(fallback);
-      } else {
-        rethrow;
-      }
-    }
+    await Supabase.instance.client.from('wallet_recharges').insert(cleanData);
   }
 
   Future<void> _submitVodafoneCash() async {
-    if (_isLoading) return;
-    final amount = int.tryParse(_amountController.text.trim());
-    final senderPhone = _senderPhoneController.text.trim();
-
-    if (amount == null || amount <= 0 || senderPhone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى إدخال مبلغ الشحن ورقم محفظة المحول')),
-      );
-      return;
-    }
-
+    if (_isSubmitting || _isLoading) return;
+    _isSubmitting = true;
     setState(() => _isLoading = true);
+
     try {
+      final amount = int.tryParse(_amountController.text.trim());
+      final senderPhone = _senderPhoneController.text.trim();
+
+      if (amount == null || amount <= 0 || senderPhone.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى إدخال مبلغ الشحن ورقم محفظة المحول')),
+        );
+        return;
+      }
+
       String receiptUrl = '';
       if (_receiptImage != null) {
         final storageService = StorageService();
@@ -517,8 +502,6 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
 
       final rechargeData = {
         'tech_id': widget.tech.id,
-        'tech_name': widget.tech.name,
-        'tech_phone': widget.tech.phone,
         'amount': amount,
         'sender_phone': senderPhone,
         'receipt_url': receiptUrl,
@@ -542,28 +525,29 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
     } catch (e) {
       if (mounted) AppErrorHandler.showSnackBar(context, e);
     } finally {
+      _isSubmitting = false;
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _generateFawryPayCode() async {
-    if (_isLoading) return;
-    final amount = int.tryParse(_amountController.text.trim());
-
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى إدخال مبلغ الشحن المراد سداده في فوري')),
-      );
-      return;
-    }
-
+    if (_isSubmitting || _isLoading) return;
+    _isSubmitting = true;
     setState(() => _isLoading = true);
+
     try {
+      final amount = int.tryParse(_amountController.text.trim());
+
+      if (amount == null || amount <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('يرجى إدخال مبلغ الشحن المراد سداده في فوري')),
+        );
+        return;
+      }
+
       final code = _generateRandomFawryCode();
       final rechargeData = {
         'tech_id': widget.tech.id,
-        'tech_name': widget.tech.name,
-        'tech_phone': widget.tech.phone,
         'amount': amount,
         'sender_phone': widget.tech.phone,
         'receipt_url': '',
@@ -587,6 +571,8 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
         AppErrorHandler.showSnackBar(context, e);
         setState(() => _isLoading = false);
       }
+    } finally {
+      _isSubmitting = false;
     }
   }
 
