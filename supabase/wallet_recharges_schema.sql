@@ -28,6 +28,7 @@ ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS payment_method text
 ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS fawry_ref_code text;
 ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS is_auto_processed boolean DEFAULT false;
 ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS rejection_reason text;
+ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS approved_at timestamp with time zone;
 
 ALTER TABLE public.wallet_recharges ENABLE ROW LEVEL SECURITY;
 

@@ -387,10 +387,17 @@ class AdminActions {
         },
       );
 
-      await Supabase.instance.client.from('wallet_recharges').update({
-        'status': 'approved',
-        'approved_at': DateTime.now().toIso8601String(),
-      }).eq('id', recharge.id);
+      try {
+        await Supabase.instance.client.from('wallet_recharges').update({
+          'status': 'approved',
+          'approved_at': DateTime.now().toIso8601String(),
+        }).eq('id', recharge.id);
+      } on PostgrestException catch (_) {
+        // Fallback: If DB schema doesn't have approved_at column yet
+        await Supabase.instance.client.from('wallet_recharges').update({
+          'status': 'approved',
+        }).eq('id', recharge.id);
+      }
 
       _ref.invalidate(techsStreamProvider);
       _ref.invalidate(techniciansProvider);
@@ -404,10 +411,17 @@ class AdminActions {
   /// رفض طلب شحن المحفظة مع ذكر السبب
   Future<Either<Failure, void>> rejectWalletRechargeRequest(String rechargeId, {String? reason}) async {
     try {
-      await Supabase.instance.client.from('wallet_recharges').update({
-        'status': 'rejected',
-        'rejection_reason': reason ?? 'تعذر التأكد من صحة إيصال التحويل',
-      }).eq('id', rechargeId);
+      try {
+        await Supabase.instance.client.from('wallet_recharges').update({
+          'status': 'rejected',
+          'rejection_reason': reason ?? 'تعذر التأكد من صحة إيصال التحويل',
+        }).eq('id', rechargeId);
+      } on PostgrestException catch (_) {
+        // Fallback: If DB schema doesn't have rejection_reason column yet
+        await Supabase.instance.client.from('wallet_recharges').update({
+          'status': 'rejected',
+        }).eq('id', rechargeId);
+      }
 
       _ref.invalidate(walletRechargesStreamProvider);
       return const Right(null);
