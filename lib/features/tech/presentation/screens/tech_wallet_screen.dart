@@ -463,6 +463,27 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
     return '$c1$c2$c3';
   }
 
+  Future<void> _insertRechargeWithFallback(Map<String, dynamic> data) async {
+    final client = Supabase.instance.client.from('wallet_recharges');
+    try {
+      await client.insert(data);
+    } on PostgrestException catch (_) {
+      // First fallback: remove optional payment method fields
+      final fallback1 = Map<String, dynamic>.from(data)
+        ..remove('payment_method')
+        ..remove('fawry_ref_code');
+      try {
+        await client.insert(fallback1);
+      } on PostgrestException catch (_) {
+        // Second fallback: remove optional phone/receipt fields if legacy DB lacks them
+        final fallback2 = Map<String, dynamic>.from(fallback1)
+          ..remove('sender_phone')
+          ..remove('receipt_url');
+        await client.insert(fallback2);
+      }
+    }
+  }
+
   Future<void> _submitVodafoneCash() async {
     final amount = int.tryParse(_amountController.text.trim());
     final senderPhone = _senderPhoneController.text.trim();
@@ -500,15 +521,7 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      try {
-        await Supabase.instance.client.from('wallet_recharges').insert(rechargeData);
-      } on PostgrestException catch (_) {
-        // Fallback: If DB schema doesn't have payment_method column yet
-        final fallbackData = Map<String, dynamic>.from(rechargeData)
-          ..remove('payment_method')
-          ..remove('fawry_ref_code');
-        await Supabase.instance.client.from('wallet_recharges').insert(fallbackData);
-      }
+      await _insertRechargeWithFallback(rechargeData);
       ref.invalidate(techWalletRechargesStreamProvider(widget.tech.id));
 
       if (mounted) {
@@ -553,15 +566,7 @@ class _DualRechargeSubmissionSheetState extends ConsumerState<_DualRechargeSubmi
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      try {
-        await Supabase.instance.client.from('wallet_recharges').insert(rechargeData);
-      } on PostgrestException catch (_) {
-        // Fallback: If DB schema doesn't have payment_method/fawry_ref_code columns yet
-        final fallbackData = Map<String, dynamic>.from(rechargeData)
-          ..remove('payment_method')
-          ..remove('fawry_ref_code');
-        await Supabase.instance.client.from('wallet_recharges').insert(fallbackData);
-      }
+      await _insertRechargeWithFallback(rechargeData);
       ref.invalidate(techWalletRechargesStreamProvider(widget.tech.id));
 
       if (mounted) {

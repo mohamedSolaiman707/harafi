@@ -20,9 +20,12 @@ CREATE TABLE IF NOT EXISTS public.wallet_recharges (
 );
 
 -- Ensure Columns exist for existing deployments
+ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS sender_phone text DEFAULT '';
+ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS receipt_url text DEFAULT '';
 ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS payment_method text DEFAULT 'vodafone_cash';
 ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS fawry_ref_code text;
 ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS is_auto_processed boolean DEFAULT false;
+ALTER TABLE public.wallet_recharges ADD COLUMN IF NOT EXISTS rejection_reason text;
 
 ALTER TABLE public.wallet_recharges ENABLE ROW LEVEL SECURITY;
 
