@@ -21,6 +21,7 @@ import '../../../admin/domain/models/order.dart';
 import '../../../admin/domain/enums/order_status.dart';
 import '../../../admin/presentation/providers/order_messages_provider.dart';
 import '../providers/client_screen_providers.dart';
+import '../widgets/embedded_tracking_map.dart';
 
 class TrackScreen extends ConsumerWidget {
   final String code;
@@ -71,6 +72,11 @@ class TrackScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               _StatusCard(status: order.status),
               const SizedBox(height: AppSpacing.xl),
+
+              if (order.clientLat != null && order.clientLat != 0) ...[
+                EmbeddedTrackingMap(order: order),
+                const SizedBox(height: AppSpacing.xl),
+              ],
 
               if (order.status == OrderStatus.completed) ...[
                 _WarrantyBadgeCard(order: order),
