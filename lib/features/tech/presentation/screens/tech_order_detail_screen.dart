@@ -293,7 +293,11 @@ class TechOrderDetailScreen extends ConsumerWidget {
             label: 'التوجه للموقع على الخريطة 🗺️',
             icon: Icons.map_outlined,
             variant: ButtonVariant.ghost,
-            onTap: () => MapUtils.openMapWithAddress(order.area ?? 'كفر الزيات'),
+            onTap: () => MapUtils.openNavigationToClient(
+                  lat: order.clientLat,
+                  lng: order.clientLng,
+                  address: order.area ?? 'كفر الزيات',
+                ),
           ),
         ],
       ),

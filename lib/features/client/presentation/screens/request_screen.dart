@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart' as intl;
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/whatsapp_otp_service.dart';
+import '../../../../core/services/geolocation_service.dart';
 import '../../../../core/utils/error_handler.dart';
 import '../../../../core/providers/location_provider.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -41,6 +42,37 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   String _preferredTimeSlot = '9:00 ص - 12:00 ظ';
   String? _preSelectedTechId;
   bool _isInitialized = false;
+  double? _selectedLat;
+  double? _selectedLng;
+  bool _isDetectingLocation = false;
+
+  Future<void> _getGpsLocation() async {
+    setState(() => _isDetectingLocation = true);
+    try {
+      final pos = await GeolocationService.getCurrentPosition();
+      if (pos != null) {
+        setState(() {
+          _selectedLat = pos.latitude;
+          _selectedLng = pos.longitude;
+          if (pos.address != null && pos.address!.isNotEmpty) {
+            _areaController.text = pos.address!;
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎯 تم لقط موقع بيتك بالـ GPS بنجاح! سينتقل الفني لعنوانك بدقة متناهية.'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) AppErrorHandler.showSnackBar(context, e);
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
+    }
+  }
 
   @override
   void initState() {
@@ -180,6 +212,8 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
         isScheduled: _isScheduled,
         scheduledDate: _isScheduled ? (_scheduledDate ?? DateTime.now().add(const Duration(days: 1))) : null,
         preferredTimeSlot: _isScheduled ? _preferredTimeSlot : null,
+        clientLat: _selectedLat,
+        clientLng: _selectedLng,
         createdAt: DateTime.now(), updatedAt: DateTime.now(),
       );
 
@@ -512,6 +546,25 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
               if (v.trim().length < 5) return 'أدخل عنواناً واضحاً (أكثر من 5 أحرف)';
               return null;
             },
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _selectedLat != null ? AppColors.success : AppColors.gold,
+              side: BorderSide(color: _selectedLat != null ? AppColors.success : AppColors.gold),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            onPressed: _isDetectingLocation ? null : _getGpsLocation,
+            icon: _isDetectingLocation
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(_selectedLat != null ? Icons.my_location : Icons.gps_fixed, size: 18),
+            label: Text(
+              _selectedLat != null
+                  ? 'تم لقـط موقع بيت العميل بالـ GPS 🎯'
+                  : 'التقاط موقع بيتي بالـ GPS لتسهيل وصول الفني 📍',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
           ),
           const SizedBox(height: 16),
           AppTextField(

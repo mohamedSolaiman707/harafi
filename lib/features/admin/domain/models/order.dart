@@ -30,6 +30,11 @@ class Order {
   final bool isScheduled;
   final DateTime? scheduledDate;
   final String? preferredTimeSlot;
+  final double? clientLat;
+  final double? clientLng;
+  final double? techLat;
+  final double? techLng;
+  final DateTime? techLocationUpdatedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -60,6 +65,11 @@ class Order {
     this.isScheduled = false,
     this.scheduledDate,
     this.preferredTimeSlot,
+    this.clientLat,
+    this.clientLng,
+    this.techLat,
+    this.techLng,
+    this.techLocationUpdatedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -132,6 +142,13 @@ class Order {
       isScheduled: json['is_scheduled'] == true || json['is_scheduled'] == 1,
       scheduledDate: json['scheduled_date'] != null ? DateTime.tryParse(json['scheduled_date'].toString()) : null,
       preferredTimeSlot: json['preferred_time_slot']?.toString(),
+      clientLat: (json['client_lat'] as num?)?.toDouble(),
+      clientLng: (json['client_lng'] as num?)?.toDouble(),
+      techLat: (json['tech_lat'] as num?)?.toDouble(),
+      techLng: (json['tech_lng'] as num?)?.toDouble(),
+      techLocationUpdatedAt: json['tech_location_updated_at'] != null
+          ? DateTime.tryParse(json['tech_location_updated_at'].toString())
+          : null,
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
@@ -164,6 +181,11 @@ class Order {
     if (isScheduled) data['is_scheduled'] = true;
     if (scheduledDate != null) data['scheduled_date'] = scheduledDate?.toIso8601String();
     if (preferredTimeSlot != null) data['preferred_time_slot'] = preferredTimeSlot;
+    if (clientLat != null) data['client_lat'] = clientLat;
+    if (clientLng != null) data['client_lng'] = clientLng;
+    if (techLat != null) data['tech_lat'] = techLat;
+    if (techLng != null) data['tech_lng'] = techLng;
+    if (techLocationUpdatedAt != null) data['tech_location_updated_at'] = techLocationUpdatedAt?.toIso8601String();
 
     return data;
   }
@@ -195,6 +217,11 @@ class Order {
     bool? isScheduled,
     DateTime? scheduledDate,
     String? preferredTimeSlot,
+    double? clientLat,
+    double? clientLng,
+    double? techLat,
+    double? techLng,
+    DateTime? techLocationUpdatedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -225,6 +252,11 @@ class Order {
       isScheduled: isScheduled ?? this.isScheduled,
       scheduledDate: scheduledDate ?? this.scheduledDate,
       preferredTimeSlot: preferredTimeSlot ?? this.preferredTimeSlot,
+      clientLat: clientLat ?? this.clientLat,
+      clientLng: clientLng ?? this.clientLng,
+      techLat: techLat ?? this.techLat,
+      techLng: techLng ?? this.techLng,
+      techLocationUpdatedAt: techLocationUpdatedAt ?? this.techLocationUpdatedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

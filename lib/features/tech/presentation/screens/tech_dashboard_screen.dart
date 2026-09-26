@@ -1240,7 +1240,11 @@ class _TechOrderCard extends ConsumerWidget {
                 icon: Icons.map_rounded,
                 color: AppColors.gold,
                 tooltip: 'فتح الموقع في الخريطة',
-                onTap: () => MapUtils.openMapWithAddress(order.area ?? 'كفر الزيات'),
+                onTap: () => MapUtils.openNavigationToClient(
+                      lat: order.clientLat,
+                      lng: order.clientLng,
+                      address: order.area ?? 'كفر الزيات',
+                    ),
               ),
               if (order.clientPhone.isNotEmpty) ...[
                 const SizedBox(width: 4),
