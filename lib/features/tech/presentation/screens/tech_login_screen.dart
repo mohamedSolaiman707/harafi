@@ -119,7 +119,7 @@ class _TechLoginScreenState extends ConsumerState<TechLoginScreen> {
                     const Text('ليس لديك حساب؟'),
                     TextButton(
                       onPressed: () {
-                        context.push('/tech/register', extra: _phoneController.text.trim());
+                        context.go('/tech/register', extra: _phoneController.text.trim());
                       },
                       child: const Text('انضم كفني الآن', style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold)),
                     ),

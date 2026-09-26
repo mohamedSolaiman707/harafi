@@ -520,6 +520,20 @@ class _TechRegisterScreenState extends ConsumerState<TechRegisterScreen> {
               }
             },
           ),
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('لديك حساب بالفعل؟'),
+              TextButton(
+                onPressed: () => context.go('/tech/login'),
+                child: const Text(
+                  'تسجيل الدخول',
+                  style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
