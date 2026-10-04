@@ -262,7 +262,8 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                         ],
                       ),
                       child: const Center(
-                          child: Text('🤖', style: TextStyle(fontSize: 22))),
+                          child: Icon(Icons.auto_awesome_rounded,
+                              color: Colors.black, size: 22)),
                     ),
                     Positioned(
                       right: 1,
@@ -286,7 +287,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('مساعد حرفي الذكي',
+                      Text('مساعد حرفي الذكي (Agent)',
                           style: AppTextStyles.titleLarge
                               .copyWith(fontWeight: FontWeight.bold)),
                       Row(
@@ -300,7 +301,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                             ),
                           ),
                           const SizedBox(width: 5),
-                          Text('متصل • يرد فوراً',
+                          Text('متصل • شبكة الوكلاء الذكية',
                               style: AppTextStyles.labelMed
                                   .copyWith(color: AppColors.textMuted)),
                         ],
@@ -373,7 +374,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                   },
                 ),
                 const SizedBox(width: 10),
-                Text('يحلل ويفكر...',
+                Text('الـ Agent يحلل البيانات...',
                     style: AppTextStyles.labelMed
                         .copyWith(color: AppColors.textMuted)),
               ],
@@ -398,8 +399,12 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
         ],
       ),
       child: Center(
-          child: Text('🤖',
-              style: TextStyle(fontSize: size * 0.5))),
+        child: Icon(
+          Icons.psychology_rounded,
+          color: Colors.black,
+          size: size * 0.55,
+        ),
+      ),
     );
   }
 
@@ -725,9 +730,9 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                     color: AppColors.gold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                      child: Text(service?.icon ?? '🛠️',
-                          style: const TextStyle(fontSize: 22))),
+                  child: const Center(
+                      child: Icon(Icons.handyman_rounded,
+                          color: AppColors.gold, size: 22)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -742,7 +747,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                           _urgencyBadge(diagnosis.urgency),
                           const SizedBox(width: 8),
                           Text(
-                            '${(diagnosis.confidence * 100).toStringAsFixed(0)}% دقة',
+                            '${(diagnosis.confidence * 100).toStringAsFixed(0)}% دقة التشخيص',
                             style: AppTextStyles.labelMed
                                 .copyWith(color: AppColors.textMuted),
                           ),
@@ -765,7 +770,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                   Icon(Icons.build_circle_outlined,
                       color: AppColors.gold, size: 18),
                   SizedBox(width: 8),
-                  Text('جرّب بنفسك أولاً (مجاناً) 🛠️',
+                  Text('خطوات الفحص والإصلاح المبدئي',
                       style: TextStyle(
                           color: AppColors.gold,
                           fontWeight: FontWeight.bold,
@@ -920,7 +925,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
           Padding(
             padding: const EdgeInsets.all(14),
             child: AppButton(
-              label: '🚀 اطلب فني ${service?.label ?? "الصيانة"} الآن',
+              label: 'طلب فني ${service?.label ?? "الصيانة"} الآن',
               onTap: () => _navigateToRequest(service, diagnosis.problemSummary),
               icon: Icons.flash_on_rounded,
             ),
@@ -936,15 +941,15 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
     switch (urgency) {
       case 'high':
         color = AppColors.error;
-        label = 'عاجل 🔴';
+        label = 'عاجل';
         break;
       case 'medium':
         color = AppColors.warning;
-        label = 'متوسط 🟡';
+        label = 'متوسط';
         break;
       default:
         color = AppColors.success;
-        label = 'عادي 🟢';
+        label = 'عادي';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
