@@ -261,4 +261,8 @@ class Order {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// كود الأمان وتأكيد الزيارة (OTP) لبدء الخدمة لحماية العميل والفني
+  String get startOtp => (id.hashCode.abs() % 9000 + 1000).toString();
 }
+

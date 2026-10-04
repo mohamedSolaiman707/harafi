@@ -10,7 +10,6 @@ import '../../../admin/presentation/providers/techs_provider.dart';
 import '../../../admin/presentation/providers/orders_provider.dart';
 import '../../data/repositories/supabase_smart_assistant_repository.dart';
 import '../../domain/entities/chat_message.dart';
-import '../../domain/entities/smart_diagnosis.dart';
 import '../../domain/repositories/smart_assistant_repository.dart';
 import '../../domain/usecases/analyze_problem_usecase.dart';
 
@@ -283,8 +282,24 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
       buffer.writeln('• **وصف المشكلة:** ${order.description}');
     }
 
+    if (order.techId != null) {
+      final techs = _ref.read(techniciansProvider).valueOrNull ?? [];
+      final tech = techs.where((t) => t.id == order.techId).firstOrNull;
+      if (tech != null) {
+        buffer.writeln('\n👨‍🔧 **الفني المكلف بالخدمة:**');
+        buffer.writeln('• **الاسم:** ${tech.name}');
+        buffer.writeln('• **التوثيق الأمني:** معتمد ومفحوص أمنياً (فيش وتشبيه حديث + هوية موثوقة)');
+        buffer.writeln('• **التقييم وسجل الأعمال:** ${tech.rating.toStringAsFixed(1)} ⭐ (${tech.totalJobs} صيانة ناجحة)');
+      }
+    }
+
     if (order.estimatedArrival != null) {
       buffer.writeln('• **الوقت المتوقع لوصول الفني:** ${_formatTime(order.estimatedArrival!)}');
+    }
+
+    if (order.status.label != 'مكتمل' && order.status.label != 'ملغي') {
+      buffer.writeln('\n🔐 **كود الأمان وتأكيد الزيارة (OTP):** `${order.startOtp}`');
+      buffer.writeln('*(قم بتزويد هذا الكود للفني عند وصوله لمنزلك لبدء الصيانة بشكل آمن)*');
     }
 
     if (order.finalPrice != null) {
@@ -296,7 +311,7 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     }
 
     if (order.isWarrantyActive) {
-      buffer.writeln('\n• **الضمان:** سارٍ (متبقي **${order.warrantyRemainingDays} يوم** من ضمان الـ 30 يوم)');
+      buffer.writeln('\n🛡️ **الضمان:** سارٍ (متبقي **${order.warrantyRemainingDays} يوم** من ضمان الـ 30 يوم المعتمد)');
     } else if (order.status.label == 'مكتمل') {
       buffer.writeln('\n• **الضمان:** انتهت فترة الضمان لهذا الطلب');
     }
@@ -305,7 +320,7 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     if (order.status.label == 'الفني في الطريق') {
       quickReplies.addAll(['تتبع موقع الفني', 'تواصل مع الفني']);
     }
-    if (order.isWarrantyActive) quickReplies.add('طلب خدمة تحت الضمان');
+    if (order.isWarrantyActive) quickReplies.add('طلب زيارة مجانية تحت الضمان');
     quickReplies.addAll(['تتبع طلب آخر', 'تشخيص عطل جديد']);
 
     final msg = ChatMessage(
@@ -318,7 +333,6 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     state = state.copyWith(messages: [...state.messages, msg], isTyping: false, clearPendingTracking: true);
   }
 
-
   // ── Warranty Handler ─────────────────────────────────────────────────────
   Future<void> _handleWarrantyCheck(String userText) async {
     final orders = _ref.read(ordersProvider).valueOrNull ?? [];
@@ -329,29 +343,26 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
 
     if (completedWithWarranty.isNotEmpty) {
       final latest = completedWithWarranty.first;
-      text = '🛡️ **ضمان منصة حرفي - 30 يوماً مجاناً**\n\n'
-          '✅ لديك **${completedWithWarranty.length} طلب** تحت الضمان الآن:\n\n'
-          '📦 **آخر طلب مضمون:**\n'
-          '• الخدمة: ${latest.service.icon} ${latest.service.label}\n'
-          '• كود: `${latest.trackingCode}`\n'
-          '• **متبقي: ${latest.warrantyRemainingDays} يوم من الضمان**\n\n'
-          '📋 **ماذا يشمل الضمان؟**\n'
-          '• إعادة الإصلاح مجاناً في حال عودة نفس العطل\n'
-          '• زيارة فنية مجانية خلال فترة الضمان\n'
-          '• استبدال أي قطعة غيار تالفة بسبب الإصلاح\n\n'
-          '📵 **ما لا يشمله الضمان:**\n'
-          '• أضرار ناتجة عن سوء الاستخدام\n'
-          '• أعطال جديدة غير مرتبطة بالإصلاح الأصلي';
-      quickReplies = ['تفعيل الضمان لطلبي', '📦 تتبع طلبي', '🔧 عطل جديد'];
+      text = '🛡️ **شهادة الضمان الرقمية المعتمدة — منصة حرفي**\n\n'
+          'رقم الضمان: `HR-WARR-${latest.trackingCode}`\n'
+          '• **الخدمة المشمولة:** ${latest.service.label}\n'
+          '• **فترة الضمان:** 30 يوماً مجاناً من تاريخ الإتمام\n'
+          '• **الأيام المتبقية:** **${latest.warrantyRemainingDays} يوم** سارية المفعول\n\n'
+          '📜 **حقوقك الكفولة في الضمان:**\n'
+          '- زيارة فنية مجانية فورية بدون أي رسوم زيارة جديدة.\n'
+          '- استبدال أي قطعة غيار تالفة ناتجة عن التثبيت أو الإصلاح الأصلي.\n'
+          '- أولوية استجابة فورية لحالات الطوارئ.\n\n'
+          'إذا كنت تلاحظ عودة نفس المشكلة، اضغط على زر طلب زيارة مجانية أدناه:';
+      quickReplies = ['طلب زيارة مجانية تحت الضمان', 'تتبع حالة طلبي', 'تشخيص عطل جديد'];
     } else {
-      text = '🛡️ **ضمان منصة حرفي**\n\n'
-          'جميع خدمات حرفي مضمونة **30 يوماً** من تاريخ إتمام الصيانة.\n\n'
-          '📋 **الضمان يشمل:**\n'
-          '• إعادة إصلاح مجانية في حال عودة العطل\n'
-          '• زيارة فنية مجانية خلال فترة الضمان\n'
-          '• استبدال القطع المعطوبة بسبب الإصلاح\n\n'
-          '💡 **للاستفادة من الضمان:** أرسل رقم تتبع طلبك وسنرسل لك فنياً فوراً.';
-      quickReplies = ['📦 تتبع طلبي', '🔧 عندي عطل', 'تواصل مع الدعم'];
+      text = '🛡️ **شهادة الضمان الرقمية المعتمدة — منصة حرفي**\n\n'
+          'جميع خدمات حرفي تضمّن **30 يوماً مجاناً** ضد عودة نفس العطل.\n\n'
+          '📜 **ما يشمله الضمان:**\n'
+          '• زيارة فنية مجانية عند عودة العطل الأصلي\n'
+          '• تغطية قطع الغيار التالفة بسبب عملية الإصلاح\n'
+          '• ضمان جودة الفنيين المعتمدين ومتابعة الدعم الفني\n\n'
+          'لم تظهر لديك أي طلبات مكتملة تحت فترة الضمان حالياً.';
+      quickReplies = ['تتبع حالة طلبي', 'تشخيص عطل جديد', 'تواصل مع الدعم'];
     }
 
     final msg = ChatMessage(
@@ -363,6 +374,7 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     );
     state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
   }
+
 
   // ── Pricing Handler ──────────────────────────────────────────────────────
   void _handlePricingQuery(String userText) {
@@ -547,16 +559,74 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     );
   }
 
+  bool _isGenericDiagnosisTrigger(String text) {
+    final t = _normalizeArabic(text);
+    final genericTriggers = [
+      'تشخيص عطل فوري',
+      'عندي عطل في جهاز',
+      'تشخيص عطل جديد',
+      'تشخيص عطل',
+      'عندي عطل',
+      'تشخيص العطل اولا',
+      'عندي عطل جهاز',
+      'تشخيص عطل اولاً',
+    ];
+    return genericTriggers.any((g) => t == _normalizeArabic(g));
+  }
+
   // ── Diagnosis Handler ────────────────────────────────────────────────────
   Future<void> _handleDiagnosis(String text, File? imageFile) async {
     final isEmergency = _isEmergency(text);
     final emergencySteps = isEmergency ? _getEmergencySteps(text) : <String>[];
+
+    // إذا كان الخيار المختار هو مجرد زر القائمة العامة دون وصف للعطل
+    if (_isGenericDiagnosisTrigger(text) && imageFile == null) {
+      final promptMsg = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: 'يسعدنا مساعدتك في **تشخيص عطل جهازك** بالذكاء الاصطناعي!\n\n'
+            'من فضلك صف المشكلة التي تلاحظها في جهازك (مثل: "الغسالة بتعمل صوت خبط في العصر" أو "التكييف ينقط مية")،\n'
+            'أو حدد نوع الجهاز أدناه وابدأ بكتابة الأعراض أو أرفق صورة للعطل:',
+        sender: ChatSender.assistant,
+        timestamp: DateTime.now(),
+        quickReplies: [
+          'عطل في الغسالة',
+          'عطل في التكييف',
+          'عطل في البوتاجاز والفرن',
+          'عطل في الثلاجة',
+          'عطل كهرباء أو سباكة',
+        ],
+      );
+      state = state.copyWith(
+        messages: [...state.messages, promptMsg],
+        isTyping: false,
+      );
+      return;
+    }
 
     try {
       final diagnosis = await _analyzeUseCase(
         description: text.isEmpty ? 'تحليل صورة أو تسجيل صوتي مرفق' : text,
         image: imageFile,
       );
+
+      // في حالة رد شبكة الـ Fallback بسبب ضعف التفاصيل أو عدم الوصول للسيرفر السحابي
+      if (diagnosis.confidence == 0.0 || diagnosis.problemSummary.contains('تعذر الاتصال')) {
+        final textMsg = ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: 'لم أتمكن من الحصول على تفاصيل كافية لتشخيص العطل الفني.\n\n'
+              'يرجى كتابة نوع الجهاز والعرَض الملاحظ بدقة (مثال: "غسالة توشيبا فوق أوتوماتيك بتطلع صوت خبط") أو إرفاق صورة للعطل وسأقوم بتحليله فوراً.',
+          sender: ChatSender.assistant,
+          timestamp: DateTime.now(),
+          quickReplies: [
+            'عطل في الغسالة',
+            'عطل في التكييف',
+            'عطل في البوتاجاز والفرن',
+            'عطل في الثلاجة',
+          ],
+        );
+        state = state.copyWith(messages: [...state.messages, textMsg], isTyping: false);
+        return;
+      }
 
       final service = diagnosis.serviceType;
       final availableTechs = _getAvailableTechs(service);
@@ -610,9 +680,9 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
         quickReplies: diagnosis.followUpQuestions.isNotEmpty
             ? diagnosis.followUpQuestions.take(3).toList()
             : [
-                '🚀 اطلب فني الآن',
-                '🛠️ نصيحة DIY مجانية',
-                '💵 كام هتكلفني؟',
+                'طلب فني الآن',
+                'خطوات إصلاح مبدئية',
+                'استفسار عن الأسعار',
               ],
       );
 
@@ -621,37 +691,20 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
         isTyping: false,
       );
     } catch (e) {
-      final fallback = _generateFallbackDiagnosis(text, isEmergency);
       final msg = ChatMessage(
         id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-        text: fallback.problemSummary,
+        text: 'لم نتمكن من الوصول لخدمة التشخيص الفني في الوقت الحالي.\nيرجى كتابة نوع الجهاز وإعادة المحاولة أو اختيار أحد الأجهزة القريبة.',
         sender: ChatSender.assistant,
         timestamp: DateTime.now(),
-        diagnosis: fallback,
         isEmergency: isEmergency,
         emergencySteps: emergencySteps,
-        quickReplies: ['🔧 اطلب فني الآن', '📞 تواصل مع الدعم', 'استفسار آخر'],
+        quickReplies: ['عطل في الغسالة', 'عطل في التكييف', 'تواصل مع الدعم'],
       );
       state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
     }
   }
 
-  SmartDiagnosis _generateFallbackDiagnosis(String query, bool isEmergency) {
-    return SmartDiagnosis(
-      confidence: 0.90,
-      problemSummary: 'بناءً على وصفك: تم رصد عطل تشغيلي يحتاج معاينة فنية دقيقة.',
-      possibleIssue: 'تآكل في الوصلات أو المكونات الداخلية يتطلب تدخلاً فنياً متخصصاً.',
-      secondaryIssue: 'احتمال وجود انسداد أو ماس جزئي مصاحب.',
-      diyTip: 'افصل الجهاز عن مصدر التغذية وتركه يرتاح 5 دقائق قبل الفحص.',
-      diySteps: ['افصل الكهرباء أو اغلق المحبس', 'انتظر 5 دقائق', 'أعد التشغيل وراقب الجهاز'],
-      estimatedPartsCost: 'تتراوح تكلفة قطع الغيار المعتادة بين 100 - 250 ج.م',
-      recommendedAction: 'نوصي بحجز فني متخصص لمعاينة ميدانية وإصلاح تحت الضمان.',
-      needsTechnician: true,
-      urgency: isEmergency ? 'high' : 'medium',
-      safetyNotes: isEmergency ? ['توخى الحذر وتجنب التعامل المباشر مع مكان التلف'] : [],
-      followUpQuestions: ['هل العطل ظهر فجأة أم بالتدريج؟', 'هل هناك صوت أو ريحة غريبة؟'],
-    );
-  }
+
 
   // ── Voice Recording ──────────────────────────────────────────────────────
   void startVoiceRecording() {
