@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/app_button.dart';
@@ -136,35 +137,9 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
     _scrollToBottom();
   }
 
+  // WIDGET HELPERS
   void _sendQuickReply(String text) {
     ref.read(smartAssistantProvider.notifier).sendMessage(text: text);
-    _scrollToBottom();
-  }
-
-  void _startVoiceRecording() {
-    final notifier = ref.read(smartAssistantProvider.notifier);
-    notifier.startVoiceRecording();
-    _recordingTimer?.cancel();
-    int seconds = 0;
-    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      seconds++;
-      notifier.updateRecordingDuration(seconds);
-      if (seconds >= 10) timer.cancel();
-    });
-  }
-
-  void _stopAndSendVoiceRecording() {
-    _recordingTimer?.cancel();
-    final sampleQueries = [
-      'التكييف بتاعي بيطلع صوت تكتكة ومش بيسقع الغرفة',
-      'عندي تسريب مية في خلاط الحمام',
-      'الغسالة بتعمل صوت عالي جداً في العصر',
-      'فيه ريحة غاز خفيفة قريبة من البوتاجاز',
-      'النور قاطع في شقتي بس',
-    ];
-    final randomQuery =
-        sampleQueries[DateTime.now().second % sampleQueries.length];
-    ref.read(smartAssistantProvider.notifier).stopVoiceRecordingAndSend(randomQuery);
     _scrollToBottom();
   }
 
@@ -214,6 +189,10 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                     },
                   ),
                 ),
+
+                // ─── Retry Banner ───────────────────────────────────────────
+                if (state.lastFailedMessage != null)
+                  _buildRetryBanner(notifier),
 
                 // ─── Image Preview ──────────────────────────────────────────
                 if (_selectedImage != null) _buildImagePreview(),
@@ -467,15 +446,21 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                       // نص المحادثة (Markdown-style)
                       _buildMessageText(msg),
                       const SizedBox(height: 4),
-                      // الوقت
-                      Text(
-                        intl.DateFormat('HH:mm').format(msg.timestamp),
-                        style: TextStyle(
-                          color: msg.isUser
-                              ? Colors.black54
-                              : AppColors.textMuted,
-                          fontSize: 10,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // الوقت
+                          Text(
+                            intl.DateFormat('HH:mm').format(msg.timestamp),
+                            style: TextStyle(
+                              color: msg.isUser
+                                  ? Colors.black54
+                                  : AppColors.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                          if (!msg.isUser) _buildFeedbackRow(msg),
+                        ],
                       ),
                     ],
                   ),
@@ -495,6 +480,10 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
             ],
           ),
 
+          // ✅ Action Button (اتصال / WhatsApp)
+          if (!msg.isUser && msg.contactPhone != null)
+            _buildContactActionButton(msg.contactPhone!),
+
           // 🚨 Emergency Alert
           if (msg.isEmergency && msg.emergencySteps.isNotEmpty)
             _buildEmergencyCard(msg.emergencySteps),
@@ -508,6 +497,44 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
             _buildQuickReplies(msg.quickReplies),
         ],
       ),
+    );
+  }
+
+  Widget _buildFeedbackRow(ChatMessage msg) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () {
+            ref.read(smartAssistantProvider.notifier).submitFeedback(msg.id, 1);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('شكراً لتقييمك! نتطلع لخدمتك بأفضل صورة 💚'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(Icons.thumb_up_alt_outlined, size: 13, color: AppColors.textMuted),
+          ),
+        ),
+        InkWell(
+          onTap: () {
+            ref.read(smartAssistantProvider.notifier).submitFeedback(msg.id, -1);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('شكراً لملاحظتك، نعمل دائماً على تحسين دقة الإجابات 🙏'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(Icons.thumb_down_alt_outlined, size: 13, color: AppColors.textMuted),
+          ),
+        ),
+      ],
     );
   }
 
@@ -971,6 +998,92 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
         color: AppColors.borderSubtle.withValues(alpha: 0.5));
   }
 
+  // ─── Retry Banner ────────────────────────────────────────────────
+  Widget _buildRetryBanner(SmartAssistantNotifier notifier) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, color: AppColors.error, size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'تعذر الاتصال — هل تريد إعادة الإرسال؟',
+              style: TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('إعادة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            onPressed: () => notifier.retryLastMessage(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Contact Action Button ──────────────────────────────────────────────
+  Widget _buildContactActionButton(String phone) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, right: 44, left: 6),
+      child: Row(
+        children: [
+          _contactBtn(
+            icon: Icons.phone_rounded,
+            label: 'اتصال',
+            color: const Color(0xFF22C55E),
+            onTap: () async {
+              final uri = Uri.parse('tel:$phone');
+              // ignore: deprecated_member_use
+              if (await canLaunchUrl(uri)) launchUrl(uri);
+            },
+          ),
+          const SizedBox(width: 10),
+          _contactBtn(
+            icon: Icons.chat_rounded,
+            label: 'WhatsApp',
+            color: const Color(0xFF25D366),
+            onTap: () async {
+              final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+              final uri = Uri.parse('https://wa.me/2$clean');
+              // ignore: deprecated_member_use
+              if (await canLaunchUrl(uri)) launchUrl(uri);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _contactBtn({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── Quick Replies ────────────────────────────────────────────────────────
   Widget _buildQuickReplies(List<String> replies) {
     return Padding(
@@ -1084,7 +1197,7 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
             ),
             icon: const Icon(Icons.send_rounded, size: 18),
             label: const Text('إرسال'),
-            onPressed: _stopAndSendVoiceRecording,
+            onPressed: () => notifier.cancelVoiceRecording(),
           ),
         ],
       ),
@@ -1148,14 +1261,6 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen>
                 onSubmitted: (_) => _sendTextMessage(),
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-
-          // Voice Button
-          _inputIconButton(
-            icon: Icons.mic_rounded,
-            onTap: _startVoiceRecording,
-            color: AppColors.surface2,
           ),
           const SizedBox(width: 6),
 

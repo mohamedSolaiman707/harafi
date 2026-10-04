@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/providers/location_provider.dart';
@@ -25,6 +26,7 @@ final analyzeProblemUseCaseProvider = Provider<AnalyzeProblemUseCase>((ref) {
 
 // ─── State ──────────────────────────────────────────────────────────────────
 class SmartAssistantState {
+  final String? sessionId;
   final bool isLoading;
   final bool isTyping;
   final bool isRecordingVoice;
@@ -32,8 +34,10 @@ class SmartAssistantState {
   final String? error;
   final List<ChatMessage> messages;
   final String? pendingTrackingCode; // للبحث عن طلب معلق
+  final String? lastFailedMessage;   // لزرار إعادة الإرسال
 
   SmartAssistantState({
+    this.sessionId,
     this.isLoading = false,
     this.isTyping = false,
     this.isRecordingVoice = false,
@@ -41,9 +45,11 @@ class SmartAssistantState {
     this.error,
     this.messages = const [],
     this.pendingTrackingCode,
+    this.lastFailedMessage,
   });
 
   SmartAssistantState copyWith({
+    String? sessionId,
     bool? isLoading,
     bool? isTyping,
     bool? isRecordingVoice,
@@ -52,8 +58,11 @@ class SmartAssistantState {
     List<ChatMessage>? messages,
     String? pendingTrackingCode,
     bool clearPendingTracking = false,
+    String? lastFailedMessage,
+    bool clearLastFailed = false,
   }) {
     return SmartAssistantState(
+      sessionId: sessionId ?? this.sessionId,
       isLoading: isLoading ?? this.isLoading,
       isTyping: isTyping ?? this.isTyping,
       isRecordingVoice: isRecordingVoice ?? this.isRecordingVoice,
@@ -61,6 +70,7 @@ class SmartAssistantState {
       error: error,
       messages: messages ?? this.messages,
       pendingTrackingCode: clearPendingTracking ? null : (pendingTrackingCode ?? this.pendingTrackingCode),
+      lastFailedMessage: clearLastFailed ? null : (lastFailedMessage ?? this.lastFailedMessage),
     );
   }
 }
@@ -83,30 +93,49 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
   final Ref _ref;
 
   SmartAssistantNotifier(this._analyzeUseCase, this._ref) : super(SmartAssistantState()) {
+    _initSession();
+  }
+
+  Future<void> _initSession() async {
     _initWelcomeMessage();
+    try {
+      final repo = _ref.read(smartAssistantRepositoryProvider);
+      final sessionId = await repo.getOrCreateActiveSession();
+      if (sessionId != null) {
+        state = state.copyWith(sessionId: sessionId);
+        final history = await repo.loadSessionMessages(sessionId);
+        if (history.isNotEmpty) {
+          state = state.copyWith(messages: history);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error restoring session history: $e');
+    }
   }
 
   // ── Welcome Message ──────────────────────────────────────────────────────
   void _initWelcomeMessage() {
     final location = _ref.read(userLocationProvider);
-    final cityName = location.city.isNotEmpty ? location.city : 'كفر الزيات';
+    // لا نستخدم قيمة ثابتة — إذا لم تُحدد المدينة بعد نكتفي بعبارة عامة
+    final cityPart = location.city.isNotEmpty ? ' (${location.city})' : '';
 
     final welcomeMsg = ChatMessage(
       id: 'welcome_1',
-      text: 'أهلاً بك في **نظام المساعد الذكي (Agent)** لخدمات الصيانة ($cityName).\n\n'
-          'يمكن للـ Agent تقديم تحليل مباشر واستجابات ديناميكية متصلة بقاعدة البيانات:\n\n'
-          '• **تشخيص أعطال الأجهزة** (غسالات، تكييفات، سباكة، كهرباء) وتحديد القطع والحلول\n'
-          '• **تتبع الطلبات الفعالة** والاستعلام المباشر عن موقع وحالة الفني\n'
-          '• **التحقق من الضمان** وتقديم إرشادات السلامة وتكاليف الصيانة المعتمدة\n\n'
-          'كيف يمكننا مساعدتك الآن؟',
+      text: 'أهلاً بك في **مساعد حرفي الذكي**$cityPart 👋\n\n'
+          'يمكنني مساعدتك في:\n'
+          '• **تشخيص أعطال الأجهزة** بالذكاء الاصطناعي\n'
+          '• **تتبع طلباتك** ومعرفة موقع الفني\n'
+          '• **فحص الضمان** وعرض أسعار الخدمات\n'
+          '• **طلب فني طوارئ** فوري\n\n'
+          'كيف يمكنني مساعدتك الآن؟',
       sender: ChatSender.assistant,
       timestamp: DateTime.now(),
       quickReplies: [
         'تشخيص عطل فوري',
         'تتبع حالة الطلب',
         'فحص ضمان الجهاز',
-        'استفسار عن أسعار الصيانة',
-        'إرشادات الطوارئ',
+        'أسعار الصيانة',
+        'طلب فني طوارئ',
       ],
     );
     state = state.copyWith(messages: [welcomeMsg]);
@@ -390,7 +419,7 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     }
 
     final location = _ref.read(userLocationProvider);
-    final cityName = location.city.isNotEmpty ? location.city : 'كفر الزيات';
+    final cityName = location.city.isNotEmpty ? location.city : 'منطقتك';
     final availableTechs = matchedService != null ? _getAvailableTechs(matchedService) : <Technician>[];
 
     String text;
@@ -405,7 +434,8 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
           '✅ **ضمان الشفافية:** الفني يقدم عرض سعر واضح قبل البدء في الإصلاح\n'
           '🛡️ **ضمان 30 يوم** على جميع الإصلاحات';
     } else {
-      text = '💵 **أسعار خدمات حرفي في $cityName**\n\n'
+      final cityDisplay = cityName != 'منطقتك' ? ' في $cityName' : '';
+      text = '💵 **أسعار خدمات حرفي$cityDisplay**\n\n'
           '${ServiceType.values.map((s) => '${s.icon} **${s.label}**: ${s.priceRange}').join('\n')}\n\n'
           '⚠️ **ملاحظة:** الأسعار تشمل رسوم الزيارة والفحص المبدئي فقط.\n'
           'تكلفة قطع الغيار تُضاف حسب العطل الفعلي.\n\n'
@@ -483,6 +513,136 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     return '$h:$m';
   }
 
+  // ── Special Quick Reply Routing ───────────────────────────────────────────
+  /// Returns true if the message was a special action that was handled directly
+  /// without going through the normal intent detection pipeline.
+  bool _handleSpecialActions(String text) {
+    final t = text.trim();
+
+    // ── "تواصل مع الفني" → نبحث عن الفني المكلف بأحدث طلب نشط ──
+    if (t == 'تواصل مع الفني') {
+      final orders = _ref.read(ordersProvider).valueOrNull ?? [];
+      final activeOrder = orders
+          .where((o) => o.techId != null && o.status.label != 'مكتمل' && o.status.label != 'ملغي')
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (activeOrder.isNotEmpty && activeOrder.first.techId != null) {
+        final techs = _ref.read(techniciansProvider).valueOrNull ?? [];
+        final tech = techs.where((t) => t.id == activeOrder.first.techId).firstOrNull;
+        if (tech != null) {
+          final msg = ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            text: '📞 **التواصل مع الفني**\n\n'
+                '**الفني:** ${tech.name}\n'
+                '**رقم الهاتف:** ${tech.phone}\n\n'
+                'يمكنك الاتصال المباشر أو التواصل عبر WhatsApp بالضغط على الرقم.',
+            sender: ChatSender.assistant,
+            timestamp: DateTime.now(),
+            contactPhone: tech.phone,
+            quickReplies: ['تتبع موقع الفني', 'تتبع حالة الطلب'],
+          );
+          state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+          return true;
+        }
+      }
+      // لا يوجد فني مكلف
+      final msg = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: 'لا يوجد فني مكلف بطلبك حالياً.\nسيتم تعيين فني فور قبول طلبك.',
+        sender: ChatSender.assistant,
+        timestamp: DateTime.now(),
+        quickReplies: ['تتبع حالة الطلب', 'طلب خدمة جديدة'],
+      );
+      state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+      return true;
+    }
+
+    // ── "اتصل بنا الآن" → رقم خدمة العملاء ──
+    if (t == 'اتصل بنا الآن' || t == 'تواصل مع الدعم') {
+      final msg = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: '📞 **خدمة عملاء حرفي**\n\n'
+            'للتواصل المباشر مع فريق الدعم:\n'
+            '• **الهاتف:** 19XXX\n'
+            '• **WhatsApp:** متاح 24/7\n\n'
+            'أو يمكنك وصف مشكلتك هنا وسنتواصل معك في أقرب وقت.',
+        sender: ChatSender.assistant,
+        timestamp: DateTime.now(),
+        contactPhone: '19000', // TODO: استبدل برقم خدمة العملاء الفعلي
+        quickReplies: ['تشخيص عطل', 'تتبع حالة الطلب'],
+      );
+      state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+      return true;
+    }
+
+    // ── "تتبع موقع الفني" → عرض حالة الطلب النشط ──
+    if (t == 'تتبع موقع الفني') {
+      final orders = _ref.read(ordersProvider).valueOrNull ?? [];
+      final activeOrder = orders
+          .where((o) => o.status.label == 'الفني في الطريق')
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      if (activeOrder.isNotEmpty) {
+        _sendOrderStatusMessage(activeOrder.first);
+      } else {
+        final msg = ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: 'لا يوجد فني في الطريق إليك حالياً.\nستتلقى إشعاراً فور تحرك الفني نحوك.',
+          sender: ChatSender.assistant,
+          timestamp: DateTime.now(),
+          quickReplies: ['تتبع حالة الطلب', 'تشخيص عطل جديد'],
+        );
+        state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+      }
+      return true;
+    }
+
+    // ── "طلب فني طوارئ" أو "إرشادات الطوارئ" ──
+    if (t == 'طلب فني طوارئ' || t == 'إرشادات الطوارئ') {
+      final msg = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text: '🚨 **خدمة الطوارئ الفورية**\n\n'
+            'سيتم توجيه طلبك لأقرب فني طوارئ متاح بأولوية قصوى.\n\n'
+            'قبل وصول الفني، صف حالة الطوارئ للحصول على إرشادات السلامة الفورية:',
+        sender: ChatSender.assistant,
+        timestamp: DateTime.now(),
+        isEmergency: true,
+        emergencySteps: [
+          '⚡ كهرباء/ماس → افصل قاطع الكهرباء الرئيسي فوراً',
+          '🔥 حريق → اخرج فوراً واتصل بالإطفاء 180',
+          '💨 تسريب غاز → أغلق المحبس + افتح النوافذ + لا تضغط أي مفتاح',
+          '💧 تسريب مياه → أغلق محبس المياه الرئيسي',
+        ],
+        quickReplies: ['📞 اتصل بنا الآن', 'ماس كهربائي', 'تسريب غاز', 'حريق'],
+      );
+      state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+      return true;
+    }
+
+    // ── "طلب زيارة مجانية تحت الضمان" ──
+    if (t == 'طلب زيارة مجانية تحت الضمان') {
+      final orders = _ref.read(ordersProvider).valueOrNull ?? [];
+      final warrantyOrder = orders.where((o) => o.isWarrantyActive).firstOrNull;
+      if (warrantyOrder != null) {
+        final msg = ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: '🛡️ **تم استلام طلب الضمان**\n\n'
+              'طلبك **${warrantyOrder.trackingCode}** لا يزال ضمن فترة الضمان (**${warrantyOrder.warrantyRemainingDays} يوم** متبقياً).\n\n'
+              'سيتواصل معك الفريق خلال ساعات لتحديد موعد الزيارة المجانية.',
+          sender: ChatSender.assistant,
+          timestamp: DateTime.now(),
+          quickReplies: ['تتبع حالة الطلب', 'تواصل مع الدعم'],
+        );
+        state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Future<void> sendMessage({required String text, File? imageFile, bool isVoice = false}) async {
     final userMsgText = text.trim();
     if (userMsgText.isEmpty && imageFile == null) return;
@@ -500,10 +660,14 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
       messages: [...state.messages, userMessage],
       isTyping: true,
       error: null,
+      clearLastFailed: true,
     );
 
     // تأخير بسيط يشعر بالتفكير
     await Future.delayed(const Duration(milliseconds: 600));
+
+    // أولاً: تحقق من الأزرار الخاصة (تواصل، طوارئ، موقع الفني، ضمان)
+    if (imageFile == null && _handleSpecialActions(userMsgText)) return;
 
     // إذا كان المساعد في انتظار كود التتبع
     if (state.pendingTrackingCode == 'AWAITING_INPUT') {
@@ -613,8 +777,8 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
       if (diagnosis.confidence == 0.0 || diagnosis.problemSummary.contains('تعذر الاتصال')) {
         final textMsg = ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          text: 'لم أتمكن من الحصول على تفاصيل كافية لتشخيص العطل الفني.\n\n'
-              'يرجى كتابة نوع الجهاز والعرَض الملاحظ بدقة (مثال: "غسالة توشيبا فوق أوتوماتيك بتطلع صوت خبط") أو إرفاق صورة للعطل وسأقوم بتحليله فوراً.',
+          text: 'لم أتمكن من الوصول لخدمة التشخيص الذكي الآن.\n\n'
+              'يرجى كتابة نوع الجهاز والأعراض الملاحظة (مثال: "غسالة توشيبا بتطلع صوت خبط") أو إرفاق صورة للعطل.',
           sender: ChatSender.assistant,
           timestamp: DateTime.now(),
           quickReplies: [
@@ -624,14 +788,18 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
             'عطل في الثلاجة',
           ],
         );
-        state = state.copyWith(messages: [...state.messages, textMsg], isTyping: false);
+        state = state.copyWith(
+          messages: [...state.messages, textMsg],
+          isTyping: false,
+          lastFailedMessage: text.isNotEmpty ? text : null,
+        );
         return;
       }
 
       final service = diagnosis.serviceType;
       final availableTechs = _getAvailableTechs(service);
       final location = _ref.read(userLocationProvider);
-      final cityName = location.city.isNotEmpty ? location.city : 'كفر الزيات';
+      final cityName = location.city.isNotEmpty ? location.city : 'منطقتك';
 
       final buffer = StringBuffer();
 
@@ -691,17 +859,30 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
         isTyping: false,
       );
     } catch (e) {
+      debugPrint('Diagnosis error: $e');
       final msg = ChatMessage(
         id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-        text: 'لم نتمكن من الوصول لخدمة التشخيص الفني في الوقت الحالي.\nيرجى كتابة نوع الجهاز وإعادة المحاولة أو اختيار أحد الأجهزة القريبة.',
+        text: 'حدث خطأ في الاتصال بخدمة التشخيص.\nيمكنك إعادة المحاولة أو اختيار نوع الجهاز لمتابعة التشخيص.',
         sender: ChatSender.assistant,
         timestamp: DateTime.now(),
         isEmergency: isEmergency,
         emergencySteps: emergencySteps,
         quickReplies: ['عطل في الغسالة', 'عطل في التكييف', 'تواصل مع الدعم'],
       );
-      state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+      state = state.copyWith(
+        messages: [...state.messages, msg],
+        isTyping: false,
+        lastFailedMessage: text.isNotEmpty ? text : null,
+      );
     }
+  }
+
+  // ── Retry Last Failed Message ─────────────────────────────────────────────
+  void retryLastMessage() {
+    final lastText = state.lastFailedMessage;
+    if (lastText == null || lastText.isEmpty) return;
+    state = state.copyWith(clearLastFailed: true);
+    sendMessage(text: lastText);
   }
 
 
@@ -728,10 +909,20 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     state = SmartAssistantState();
     _initWelcomeMessage();
   }
+
+  // ── Feedback ─────────────────────────────────────────────────────────────
+  Future<void> submitFeedback(String messageId, int rating) async {
+    final msgIdInt = int.tryParse(messageId);
+    if (msgIdInt != null) {
+      final repo = _ref.read(smartAssistantRepositoryProvider);
+      await repo.submitMessageFeedback(messageId: msgIdInt, rating: rating);
+    }
+  }
 }
 
 // ─── Provider ────────────────────────────────────────────────────────────────
-final smartAssistantProvider = StateNotifierProvider.autoDispose<SmartAssistantNotifier, SmartAssistantState>((ref) {
+// لا نستخدم autoDispose حتى تبقى المحادثة عند العودة للشاشة
+final smartAssistantProvider = StateNotifierProvider<SmartAssistantNotifier, SmartAssistantState>((ref) {
   final useCase = ref.watch(analyzeProblemUseCaseProvider);
   return SmartAssistantNotifier(useCase, ref);
 });

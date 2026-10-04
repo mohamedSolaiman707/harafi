@@ -15,6 +15,7 @@ class ChatMessage {
   final bool isEmergency;
   final List<String> emergencySteps;
   final List<String> quickReplies;
+  final String? contactPhone; // لتفعيل زرار الاتصال أو WhatsApp مباشرة
 
   ChatMessage({
     required this.id,
@@ -28,6 +29,7 @@ class ChatMessage {
     this.isEmergency = false,
     this.emergencySteps = const [],
     this.quickReplies = const [],
+    this.contactPhone,
   });
 
   bool get isUser => sender == ChatSender.user;
