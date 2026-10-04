@@ -10,7 +10,7 @@ type AnalyzeRequest = {
 };
 
 type Diagnosis = {
-  analysisSource: "openai" | "fallback";
+  analysisSource: "openai" | "gemini" | "fallback";
   detectedCategory: string;
   categoryNameAr: string;
   confidence: number;
@@ -89,15 +89,7 @@ function safetyLevelFromText(text: string): "low" | "medium" | "high" {
   return "low";
 }
 
-async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is missing");
-  }
-
-  const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
-
-  const systemPrompt = `
+const systemPrompt = `
 أنت مهندس صيانة خبير ومستشار أعطال منزلية في مصر لـ منصة حرفي.
 وظيفتك تقديم تشخيص فني ذكي جداً وعميق يعطي قيمة حقيقية فائقة للعميل.
 
@@ -127,11 +119,63 @@ async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
 }
 `;
 
+async function analyzeWithGemini(request: AnalyzeRequest): Promise<Diagnosis> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing");
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+  const parts: Array<Record<string, unknown>> = [
+    { text: `${systemPrompt}\n\nوصف العميل للعطل: ${request.description || "غير متوفر"}` },
+  ];
+
+  if (request.image_base64) {
+    parts.push({
+      inline_data: {
+        mime_type: `image/${request.image_name?.split(".").pop() ?? "jpeg"}`,
+        data: request.image_base64,
+      },
+    });
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: {
+        response_mime_type: "application/json",
+        temperature: 0.2,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) {
+    throw new Error("Gemini response did not include text");
+  }
+
+  const parsed = JSON.parse(rawText);
+  return formatDiagnosis(parsed, request, "gemini");
+}
+
+async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is missing");
+  }
+
+  const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
+
   const userMessages: Array<Record<string, unknown>> = [
-    {
-      role: "system",
-      content: systemPrompt,
-    },
+    { role: "system", content: systemPrompt },
     {
       role: "user",
       content: [
@@ -175,16 +219,20 @@ async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
   }
 
   const parsed = JSON.parse(content);
-  const confidence = Number(parsed.confidence ?? 0.85);
+  return formatDiagnosis(parsed, request, "openai");
+}
+
+function formatDiagnosis(parsed: Record<string, unknown>, request: AnalyzeRequest, source: "openai" | "gemini"): Diagnosis {
+  const confidence = Number(parsed.confidence ?? 0.88);
   const safetyText = `${parsed.possibleIssue ?? ""} ${parsed.recommendedAction ?? ""} ${request.description ?? ""}`;
 
   return {
-    analysisSource: "openai",
+    analysisSource: source,
     detectedCategory: String(parsed.detectedCategory ?? "electricity"),
-    categoryNameAr: String(parsed.categoryNameAr ?? categoryLabels[parsed.detectedCategory] ?? "فني متخصص"),
+    categoryNameAr: String(parsed.categoryNameAr ?? categoryLabels[String(parsed.detectedCategory)] ?? "فني متخصص"),
     confidence,
     confidenceLevel: ["low", "medium", "high"].includes(String(parsed.confidenceLevel))
-      ? parsed.confidenceLevel
+      ? (parsed.confidenceLevel as "low" | "medium" | "high")
       : confidenceLevelFromScore(confidence),
     problemSummary: String(parsed.problemSummary ?? request.description ?? ""),
     possibleIssue: String(parsed.possibleIssue ?? ""),
@@ -193,9 +241,9 @@ async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
     diyTip: parsed.diyTip ? String(parsed.diyTip) : null,
     estimatedPartsCost: parsed.estimatedPartsCost ? String(parsed.estimatedPartsCost) : null,
     needsTechnician: Boolean(parsed.needsTechnician ?? true),
-    urgency: parsed.urgency === "high" || parsed.urgency === "low" ? parsed.urgency : "normal",
+    urgency: parsed.urgency === "high" || parsed.urgency === "low" ? (parsed.urgency as "high" | "low") : "normal",
     safetyLevel: ["low", "medium", "high"].includes(String(parsed.safetyLevel))
-      ? parsed.safetyLevel
+      ? (parsed.safetyLevel as "low" | "medium" | "high")
       : safetyLevelFromText(safetyText),
     safetyNotes: Array.isArray(parsed.safetyNotes) ? parsed.safetyNotes.map((item: unknown) => String(item)) : [],
     followUpQuestions: Array.isArray(parsed.followUpQuestions)
@@ -221,8 +269,24 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as AnalyzeRequest;
-    const diagnosis = await analyzeWithOpenAI(body);
-    return jsonResponse(diagnosis);
+
+    // حاول أولاً استخدام Gemini API إذا كان المفتاح متوفراً
+    if (Deno.env.get("GEMINI_API_KEY")) {
+      try {
+        const diagnosis = await analyzeWithGemini(body);
+        return jsonResponse(diagnosis);
+      } catch (geminiErr) {
+        console.warn("Gemini agent error, falling back to OpenAI if available:", geminiErr);
+      }
+    }
+
+    // ثم حاول استخدام OpenAI GPT-4o
+    if (Deno.env.get("OPENAI_API_KEY")) {
+      const diagnosis = await analyzeWithOpenAI(body);
+      return jsonResponse(diagnosis);
+    }
+
+    throw new Error("No AI Agent API Key configured (neither GEMINI_API_KEY nor OPENAI_API_KEY is set in Supabase secrets)");
   } catch (error) {
     return jsonResponse(
       {
