@@ -143,8 +143,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: AppSpacing.xl),
 
                       if (query.isEmpty) ...[
-                        _buildSmartAssistantCard(context),
-                        const SizedBox(height: AppSpacing.xl),
                         _TopRatedTechsSection(horizontalPadding: horizontalPadding),
                         const SizedBox(height: AppSpacing.xxl),
                       ],
@@ -235,7 +233,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildSmartAssistantCard(BuildContext context) {
+/*  Widget _buildSmartAssistantCard(BuildContext context) {
     return AppCard(
       onTap: () => context.push('/smart-assistant'),
       padding: EdgeInsets.zero,
@@ -287,7 +285,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
+*/
   Widget _buildAppBar(BuildContext context, UserLocation userLocation) {
     return SliverAppBar(
       floating: true, pinned: true, elevation: 0,
