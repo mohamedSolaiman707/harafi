@@ -10,7 +10,12 @@ class SmartDiagnosis {
   final String? secondaryIssue;
   final String recommendedAction;
   final String? diyTip;
+  final List<String> diySteps;
   final String? estimatedPartsCost;
+  final List<Map<String, String>> partsBreakdown;
+  final String? repairVsReplace;
+  final String intentType; // 'diagnosis', 'order_tracking', 'pricing', 'warranty', 'emergency', 'general_faq'
+  final String? activeOrderSummary;
   final String analysisSource;
   final bool needsTechnician;
   final String urgency;
@@ -28,8 +33,13 @@ class SmartDiagnosis {
     this.secondaryIssue,
     this.recommendedAction = '',
     this.diyTip,
+    this.diySteps = const [],
     this.estimatedPartsCost,
-    this.analysisSource = 'openai',
+    this.partsBreakdown = const [],
+    this.repairVsReplace,
+    this.intentType = 'diagnosis',
+    this.activeOrderSummary,
+    this.analysisSource = 'expert_ai_3.0',
     required this.needsTechnician,
     required this.urgency,
     this.safetyLevel,
@@ -42,12 +52,15 @@ class SmartDiagnosis {
     return ServiceType.values.where((e) {
       final name = e.name.toLowerCase();
       final cat = detectedCategory!.toLowerCase();
-      if (cat == 'electricity') return name == 'electrical';
-      if (cat == 'air_conditioning') return name == 'ac';
-      if (cat == 'washing_machine') return name == 'washingmachines';
-      if (cat == 'refrigerator') return name == 'refrigerators';
-      if (cat == 'stove') return name == 'stoves';
-      if (cat == 'tv') return name == 'screens';
+      if (cat == 'electricity' || cat == 'electrical') return name == 'electrical';
+      if (cat == 'air_conditioning' || cat == 'ac') return name == 'ac';
+      if (cat == 'washing_machine' || cat == 'washingmachines') return name == 'washingmachines';
+      if (cat == 'refrigerator' || cat == 'refrigerators') return name == 'refrigerators';
+      if (cat == 'stove' || cat == 'stoves') return name == 'stoves';
+      if (cat == 'tv' || cat == 'screens') return name == 'screens';
+      if (cat == 'plumbing') return name == 'plumbing';
+      if (cat == 'carpentry') return name == 'carpentry';
+      if (cat == 'water_heater') return name == 'heaters';
       return name == cat;
     }).firstOrNull;
   }
