@@ -126,6 +126,16 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
   _UserIntent _detectIntent(String text) {
     final norm = _normalizeArabic(text);
 
+    // 1. أولاً: فحص ما إذا كان النص مطابقاً أو يحتوي على كود أحد طلبات المستخدم (مثل 85676BE7 أو HR-1001)
+    final rawOrders = _ref.read(ordersProvider).valueOrNull ?? [];
+    for (final o in rawOrders) {
+      final code = o.trackingCode.toLowerCase();
+      final id = o.id.toLowerCase();
+      if ((code.isNotEmpty && norm.contains(code)) || (id.isNotEmpty && norm.contains(id))) {
+        return _UserIntent.orderTracking;
+      }
+    }
+
     // طوارئ أولاً - الأعلى أولوية
     final emergencyKw = ['ماس', 'شرارة', 'شرار', 'كهرباء بتكهرب', 'دخان', 'حريق', 'غاز بيسرب',
       'تسريب غاز', 'انفجار', 'تكهرب', 'شياط', 'بيشتعل', 'نار', 'عندي حريق', 'ريحة غاز', 'طارئة', 'طوارئ'];
@@ -136,6 +146,7 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
       'الفني جه', 'متي بييجي', 'ايمتي', 'طلبي', 'ح يجي', 'لسه', 'حالة الطلب',
       'رقم تتبع', 'tracking', 'بيني وبينه', 'الفني فين', 'hr-'];
     if (trackingKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.orderTracking;
+
 
     // ضمان
     final warrantyKw = ['ضمان', 'warranty', 'كفالة', 'رجع بايظ', 'مش شغال تاني',
