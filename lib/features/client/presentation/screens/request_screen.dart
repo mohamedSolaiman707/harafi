@@ -312,6 +312,7 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 900;
     final selectedService = ref.watch(requestSelectedServiceProvider);
     final isLoading = ref.watch(requestLoadingProvider);
 
@@ -323,62 +324,245 @@ class _RequestScreenState extends ConsumerState<RequestScreen> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
+          constraints: BoxConstraints(maxWidth: isDesktop ? 1160 : 700),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Form(
               key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildOrganicBanner(),
-                  const SizedBox(height: 24),
-
-                  _buildStepHeader('1', 'تأكيد نوع الخدمة'),
-                  const SizedBox(height: 16),
-                  _buildOrganicServiceGrid(width),
-
-                  if (selectedService != null) ...[
-                    const SizedBox(height: 32),
-                    _buildStepHeader(
-                      '👤',
-                      _preSelectedTechId == null
-                          ? 'الفنيين المقترحين'
-                          : 'الفني المختار',
-                    ),
-                    const SizedBox(height: 16),
-                    _buildAvailableTechsList(selectedService),
-                  ],
-
-                  const SizedBox(height: 24),
-                  _buildStepHeader('🕒', 'موعد تقديم الخدمة'),
-                  const SizedBox(height: 16),
-                  _buildSchedulingSection(),
-
-                  const SizedBox(height: 32),
-                  _buildStepHeader('2', 'بيانات التواصل والعنوان'),
-                  const SizedBox(height: 16),
-                  _buildContactForm(),
-
-                  const SizedBox(height: 24),
-                  _buildStepHeader('🎁', 'كوبون الخصم (البرومو كود)'),
-                  const SizedBox(height: 16),
-                  _buildPromoCodeSection(),
-
-                  const SizedBox(height: 40),
-                  AppButton(
-                    label: 'تأكيد وإرسال الطلب',
-                    onTap: _submit,
-                    isLoading: isLoading,
-                    icon: Icons.check_circle_outline,
-                  ),
-                  const SizedBox(height: 40),
-                ],
-              ),
+              child: isDesktop
+                  ? _buildDesktopTwoColumnLayout(selectedService, isLoading, width)
+                  : _buildMobileSingleColumnLayout(selectedService, isLoading, width),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDesktopTwoColumnLayout(
+    ServiceType? selectedService,
+    bool isLoading,
+    double width,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ─── Main Form Steps (Right side in RTL) ───
+        Expanded(
+          flex: 65,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStepHeader('1', 'تأكيد نوع الخدمة'),
+              const SizedBox(height: 16),
+              _buildOrganicServiceGrid(width),
+
+              if (selectedService != null) ...[
+                const SizedBox(height: 28),
+                _buildStepHeader(
+                  '👤',
+                  _preSelectedTechId == null ? 'الفنيين المقترحين' : 'الفني المختار',
+                ),
+                const SizedBox(height: 16),
+                _buildAvailableTechsList(selectedService),
+              ],
+
+              const SizedBox(height: 28),
+              _buildStepHeader('🕒', 'موعد تقديم الخدمة'),
+              const SizedBox(height: 16),
+              _buildSchedulingSection(),
+
+              const SizedBox(height: 28),
+              _buildStepHeader('2', 'بيانات التواصل والعنوان'),
+              const SizedBox(height: 16),
+              _buildContactForm(),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+
+        const SizedBox(width: 32),
+
+        // ─── Sticky Order Summary Sidebar (Left side in RTL) ───
+        Expanded(
+          flex: 35,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildOrganicBanner(),
+              const SizedBox(height: 20),
+              _buildOrderSummaryCard(selectedService),
+              const SizedBox(height: 20),
+              _buildStepHeader('🎁', 'كوبون الخصم'),
+              const SizedBox(height: 12),
+              _buildPromoCodeSection(),
+              const SizedBox(height: 28),
+              AppButton(
+                label: 'تأكيد وإرسال الطلب',
+                onTap: _submit,
+                isLoading: isLoading,
+                icon: Icons.check_circle_outline,
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  '⚡ لا يتم سداد أي مبالغ إلا بعد المعاينة وإتمام العمل',
+                  style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileSingleColumnLayout(
+    ServiceType? selectedService,
+    bool isLoading,
+    double width,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildOrganicBanner(),
+        const SizedBox(height: 24),
+
+        _buildStepHeader('1', 'تأكيد نوع الخدمة'),
+        const SizedBox(height: 16),
+        _buildOrganicServiceGrid(width),
+
+        if (selectedService != null) ...[
+          const SizedBox(height: 32),
+          _buildStepHeader(
+            '👤',
+            _preSelectedTechId == null ? 'الفنيين المقترحين' : 'الفني المختار',
+          ),
+          const SizedBox(height: 16),
+          _buildAvailableTechsList(selectedService),
+        ],
+
+        const SizedBox(height: 24),
+        _buildStepHeader('🕒', 'موعد تقديم الخدمة'),
+        const SizedBox(height: 16),
+        _buildSchedulingSection(),
+
+        const SizedBox(height: 32),
+        _buildStepHeader('2', 'بيانات التواصل والعنوان'),
+        const SizedBox(height: 16),
+        _buildContactForm(),
+
+        const SizedBox(height: 24),
+        _buildStepHeader('🎁', 'كوبون الخصم (البرومو كود)'),
+        const SizedBox(height: 16),
+        _buildPromoCodeSection(),
+
+        const SizedBox(height: 40),
+        AppButton(
+          label: 'تأكيد وإرسال الطلب',
+          onTap: _submit,
+          isLoading: isLoading,
+          icon: Icons.check_circle_outline,
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  Widget _buildOrderSummaryCard(ServiceType? selectedService) {
+    final selectedTech = _preSelectedTechId != null
+        ? ref.watch(techniciansProvider).valueOrNull?.firstWhere(
+              (t) => t.id == _preSelectedTechId,
+              orElse: () => throw Exception('Not found'),
+            )
+        : null;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_rounded, color: AppColors.gold, size: 22),
+              const SizedBox(width: 10),
+              Text(
+                'ملخص تفاصيل الطلب',
+                style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const Divider(height: 24, color: AppColors.borderSubtle),
+          _buildSummaryRow(
+            'الخدمة المختارة:',
+            selectedService != null ? selectedService.label : 'لم يتم التحديد بعد',
+            icon: selectedService?.icon,
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryRow(
+            'الفني المختار:',
+            selectedTech != null ? selectedTech.name : 'أفضل فني متاح في منطقتك',
+          ),
+          const SizedBox(height: 12),
+          _buildSummaryRow(
+            'توقيت الحجز:',
+            _isScheduled
+                ? (_scheduledDate != null
+                    ? '${_scheduledDate!.day}/${_scheduledDate!.month} (${_preferredTimeSlot.isNotEmpty ? _preferredTimeSlot : "أي وقت"})'
+                    : 'مجدول مسبقاً')
+                : 'خدمة فورية الآن ⚡',
+          ),
+          if (_appliedPromo != null) ...[
+            const SizedBox(height: 12),
+            _buildSummaryRow(
+              'كود الخصم:',
+              '${_appliedPromo!.code} (خصم ${_appliedPromo!.discountAmount} ج.م)',
+              textColor: AppColors.success,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, {String? icon, Color? textColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 13),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Text(icon, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              value,
+              style: AppTextStyles.bodyMed.copyWith(
+                fontWeight: FontWeight.bold,
+                color: textColor ?? AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
