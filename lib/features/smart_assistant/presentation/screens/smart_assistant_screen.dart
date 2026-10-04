@@ -146,6 +146,8 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 900;
     final state = ref.watch(smartAssistantProvider);
     final notifier = ref.read(smartAssistantProvider.notifier);
 
@@ -156,104 +158,116 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen> {
         appBar: AppBar(
           backgroundColor: AppColors.surface1,
           elevation: 0,
-          title: Row(
-            children: [
-              Stack(
+          title: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 850),
+              child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [AppColors.gold, Color(0xFFB8860B)]),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 8)],
-                    ),
-                    child: const Center(child: Text('🤖', style: TextStyle(fontSize: 20))),
-                  ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface1, width: 1.5),
+                  Stack(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [AppColors.gold, Color(0xFFB8860B)]),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 8)],
+                        ),
+                        child: const Center(child: Text('🤖', style: TextStyle(fontSize: 20))),
                       ),
-                    ),
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surface1, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('مساعد حرفي الذكي 2.0', style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
+                      Text('متصل • مهندس الصيانة التفاعلي ⚡', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: AppColors.gold),
+                    tooltip: 'بدء محادثة جديدة',
+                    onPressed: () => notifier.reset(),
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('مساعد حرفي الذكي 2.0', style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.bold)),
-                  Text('متصل • مهندس الصيانة التفاعلي ⚡', style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11)),
-                ],
-              ),
-            ],
+            ),
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded, color: AppColors.gold),
-              tooltip: 'بدء محادثة جديدة',
-              onPressed: () => notifier.reset(),
-            ),
-          ],
         ),
-        body: Column(
-          children: [
-            // ─── Chat Messages List ───────────────────────────────────
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                itemCount: state.messages.length + (state.isTyping ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == state.messages.length && state.isTyping) {
-                    return _buildTypingIndicator();
-                  }
-                  final msg = state.messages[index];
-                  final isLast = index == state.messages.length - 1;
-                  return _buildMessageBubble(msg, isLast);
-                },
-              ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 850),
+            child: Column(
+              children: [
+                // ─── Chat Messages List ───────────────────────────────────
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    itemCount: state.messages.length + (state.isTyping ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == state.messages.length && state.isTyping) {
+                        return _buildTypingIndicator();
+                      }
+                      final msg = state.messages[index];
+                      final isLast = index == state.messages.length - 1;
+                      return _buildMessageBubble(msg, isLast);
+                    },
+                  ),
+                ),
+
+                // ─── Selected Image Preview ────────────────────────────────
+                if (_selectedImage != null)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface2,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.gold),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(_selectedImage!, width: 50, height: 50, fit: BoxFit.cover),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Text('صورة مرفقة للتحليل 📷', style: TextStyle(fontWeight: FontWeight.bold))),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: AppColors.error),
+                          onPressed: () => setState(() => _selectedImage = null),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ─── Voice Recording Overlay OR Input Bar ─────────────────
+                if (state.isRecordingVoice)
+                  _buildVoiceRecordingBar(state, notifier)
+                else
+                  _buildInputBar(isDesktop),
+                
+                if (isDesktop) const SizedBox(height: 20),
+              ],
             ),
-
-            // ─── Selected Image Preview ────────────────────────────────
-            if (_selectedImage != null)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.surface2,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.gold),
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(_selectedImage!, width: 50, height: 50, fit: BoxFit.cover),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(child: Text('صورة مرفقة للتحليل 📷', style: TextStyle(fontWeight: FontWeight.bold))),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.error),
-                      onPressed: () => setState(() => _selectedImage = null),
-                    ),
-                  ],
-                ),
-              ),
-
-            // ─── Voice Recording Overlay OR Input Bar ─────────────────
-            if (state.isRecordingVoice)
-              _buildVoiceRecordingBar(state, notifier)
-            else
-              _buildInputBar(),
-          ],
+          ),
         ),
       ),
     );
@@ -571,13 +585,24 @@ class _SmartAssistantScreenState extends ConsumerState<SmartAssistantScreen> {
   }
 
   // ─── Input Bar Widget ──────────────────────────────────────────────
-  Widget _buildInputBar() {
+  Widget _buildInputBar(bool isDesktop) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surface1,
-        border: const Border(top: BorderSide(color: AppColors.borderSubtle, width: 0.8)),
+        borderRadius: isDesktop ? BorderRadius.circular(30) : null,
+        border: isDesktop 
+            ? Border.all(color: AppColors.borderSubtle, width: 1.5)
+            : const Border(top: BorderSide(color: AppColors.borderSubtle, width: 0.8)),
+        boxShadow: isDesktop ? [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          )
+        ] : null,
       ),
+      margin: isDesktop ? const EdgeInsets.all(16) : EdgeInsets.zero,
       child: Row(
         children: [
           IconButton(

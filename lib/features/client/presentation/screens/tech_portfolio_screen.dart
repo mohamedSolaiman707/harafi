@@ -58,31 +58,54 @@ class _PortfolioBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canBook = tech.canAcceptOrders;
-    final reviews = orders.where((o) => o.rating != null && o.rating! > 0).toList();
-
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 900;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
+          constraints: BoxConstraints(maxWidth: isDesktop ? 1100 : 800),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildHeader(),
-              const SizedBox(height: AppSpacing.lg),
-              _buildStatsRow(),
-              const SizedBox(height: AppSpacing.md),
-              _buildTrustBadges(),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.xl),
+              
+              if (isDesktop)
+                _buildDesktopLayout(context)
+              else
+                _buildMobileLayout(context),
+              
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(BuildContext context) {
+    final canBook = tech.canAcceptOrders;
+    final reviews = orders.where((o) => o.rating != null && o.rating! > 0).toList();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ─── Main Content Column (Right) ───
+        Expanded(
+          flex: 6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               _buildBioSection(),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.xl),
               
               if (tech.portfolioImages.isNotEmpty) ...[
                 _buildSectionHeader('سابق أعمالنا'),
                 const SizedBox(height: AppSpacing.md),
                 _buildPortfolioGallery(context),
-                const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.xl),
               ],
 
               _buildSectionHeader('آراء العملاء'),
@@ -95,28 +118,111 @@ class _PortfolioBody extends StatelessWidget {
               else if (reviews.isEmpty)
                 Text('لا توجد تقييمات لهذا الفني بعد.', style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted))
               else
-                ...reviews.take(3).map((r) => _ReviewItem(order: r)),
-              
-              const SizedBox(height: AppSpacing.xl),
-
-              AppButton(
-                label: canBook ? 'أطلب هذا الفني الآن' : 'الفني غير متاح حالياً',
-                icon: canBook ? Icons.build_circle : Icons.timer_off_outlined,
-                variant: canBook ? ButtonVariant.primary : ButtonVariant.ghost,
-                onTap: canBook ? () => context.push('/request', extra: {'service': tech.spec, 'techId': tech.id}) : null,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppButton(
-                label: 'اتصال مباشر بالفني',
-                icon: Icons.phone,
-                variant: ButtonVariant.success,
-                onTap: () => launchUrl(Uri.parse('tel:${tech.phone}')),
-              ),
-              const SizedBox(height: 30),
+                ...reviews.map((r) => _ReviewItem(order: r)),
             ],
           ),
         ),
-      ),
+
+        const SizedBox(width: AppSpacing.xl),
+
+        // ─── Action & Stats Column (Left) ───
+        Expanded(
+          flex: 4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Stats Card
+              AppCard(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  children: [
+                    _buildStatsRow(),
+                    const SizedBox(height: AppSpacing.xl),
+                    _buildTrustBadges(),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: AppSpacing.xl),
+
+              // Booking Card
+              AppCard(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                color: AppColors.surface2,
+                child: Column(
+                  children: [
+                    AppButton(
+                      label: canBook ? 'أطلب هذا الفني الآن' : 'الفني غير متاح حالياً',
+                      icon: canBook ? Icons.build_circle : Icons.timer_off_outlined,
+                      variant: canBook ? ButtonVariant.primary : ButtonVariant.ghost,
+                      onTap: canBook ? () => context.push('/request', extra: {'service': tech.spec, 'techId': tech.id}) : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppButton(
+                      label: 'اتصال مباشر بالفني',
+                      icon: Icons.phone,
+                      variant: ButtonVariant.success,
+                      onTap: () => launchUrl(Uri.parse('tel:${tech.phone}')),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
+    final canBook = tech.canAcceptOrders;
+    final reviews = orders.where((o) => o.rating != null && o.rating! > 0).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildStatsRow(),
+        const SizedBox(height: AppSpacing.md),
+        _buildTrustBadges(),
+        const SizedBox(height: AppSpacing.lg),
+        _buildBioSection(),
+        const SizedBox(height: AppSpacing.lg),
+        
+        if (tech.portfolioImages.isNotEmpty) ...[
+          _buildSectionHeader('سابق أعمالنا'),
+          const SizedBox(height: AppSpacing.md),
+          _buildPortfolioGallery(context),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+
+        _buildSectionHeader('آراء العملاء'),
+        const SizedBox(height: AppSpacing.md),
+        if (isOrdersLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))),
+          )
+        else if (reviews.isEmpty)
+          Text('لا توجد تقييمات لهذا الفني بعد.', style: AppTextStyles.bodyMed.copyWith(color: AppColors.textMuted))
+        else
+          ...reviews.take(3).map((r) => _ReviewItem(order: r)),
+        
+        const SizedBox(height: AppSpacing.xl),
+
+        AppButton(
+          label: canBook ? 'أطلب هذا الفني الآن' : 'الفني غير متاح حالياً',
+          icon: canBook ? Icons.build_circle : Icons.timer_off_outlined,
+          variant: canBook ? ButtonVariant.primary : ButtonVariant.ghost,
+          onTap: canBook ? () => context.push('/request', extra: {'service': tech.spec, 'techId': tech.id}) : null,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppButton(
+          label: 'اتصال مباشر بالفني',
+          icon: Icons.phone,
+          variant: ButtonVariant.success,
+          onTap: () => launchUrl(Uri.parse('tel:${tech.phone}')),
+        ),
+      ],
     );
   }
 
@@ -142,11 +248,11 @@ class _PortfolioBody extends StatelessWidget {
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: tech.rankColor.withOpacity(0.5), width: 2),
+                  border: Border.all(color: tech.rankColor.withValues(alpha: 0.5), width: 2),
                 ),
                 child: CircleAvatar(
                   radius: 45,
-                  backgroundColor: AppColors.gold.withOpacity(0.1),
+                  backgroundColor: AppColors.gold.withValues(alpha: 0.1),
                   backgroundImage: tech.photoUrl != null ? NetworkImage(tech.photoUrl!) : null,
                   child: tech.photoUrl == null 
                       ? const Icon(Icons.person_rounded, size: 48, color: AppColors.textMuted)
@@ -167,7 +273,7 @@ class _PortfolioBody extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: (tech.canAcceptOrders ? tech.rankColor : AppColors.textMuted).withOpacity(0.1),
+            color: (tech.canAcceptOrders ? tech.rankColor : AppColors.textMuted).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -395,9 +501,9 @@ class _TrustBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
