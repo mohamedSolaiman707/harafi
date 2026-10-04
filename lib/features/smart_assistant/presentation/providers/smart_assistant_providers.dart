@@ -113,45 +113,58 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     state = state.copyWith(messages: [welcomeMsg]);
   }
 
+  String _normalizeArabic(String text) {
+    return text.toLowerCase()
+        .replaceAll(RegExp(r'[أإآ]'), 'ا')
+        .replaceAll('ى', 'ي')
+        .replaceAll('ؤ', 'و')
+        .replaceAll('ئ', 'ي')
+        .trim();
+  }
+
   // ── Intent Detection ─────────────────────────────────────────────────────
   _UserIntent _detectIntent(String text) {
-    final t = text.toLowerCase().trim();
+    final norm = _normalizeArabic(text);
 
     // طوارئ أولاً - الأعلى أولوية
-    final emergencyKw = ['ماس', 'شرارة', 'كهرباء بتكهرب', 'دخان', 'حريق', 'غاز بيسرب',
-      'تسريب غاز', 'انفجار', 'تكهرب', 'شياط', 'بيشتعل', 'نار', 'عندي حريق', 'ريحة غاز قوية'];
-    if (emergencyKw.any((k) => t.contains(k))) return _UserIntent.emergencyAlert;
+    final emergencyKw = ['ماس', 'شرارة', 'شرار', 'كهرباء بتكهرب', 'دخان', 'حريق', 'غاز بيسرب',
+      'تسريب غاز', 'انفجار', 'تكهرب', 'شياط', 'بيشتعل', 'نار', 'عندي حريق', 'ريحة غاز', 'طارئة', 'طوارئ'];
+    if (emergencyKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.emergencyAlert;
 
     // تتبع طلب
     final trackingKw = ['طلب', 'تتبع', 'تراكينج', 'كود', 'رقم الطلب', 'وين فنيي',
-      'الفني جه', 'متى بييجي', 'إيمتى', 'طلبي', 'ح يجي', 'لسه', 'حالة الطلب',
-      'رقم تتبع', 'tracking', 'بيني وبينه', 'الفني فين'];
-    if (trackingKw.any((k) => t.contains(k))) return _UserIntent.orderTracking;
+      'الفني جه', 'متي بييجي', 'ايمتي', 'طلبي', 'ح يجي', 'لسه', 'حالة الطلب',
+      'رقم تتبع', 'tracking', 'بيني وبينه', 'الفني فين', 'hr-'];
+    if (trackingKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.orderTracking;
 
     // ضمان
     final warrantyKw = ['ضمان', 'warranty', 'كفالة', 'رجع بايظ', 'مش شغال تاني',
       'نفس المشكلة', 'رجع العطل', 'بايظ تاني', 'المشكلة رجعت'];
-    if (warrantyKw.any((k) => t.contains(k))) return _UserIntent.warrantyCheck;
+    if (warrantyKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.warrantyCheck;
 
     // أسعار
-    final pricingKw = ['سعر', 'كام', 'تكلفة', 'فلوس', 'كم ج', 'بكام', 'الأسعار',
-      'قد إيه', 'تقدير', 'عرض سعر', 'أرخص', 'غالي', 'مجاني', 'رسوم الزيارة'];
-    if (pricingKw.any((k) => t.contains(k))) return _UserIntent.pricingQuery;
+    final pricingKw = ['سعر', 'اسعار', 'أسعار', 'كام', 'تكلفة', 'تكاليف', 'تسعير', 'فلوس', 'كم ج', 'بكام', 'الاسعار',
+      'الأسعار', 'قد ايه', 'قد إيه', 'تقدير', 'عرض سعر', 'ارخص', 'أرخص', 'غالي', 'مجاني', 'رسوم الزيارة', 'رسوم'];
+    if (pricingKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.pricingQuery;
 
     // تحية
-    final greetKw = ['هلو', 'مرحبا', 'السلام', 'أهلاً', 'ازيك', 'عامل إيه', 'صباح', 'مساء'];
-    if (greetKw.any((k) => t.contains(k))) return _UserIntent.greeting;
+    final greetKw = ['هلو', 'مرحبا', 'السلام', 'أهلاً', 'اهلاً', 'ازيك', 'عامل ايه', 'عامل إيه', 'صباح', 'مساء'];
+    if (greetKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.greeting;
 
     // أسئلة عامة
-    final faqKw = ['كيف', 'إزاي', 'ممكن', 'محتاج أعرف', 'تنزيل', 'التطبيق', 'التسجيل',
+    final faqKw = ['كيف', 'إزاي', 'ازاي', 'ممكن', 'محتاج اعرف', 'محتاج أعرف', 'تنزيل', 'التطبيق', 'التسجيل',
       'المنصة', 'حرفي', 'خدمتكم', 'من أنتم', 'شركة'];
-    if (faqKw.any((k) => t.contains(k))) return _UserIntent.generalFaq;
+    if (faqKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.generalFaq;
 
-    // إذا فيه محتوى تشخيصي
-    if (t.length > 10) return _UserIntent.diagnosis;
+    // تشخيص الأعطال
+    final diagnosisKw = ['عطل', 'مشكلة', 'خربان', 'بايظ', 'مش بيسقع', 'مش بيشتغل', 'صوت', 'تسريب', 'تنقيط', 'سخان', 'غسالة', 'تكييف', 'بوتاجاز', 'ثلاجة', 'شاشة', 'كهرباء', 'سباكة'];
+    if (diagnosisKw.any((k) => norm.contains(_normalizeArabic(k)))) return _UserIntent.diagnosis;
+
+    if (norm.length > 15) return _UserIntent.diagnosis;
 
     return _UserIntent.unknown;
   }
+
 
   bool _isEmergency(String text) => _detectIntent(text) == _UserIntent.emergencyAlert;
 
@@ -182,99 +195,107 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
 
   // ── Order Tracking Handler ────────────────────────────────────────────────
   Future<void> _handleOrderTracking(String userText) async {
-    // استخراج كود التتبع أو رقم الهاتف
-    final codeMatch = RegExp(r'[A-Z]{2,3}-\d{4,8}|[A-Za-z0-9]{6,12}').firstMatch(userText);
-    final phoneMatch = RegExp(r'01[0125]\d{8}').firstMatch(userText);
+    final rawOrders = _ref.read(ordersProvider).valueOrNull ?? [];
+    // ترتيب الطلبات من الأحدث إلى الأقدم
+    final sortedOrders = List<Order>.from(rawOrders)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    if (codeMatch == null && phoneMatch == null) {
-      // اطلب من العميل الكود
-      final msg = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: '📦 **تتبع طلبك**\n\n'
-            'من فضلك أرسل **رقم التتبع** الخاص بطلبك (مثال: HR-12345)\n'
-            'أو **رقم هاتفك** المسجل عند تقديم الطلب وهنجيبلك جميع طلباتك فوراً.',
-        sender: ChatSender.assistant,
-        timestamp: DateTime.now(),
-        quickReplies: ['إلغاء', 'عندي سؤال تاني'],
-      );
-      state = state.copyWith(
-        messages: [...state.messages, msg],
-        isTyping: false,
-        pendingTrackingCode: 'AWAITING_INPUT',
-      );
-      return;
-    }
+    // التحقق مما إذا كان النص يحتوي على كود طلب محدد
+    final cleanInput = userText.trim().toLowerCase();
+    Order? matchedOrder;
 
-    final orders = _ref.read(ordersProvider).valueOrNull ?? [];
-    Order? foundOrder;
-
-    if (codeMatch != null) {
-      foundOrder = orders.where((o) =>
-        o.trackingCode.toLowerCase().contains(codeMatch.group(0)!.toLowerCase())).firstOrNull;
-    } else if (phoneMatch != null) {
-      final clientOrders = orders.where((o) => o.clientPhone == phoneMatch.group(0)).toList();
-      if (clientOrders.isNotEmpty) {
-        foundOrder = clientOrders.reduce((a, b) => a.updatedAt.isAfter(b.updatedAt) ? a : b);
+    for (final o in sortedOrders) {
+      if (cleanInput.contains(o.trackingCode.toLowerCase()) ||
+          cleanInput.contains(o.id.toLowerCase())) {
+        matchedOrder = o;
+        break;
       }
     }
 
-    if (foundOrder != null) {
-      _sendOrderStatusMessage(foundOrder);
-    } else {
+    // إذا تم تحديد طلب معين، اعرض تفاصيله مباشرة
+    if (matchedOrder != null) {
+      _sendOrderStatusMessage(matchedOrder);
+      return;
+    }
+
+    // في حالة عدم تزويد كود محدد:
+    if (sortedOrders.isEmpty) {
       final msg = ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: '🔍 **لم أتمكن من العثور على طلب**\n\n'
-            'تأكد من رقم التتبع أو رقم الهاتف وأعد المحاولة.\n\n'
-            '💡 رقم التتبع موجود في رسالة تأكيد الطلب الواتساب أو الـ SMS.',
+        text: 'لا توجد طلبات مسجلة حالياً في حسابك.\nيمكنك تقديم طلب صيانة جديد في أي وقت وسنقوم بمتابعة الفني مباشرة.',
         sender: ChatSender.assistant,
         timestamp: DateTime.now(),
-        quickReplies: ['أرسل كود تاني', '🔧 عندي عطل', 'تواصل مع الدعم'],
+        quickReplies: ['طلب خدمة جديدة', 'تشخيص عطل'],
       );
       state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
+      return;
     }
+
+    // إذا كان يوجد طلب واحد فقط، اعرض تفاصيله تلقائياً دون سؤال العميل!
+    if (sortedOrders.length == 1) {
+      _sendOrderStatusMessage(sortedOrders.first);
+      return;
+    }
+
+    // إذا وجد أكثر من طلب، قم برصف الطلبات مرتبة من الأحدث إلى الأقدم مع إتاحة الضغط بنقرة واحدة
+    final buffer = StringBuffer();
+    buffer.writeln('تم العثور على **${sortedOrders.length} طلبات** مسجلة في حسابك (مرتبة من الأحدث إلى الأقدم):\n');
+
+    for (int i = 0; i < sortedOrders.length; i++) {
+      final o = sortedOrders[i];
+      final isNewestTag = i == 0 ? ' (الأحدث)' : '';
+      buffer.writeln('• **${o.trackingCode}**$isNewestTag — ${o.service.label}');
+      buffer.writeln('  الحالة: **${o.status.label}** | المنطقة: ${o.area ?? "غير محددة"}\n');
+    }
+    buffer.writeln('اضغط على رقم أي طلب أدناه لمعاينة تفاصيله كاملة وموقع الفني مباشرة:');
+
+    final quickReplies = sortedOrders.map((o) => '${o.trackingCode} - ${o.service.label}').toList();
+    quickReplies.add('تشخيص عطل جديد');
+
+    final msg = ChatMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      text: buffer.toString(),
+      sender: ChatSender.assistant,
+      timestamp: DateTime.now(),
+      quickReplies: quickReplies,
+    );
+    state = state.copyWith(messages: [...state.messages, msg], isTyping: false);
   }
 
   void _sendOrderStatusMessage(Order order) {
-    final statusEmoji = {
-      'بانتظار المراجعة': '⏳',
-      'بانتظار موافقة الفني': '📋',
-      'الفني في الطريق': '🚗',
-      'بدأ العمل': '🔧',
-      'مكتمل': '✅',
-      'ملغي': '❌',
-    };
-    final emoji = statusEmoji[order.status.label] ?? '📦';
-
     final buffer = StringBuffer();
-    buffer.writeln('$emoji **حالة طلبك الآن: ${order.status.label}**\n');
-    buffer.writeln('📌 **رقم التتبع:** `${order.trackingCode}`');
-    buffer.writeln('🛠️ **نوع الخدمة:** ${order.service.icon} ${order.service.label}');
-    buffer.writeln('📍 **المنطقة:** ${order.area ?? "غير محدد"}');
+    buffer.writeln('**تفاصيل وموقف الطلب: ${order.trackingCode}**\n');
+    buffer.writeln('• **حالة الطلب:** ${order.status.label}');
+    buffer.writeln('• **نوع الخدمة:** ${order.service.label}');
+    buffer.writeln('• **المنطقة:** ${order.area ?? "غير محدد"}');
+    if (order.description != null && order.description!.isNotEmpty) {
+      buffer.writeln('• **وصف المشكلة:** ${order.description}');
+    }
 
     if (order.estimatedArrival != null) {
-      buffer.writeln('⏰ **وقت الوصول المتوقع:** ${_formatTime(order.estimatedArrival!)}');
+      buffer.writeln('• **الوقت المتوقع لوصول الفني:** ${_formatTime(order.estimatedArrival!)}');
     }
 
     if (order.finalPrice != null) {
-      buffer.writeln('\n💵 **تفاصيل السعر:**');
-      if (order.inspectionFee != null) buffer.writeln('• رسوم الزيارة والفحص: ${order.inspectionFee} ج.م');
-      if (order.laborFee != null) buffer.writeln('• رسوم العمالة: ${order.laborFee} ج.م');
-      if (order.partsFee != null) buffer.writeln('• قيمة القطع: ${order.partsFee} ج.م');
-      buffer.writeln('• **الإجمالي: ${order.finalPrice} ج.م**');
+      buffer.writeln('\n**تفاصيل الحساب والتكلفة:**');
+      if (order.inspectionFee != null) buffer.writeln('  - رسوم الفحص والمعاينة: ${order.inspectionFee} ج.م');
+      if (order.laborFee != null) buffer.writeln('  - مصنعية الإصلاح: ${order.laborFee} ج.م');
+      if (order.partsFee != null) buffer.writeln('  - قيمة القطع: ${order.partsFee} ج.م');
+      buffer.writeln('  - **المبلغ الإجمالي: ${order.finalPrice} ج.م**');
     }
 
     if (order.isWarrantyActive) {
-      buffer.writeln('\n🛡️ **الضمان سارٍ** - متبقي **${order.warrantyRemainingDays} يوم** من ضمان الـ 30 يوم');
-    } else if (order.status.label == 'مكتمل' && !order.isWarrantyActive) {
-      buffer.writeln('\n⚠️ انتهت فترة ضمان هذا الطلب');
+      buffer.writeln('\n• **الضمان:** سارٍ (متبقي **${order.warrantyRemainingDays} يوم** من ضمان الـ 30 يوم)');
+    } else if (order.status.label == 'مكتمل') {
+      buffer.writeln('\n• **الضمان:** انتهت فترة الضمان لهذا الطلب');
     }
 
     final quickReplies = <String>[];
     if (order.status.label == 'الفني في الطريق') {
-      quickReplies.addAll(['📍 تتبع الفني على الخريطة', '📞 تواصل مع الفني']);
+      quickReplies.addAll(['تتبع موقع الفني', 'تواصل مع الفني']);
     }
-    if (order.isWarrantyActive) quickReplies.add('🛡️ تفعيل الضمان');
-    quickReplies.addAll(['🔧 عندي عطل جديد', 'شكراً!']);
+    if (order.isWarrantyActive) quickReplies.add('طلب خدمة تحت الضمان');
+    quickReplies.addAll(['تتبع طلب آخر', 'تشخيص عطل جديد']);
 
     final msg = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -285,6 +306,7 @@ class SmartAssistantNotifier extends StateNotifier<SmartAssistantState> {
     );
     state = state.copyWith(messages: [...state.messages, msg], isTyping: false, clearPendingTracking: true);
   }
+
 
   // ── Warranty Handler ─────────────────────────────────────────────────────
   Future<void> _handleWarrantyCheck(String userText) async {
