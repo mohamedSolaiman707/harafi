@@ -25,7 +25,7 @@
 | 6 | 🔀 **كشف النية بكلمات مفتاحية** — `_detectIntent` قائمة كلمات هشة؛ أي صياغة جديدة (عامية مختلفة، إنجليزي، اختصار) تفشل | "فيه مية بتنقط من السخان" ممكن تروح لـ plumbing صح، بس "الدش ضعيف" ممكن تروح لـ unknown |
 | 7 | ❓ **أسئلة المتابعة مُهملة** — الـ API فيه `FollowUpAnswer[]` جاهز، والـ AI بيرجع `followUpQuestions` — بس مفيش flow بيجمع الإجابات ويعيد التحليل | نص دقة التشخيص الضعيفة بتتضيع |
 | 8 | 🚒 **الطوارئ تحذير فقط** — كروت السلامة تظهر لكن مفيش زرار ينشئ **طلب طوارئ فعلي** بأولوية قصوى وإشعار للفنيين |
-| 9 | 🗄️ **صفر تسجيل للمحادثات** — مفيش جداول `chat_messages` في قاعدة البيانات؛ مستحيل نحلل الشكاوى أو نحسن الردود أو نتتبع أخطاء الـ fallback | بنطوّر بالعَمى |
+| 9 | 🗄️ **جداول الشات موجودة بس مش مستخدمة!** — `chat_sessions` / `chat_messages` / `knowledge_base` موجودين فعلاً في قاعدة البيانات (فيها حتى `feedback` و `intent` و `diagnosis jsonb`) — لكن التطبيق **مابيكتبش ولا بيقرأ منهم خالص**؛ المحادثة عايشة في الذاكرة وبتمسح عند الخروج | تسجيل بالعَمى + ضياع تاريخ العميل |
 | 10 | 🔑 **خطر انهيار كامل** — لو مفاتيح الـ AI مش متظبطة في Supabase secrets، كل الردود تروح للـ fallback ورسالة "تعذر الاتصال" للعميل في كل مرة | الخدمة كلها واقفة والعميل مش عارف ليه |
 
 ### ثالثاً: مشاكل تقنية في التنفيذ
@@ -51,63 +51,51 @@
 4. **زمّ أزرار مش بتشتغل** — أي quick reply مش له handler يتشال من القائمة.
 5. **زرار إعادة الإرسال** عند فشل الاتصال بالـ Edge Function.
 
-### المرحلة 1 — Backend: محادثة متصلة بقاعدة البيانات 🗄️ (أسبوع)
+### المرحلة 1 — Backend: تشغيل الجداول الموجودة + محادثة متصلة 🗄️ (أسبوع)
 
-**جداول جديدة (SQL):**
-```sql
--- 1) جلسات المحادثة (للعميل)
-create table chat_sessions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users not null,
-  title text,                    -- أول سؤال للعميل كعنوان
-  created_at timestamptz default now(),
-  last_message_at timestamptz
-);
+> ✅ **مفاجأة إيجابية من السكيما:** جداول `chat_sessions` و `chat_messages` و `knowledge_base` **موجودة بالفعل** في قاعدة البيانات — بتوفر علينا تصميم البنية، والمطلوب هو **توصيل التطبيق بيها** + بناء الـ Edge Function الجديدة.
 
--- 2) الرسائل
-create table chat_messages (
-  id bigint generated always as identity primary key,
-  session_id uuid references chat_sessions on delete cascade not null,
-  role text check (role in ('user','assistant','tool')) not null,
-  content text not null,
-  image_url text,
-  intent text,                   -- اللي اكتشفناه (للتحليلات)
-  diagnosis jsonb,               -- نتيجة التشخيص لو موجودة
-  feedback smallint,             -- 👍👎 من العميل
-  tokens int,
-  created_at timestamptz default now()
-);
-create index on chat_messages (session_id, created_at);
-create index on chat_messages (intent, created_at);  -- للتحليلات
-
--- 3) قاعدة معرفة للأسعار والأسئلة الشائعة (RAG لاحقاً)
-create table knowledge_base (
-  id bigint generated always as identity primary key,
-  category text,                 -- pricing | faq | safety | policy
-  question text, content text,
-  embedding vector(768),         -- لاحقاً للبحث الدلالي
-  updated_at timestamptz default now()
-);
-```
-
-**Edge Function جديدة `agent-chat` (تستبدل `analyze-problem` تدريجياً):**
-- المدخلات: `session_id` + `messages[]` (آخر 10-15 رسالة) + `context` (اسم العميل، مدينته، طلباته النشطة بأكوادها، الفنيون المتاحون في منطقته).
-- المخرجات: JSON موحد `{ reply, intent, actions[], diagnosis? }` بدل نية منفصلة عند العميل — **الـ AI هو اللي يحدد النية، مش regex**.
-- **تسجيل كل تفاعل** في `chat_messages` + تسجيل `fallback_rate` ومدة الاستجابة.
-- رفع الصورة لـ Storage (`chat-images/{user_id}/{uuid}.jpg`) وتمرير URL للنموذج البصري.
+**خطوات المرحلة:**
+1. **مراجعة RLS Policies** على `chat_sessions` / `chat_messages` (كل عميل يشوف جلساته بس + حماية من تعديل `feedback` و `intent`).
+2. **طبقة Repository جديدة** (`chat_remote_datasource`):
+   - `getOrCreateSession(userId)` — الجلسة تفضل حية بين الشاشات (بدل `autoDispose` الكامل).
+   - `sendMessage` → يحفظ رسالة المستخدم + رسالة المساعد بكل بياناتها (`intent`, `diagnosis`, `quick_replies`, `contact_phone`, `emergency_steps`).
+   - `loadHistory(sessionId)` — استرجاع آخر 50 رسالة عند فتح الشاشة.
+   - `submitFeedback(messageId, 👍/👎)`.
+3. **Edge Function جديدة `agent-chat`** (تستبدل `analyze-problem` تدريجياً):
+   - المدخلات: `session_id` + `messages[]` (آخر 10-15 رسالة من الجدول) + `context` (اسم العميل، منطقته، طلباته النشطة بأكواد التتبع، الفنيون المتاحون).
+   - المخرجات: JSON موحد `{ reply, intent, actions[], diagnosis? }` — **الـ AI يحدد النية بدل regex عند العميل**.
+   - تسجيل كل تفاعل في `chat_messages` + قياس `fallback_rate` ومدة الاستجابة.
+   - رفع الصور لـ Storage (`chat-images/{user_id}/{uuid}.jpg` بحجم مضغوط) وتمرير URL بدل base64.
+4. **تحديث `analyze-problem`** لتقبل `session_id` وتسجّل التشخيص في `job_outcomes` عند إتمام الطلب (بداية حلقة التعلّم).
 
 ### المرحلة 2 — Agent حقيقي متعدد الخطوات 🤖 (أسبوع–أسبوعين)
 
 1. **ذاكرة محادثة كاملة** — تحميل آخر 15 رسالة في كل طلب + ملخص جلسة طويلة.
 2. **Tool Calling** — النموذج يقدر ينفذ أدوات فعلية (تُنفذ في الـ Edge Function وليس عند العميل):
-   - `get_active_orders(user_id)` / `track_order(code)` / `get_tech_location(order_id)`
-   - `check_warranty(order_id)`
-   - `get_pricing(service_type, city)`
+   - `get_active_orders(phone)` / `track_order(code)` / `get_tech_location(order_id)`
+   - `check_warranty(order_id)` + `create_warranty_claim(...)` ← **جدول `warranty_claims` جاهز!**
+   - `get_pricing(service_type)` ← **من جدول `services` الحي** (`price_range`, `visit_price` من الفنيين)
    - `get_available_technicians(service, area)`
-   - `create_request(...)` / `create_emergency_request(...)`
+   - `create_request(...)` / `create_emergency_request(...)` ← مدعوم بـ `services.is_emergency_supported`
+   - `get_order_timeline(order_id)` ← من جدول `order_logs` (يظهر للعميل رحلة طلبه كاملة)
 3. **Flow أسئلة المتابعة** — لو `confidence < 0.55` يسأل سؤال واحد ذكي، يخزّن الإجابة (`FollowUpAnswer`) ويعيد التحليل بسياق أغنى (باستخدام نفس الـ `answers[]` الموجودة في العقد).
-4. **طوارئ فعلية** — intent طوارئ → رد فوري بخطوات السلامة + `create_emergency_request` + إشعار push/WhatsApp لأقرب 3 فنيين (`smart-match` موجودة وجاهزة).
-5. **RAG على `knowledge_base`** — الأسعار والأسئلة الشائعة من قاعدة البيانات مش من ذاكرة النموذج.
+4. **طوارئ فعلية** — intent طوارئ → رد فوري بخطوات السلامة + `create_emergency_request` (بخدمات `is_emergency_supported = true` فقط) + إشعار push/WhatsApp لأقرب 3 فنيين (`smart-match` موجودة وجاهزة).
+5. **RAG على `knowledge_base`** — الأسعار والأسئلة الشائعة من قاعدة البيانات مش من ذاكرة النموذج (الجدول فيه `category` / `question` / `content` / `tags` — كفاية للبحث الوسمي، ولو عايزين بحث دلالي لاحقاً نضيف عمود `embedding`).
+
+### 💎 فرص مكتشفة من السكيما (بتفرّق في جودة الخدمة)
+
+| الفرصة | البيانات المتاحة | التأثير على المساعد |
+|--------|------------------|---------------------|
+| **تتبع الفني لايف** | `orders.tech_lat/lng` + `tech_location_updated_at` | رد "الفني فين؟" بموقع حي على الخريطة + وقت محسوب للوصول، مش كلام عام |
+| **الخدمات من قاعدة البيانات** | جدول `services` (`label`, `price_range`, `keywords`, `is_active`, `is_emergency_supported`) | استبدال الـ enum الثابت `ServiceType` ببيانات حية — أي خدمة جديدة تضيفها تظهر في المساعد فوراً |
+| **حلقة تعلّم حقيقية** | `job_outcomes` فيه `ai_detected_category` / `ai_confidence` / `first_visit_fix` / `repeat_issue` / `customer_rating` | نقارن تشخيص الـ AI بنتيجة الفني الفعلية → نحسّن الـ prompt من البيانات مش بالتخمين |
+| **مطالبات ضمان فعلية** | جدول `warranty_claims` كامل | intent الضمان ينشئ claim حقيقي بصور، بدل مجرد شرح سياسة الضمان |
+| **كلمات مفتاحية للخدمات** | `services.keywords` | تحسين كشف النية بدل regex يدوي في الكود |
+| **تواصل فني↔عميل** | `order_messages` (فيه `audio_url`!) | "تواصل مع الفني" يفتح قناة رسائل حقيقية داخل الطلب، مش مجرد رقم تليفون |
+| **برومو كودز** | جدول `promo_codes` | المساعد يقدر يطبّق كود خصم ويحسب السعر بعد الخصم جوه الشات |
+
+> ⚠️ **ملاحظة مهمة من السكيما:** مفيش جدول `clients`/`profiles` — بيانات العميل (`client_name`, `client_phone`) متخزنة مباشرة جوه `orders`. ده معناه إن personalisation للمساعد (اسم العميل بيسلّم عليه) محتاج إما عمود بروفايل أو الاعتماد على `auth.users` metadata — **قرار معماري لازم يتحسم في المرحلة 1**.
 
 ### المرحلة 3 — تجربة "خرافية" ✨ (أسبوع)
 
