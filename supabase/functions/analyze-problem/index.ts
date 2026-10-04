@@ -10,7 +10,7 @@ type AnalyzeRequest = {
 };
 
 type Diagnosis = {
-  analysisSource: "openai" | "gemini" | "fallback";
+  analysisSource: "vercel_ai_gateway" | "openai" | "gemini" | "fallback";
   detectedCategory: string;
   categoryNameAr: string;
   confidence: number;
@@ -119,11 +119,45 @@ const systemPrompt = `
 }
 `;
 
+async function analyzeWithVercelAiGateway(request: AnalyzeRequest): Promise<Diagnosis> {
+  const apiKey = Deno.env.get("AI_GATEWAY_API_KEY");
+  if (!apiKey) throw new Error("AI_GATEWAY_API_KEY is missing");
+
+  const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: `وصف العميل للعطل: ${request.description || "غير متوفر"}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Vercel AI Gateway request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Vercel AI Gateway response did not include content");
+
+  const parsed = JSON.parse(content);
+  return formatDiagnosis(parsed, request, "vercel_ai_gateway");
+}
+
 async function analyzeWithGemini(request: AnalyzeRequest): Promise<Diagnosis> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is missing");
-  }
+  if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
@@ -158,9 +192,7 @@ async function analyzeWithGemini(request: AnalyzeRequest): Promise<Diagnosis> {
 
   const data = await response.json();
   const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) {
-    throw new Error("Gemini response did not include text");
-  }
+  if (!rawText) throw new Error("Gemini response did not include text");
 
   const parsed = JSON.parse(rawText);
   return formatDiagnosis(parsed, request, "gemini");
@@ -168,9 +200,7 @@ async function analyzeWithGemini(request: AnalyzeRequest): Promise<Diagnosis> {
 
 async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is missing");
-  }
+  if (!apiKey) throw new Error("OPENAI_API_KEY is missing");
 
   const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4o-mini";
 
@@ -208,21 +238,17 @@ async function analyzeWithOpenAI(request: AnalyzeRequest): Promise<Diagnosis> {
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`OpenAI request failed with status ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`OpenAI request failed with status ${response.status}`);
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("OpenAI response did not include content");
-  }
+  if (!content) throw new Error("OpenAI response did not include content");
 
   const parsed = JSON.parse(content);
   return formatDiagnosis(parsed, request, "openai");
 }
 
-function formatDiagnosis(parsed: Record<string, unknown>, request: AnalyzeRequest, source: "openai" | "gemini"): Diagnosis {
+function formatDiagnosis(parsed: Record<string, unknown>, request: AnalyzeRequest, source: "vercel_ai_gateway" | "openai" | "gemini"): Diagnosis {
   const confidence = Number(parsed.confidence ?? 0.88);
   const safetyText = `${parsed.possibleIssue ?? ""} ${parsed.recommendedAction ?? ""} ${request.description ?? ""}`;
 
@@ -270,23 +296,33 @@ serve(async (req) => {
   try {
     const body = (await req.json()) as AnalyzeRequest;
 
-    // حاول أولاً استخدام Gemini API إذا كان المفتاح متوفراً
+    // 1. تجربة Vercel AI Gateway أولاً إذا كان مفتاحها مضافاً
+    if (Deno.env.get("AI_GATEWAY_API_KEY")) {
+      try {
+        const diagnosis = await analyzeWithVercelAiGateway(body);
+        return jsonResponse(diagnosis);
+      } catch (err) {
+        console.warn("Vercel AI Gateway error, fallback to Gemini/OpenAI:", err);
+      }
+    }
+
+    // 2. تجربة Google Gemini API
     if (Deno.env.get("GEMINI_API_KEY")) {
       try {
         const diagnosis = await analyzeWithGemini(body);
         return jsonResponse(diagnosis);
       } catch (geminiErr) {
-        console.warn("Gemini agent error, falling back to OpenAI if available:", geminiErr);
+        console.warn("Gemini agent error, fallback to OpenAI:", geminiErr);
       }
     }
 
-    // ثم حاول استخدام OpenAI GPT-4o
+    // 3. تجربة OpenAI GPT-4o
     if (Deno.env.get("OPENAI_API_KEY")) {
       const diagnosis = await analyzeWithOpenAI(body);
       return jsonResponse(diagnosis);
     }
 
-    throw new Error("No AI Agent API Key configured (neither GEMINI_API_KEY nor OPENAI_API_KEY is set in Supabase secrets)");
+    throw new Error("No AI Agent API Key configured in Supabase secrets");
   } catch (error) {
     return jsonResponse(
       {
