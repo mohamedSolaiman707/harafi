@@ -561,7 +561,7 @@ class _PendingWarrantyClaimsSection extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('صور المشكلة المرفقة', style: AppTextStyles.titleLarge),
+              Text('صور المشكلة المرفقة', style: AppTextStyles.titleLarge),
               const SizedBox(height: 16),
               SizedBox(
                 height: 300,
