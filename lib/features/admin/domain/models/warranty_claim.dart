@@ -9,7 +9,9 @@ class WarrantyClaim {
   final List<String> claimImages;
   final String status; // pending, investigating, resolved, rejected
   final String? rejectionReason;
+  final String? adminNotes;
   final DateTime createdAt;
+  final DateTime updatedAt;
   final DateTime? resolvedAt;
 
   const WarrantyClaim({
@@ -23,13 +25,16 @@ class WarrantyClaim {
     this.claimImages = const [],
     this.status = 'pending',
     this.rejectionReason,
+    this.adminNotes,
     required this.createdAt,
+    required this.updatedAt,
     this.resolvedAt,
   });
 
   bool get isPending => status == 'pending';
   bool get isResolved => status == 'resolved';
   bool get isRejected => status == 'rejected';
+  bool get isInvestigating => status == 'investigating';
 
   factory WarrantyClaim.fromJson(Map<String, dynamic> json) {
     return WarrantyClaim(
@@ -43,8 +48,12 @@ class WarrantyClaim {
       claimImages: (json['claim_images'] as List?)?.map((e) => e.toString()).toList() ?? [],
       status: json['status']?.toString() ?? 'pending',
       rejectionReason: json['rejection_reason']?.toString(),
+      adminNotes: json['admin_notes']?.toString(),
       createdAt: json['created_at'] != null
           ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? (DateTime.tryParse(json['updated_at'].toString()) ?? DateTime.now())
           : DateTime.now(),
       resolvedAt: json['resolved_at'] != null
           ? DateTime.tryParse(json['resolved_at'].toString())
@@ -62,10 +71,37 @@ class WarrantyClaim {
       'claim_images': claimImages,
       'status': status,
       'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
     if (techId != null) map['tech_id'] = techId;
     if (rejectionReason != null) map['rejection_reason'] = rejectionReason;
+    if (adminNotes != null) map['admin_notes'] = adminNotes;
     if (resolvedAt != null) map['resolved_at'] = resolvedAt?.toIso8601String();
     return map;
+  }
+
+  WarrantyClaim copyWith({
+    String? status,
+    String? rejectionReason,
+    String? adminNotes,
+    DateTime? updatedAt,
+    DateTime? resolvedAt,
+  }) {
+    return WarrantyClaim(
+      id: id,
+      orderId: orderId,
+      trackingCode: trackingCode,
+      clientName: clientName,
+      clientPhone: clientPhone,
+      techId: techId,
+      issueDescription: issueDescription,
+      claimImages: claimImages,
+      status: status ?? this.status,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      adminNotes: adminNotes ?? this.adminNotes,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+    );
   }
 }

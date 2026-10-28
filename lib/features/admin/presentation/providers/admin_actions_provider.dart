@@ -12,6 +12,7 @@ import 'wallet_recharges_provider.dart';
 import 'orders_provider.dart';
 import 'techs_provider.dart';
 import 'promo_codes_provider.dart';
+import 'warranty_claims_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/either.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -424,6 +425,40 @@ class AdminActions {
       }
 
       _ref.invalidate(walletRechargesStreamProvider);
+      return const Right(null);
+    } catch (e) {
+      return Left(DatabaseFailure(e.toString()));
+    }
+  }
+
+  /// حل مطالبة ضمان
+  Future<Either<Failure, void>> resolveWarrantyClaim(String claimId, {String? notes}) async {
+    try {
+      await Supabase.instance.client.from('warranty_claims').update({
+        'status': 'resolved',
+        'admin_notes': notes,
+        'resolved_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', claimId);
+      
+      _ref.invalidate(warrantyClaimsStreamProvider);
+      return const Right(null);
+    } catch (e) {
+      return Left(DatabaseFailure(e.toString()));
+    }
+  }
+
+  /// رفض مطالبة ضمان مع ذكر السبب
+  Future<Either<Failure, void>> rejectWarrantyClaim(String claimId, {required String reason, String? notes}) async {
+    try {
+      await Supabase.instance.client.from('warranty_claims').update({
+        'status': 'rejected',
+        'rejection_reason': reason,
+        'admin_notes': notes,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', claimId);
+      
+      _ref.invalidate(warrantyClaimsStreamProvider);
       return const Right(null);
     } catch (e) {
       return Left(DatabaseFailure(e.toString()));

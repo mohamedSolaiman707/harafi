@@ -21,6 +21,7 @@ import '../../domain/enums/order_status.dart';
 import '../../../client/presentation/providers/learning_insights_provider.dart';
 import '../../domain/models/warranty_claim.dart';
 import '../providers/warranty_claims_provider.dart';
+import '../providers/admin_actions_provider.dart';
 import 'package:intl/intl.dart' as intl;
 
 class DashboardScreen extends ConsumerWidget {

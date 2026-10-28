@@ -143,6 +143,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(height: AppSpacing.xl),
 
                       if (query.isEmpty) ...[
+                        // _buildSmartAssistantCard(context),
+                        // const SizedBox(height: AppSpacing.xl),
                         _TopRatedTechsSection(horizontalPadding: horizontalPadding),
                         const SizedBox(height: AppSpacing.xxl),
                       ],

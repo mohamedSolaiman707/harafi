@@ -29,9 +29,10 @@ import '../../../features/tech/presentation/screens/tech_profile_screen.dart';
 import '../../../features/tech/presentation/screens/tech_wallet_screen.dart';
 import '../../../features/admin/domain/enums/service_type.dart';
 import '../../../features/smart_assistant/presentation/screens/smart_assistant_screen.dart';
+import '../../features/auth/presentation/screens/splash_screen.dart';
 
 final appRouter = GoRouter(
-  initialLocation: kIsWeb ? '/landing' : '/welcome',
+  initialLocation: '/splash',
   redirect: (context, state) async {
     final prefs = await SharedPreferences.getInstance();
     final userRole = prefs.getString('user_role');
@@ -88,6 +89,12 @@ final appRouter = GoRouter(
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/splash',
+      pageBuilder: (context, state) =>
+          AppAnimations.fadeSlide(child: const SplashScreen()),
+
+    ),
     GoRoute(
       path: '/landing',
       pageBuilder: (context, state) =>
