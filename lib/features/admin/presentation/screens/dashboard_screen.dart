@@ -458,6 +458,134 @@ class _RecentOrdersSection extends StatelessWidget {
 class _PendingWarrantyClaimsSection extends ConsumerWidget {
   const _PendingWarrantyClaimsSection();
 
+  void _showRejectDialog(BuildContext context, WidgetRef ref, WarrantyClaim claim) {
+    final reasonController = TextEditingController();
+    final notesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('رفض مطالبة الضمان'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'سبب الرفض (سيظهر للعميل)',
+                hintText: 'مثال: المشكلة خارج نطاق الضمان...',
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: notesController,
+              decoration: const InputDecoration(
+                labelText: 'ملاحظات إدارية داخلية',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('يرجى إدخال سبب الرفض')),
+                );
+                return;
+              }
+              await ref.read(adminActionsProvider).rejectWarrantyClaim(
+                    claim.id,
+                    reason: reason,
+                    notes: notesController.text.trim(),
+                  );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('تأكيد الرفض', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showResolveDialog(BuildContext context, WidgetRef ref, WarrantyClaim claim) {
+    final notesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حل مطالبة الضمان'),
+        content: TextField(
+          controller: notesController,
+          decoration: const InputDecoration(
+            labelText: 'ملاحظات الحل (اختياري)',
+            hintText: 'مثال: تم إرسال فني لإعادة المعاينة وتم الإصلاح...',
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            onPressed: () async {
+              await ref.read(adminActionsProvider).resolveWarrantyClaim(
+                    claim.id,
+                    notes: notesController.text.trim(),
+                  );
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('تأكيد الحل', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showImages(BuildContext context, List<String> images) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('صور المشكلة المرفقة', style: AppTextStyles.titleLarge),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 300,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: images.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(images[index], fit: BoxFit.contain),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final claimsAsync = ref.watch(warrantyClaimsStreamProvider);
@@ -487,7 +615,7 @@ class _PendingWarrantyClaimsSection extends ConsumerWidget {
                     ],
                   ),
                   Text(
-                    'يتطلب مراجعة العميل والحل الفوري',
+                    'يتطلب مراجعة فورية',
                     style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted),
                   ),
                 ],
@@ -513,27 +641,45 @@ class _PendingWarrantyClaimsSection extends ConsumerWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'العميل: ${claim.clientName} (${claim.clientPhone})',
-                              style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                            Expanded(
+                              child: Text(
+                                'العميل: ${claim.clientName} (${claim.clientPhone})',
+                                style: AppTextStyles.titleMed.copyWith(fontWeight: FontWeight.bold),
+                              ),
                             ),
                             Text(
-                              'كود التتبع: ${claim.trackingCode}',
+                              'كود: ${claim.trackingCode}',
                               style: AppTextStyles.labelMed.copyWith(color: AppColors.gold, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'وصف المشكلة: ${claim.issueDescription}',
+                          'المشكلة: ${claim.issueDescription}',
                           style: AppTextStyles.bodyMed,
                         ),
-                        const SizedBox(height: 10),
+                        if (claim.claimImages.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () => _showImages(context, claim.claimImages),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.image_outlined, size: 16, color: AppColors.info),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'عرض الصور المرفقة (${claim.claimImages.length})',
+                                  style: AppTextStyles.labelMed.copyWith(color: AppColors.info, decoration: TextDecoration.underline),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'تاريخ الطلب: ${intl.DateFormat('d MMM, HH:mm').format(claim.createdAt)}',
+                              intl.DateFormat('d MMM, HH:mm').format(claim.createdAt),
                               style: AppTextStyles.labelMed.copyWith(color: AppColors.textMuted, fontSize: 11),
                             ),
                             Row(
@@ -544,35 +690,14 @@ class _PendingWarrantyClaimsSection extends ConsumerWidget {
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   ),
-                                  onPressed: () async {
-                                    await Supabase.instance.client
-                                        .from('warranty_claims')
-                                        .update({
-                                      'status': 'resolved',
-                                      'resolved_at': DateTime.now().toIso8601String(),
-                                    }).eq('id', claim.id);
-                                    ref.invalidate(warrantyClaimsStreamProvider);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تسجيل حل مطالبة الضمان بنجاح 🟢')));
-                                    }
-                                  },
+                                  onPressed: () => _showResolveDialog(context, ref, claim),
                                   icon: const Icon(Icons.check, size: 16),
                                   label: const Text('تم الحل'),
                                 ),
                                 const SizedBox(width: 8),
                                 TextButton(
                                   style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                                  onPressed: () async {
-                                    await Supabase.instance.client
-                                        .from('warranty_claims')
-                                        .update({
-                                      'status': 'rejected',
-                                    }).eq('id', claim.id);
-                                    ref.invalidate(warrantyClaimsStreamProvider);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم رفض مطالبة الضمان')));
-                                    }
-                                  },
+                                  onPressed: () => _showRejectDialog(context, ref, claim),
                                   child: const Text('رفض', style: TextStyle(fontSize: 11)),
                                 ),
                               ],

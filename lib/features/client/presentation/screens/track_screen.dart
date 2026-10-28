@@ -880,20 +880,54 @@ class _WarrantyBannerAndButton extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.borderDefault),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.info_outline, color: AppColors.gold, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'تم تقديم مطالبة ضمان سابقة بحالة (${existingClaim.status == 'pending' ? "قيد المراجعة ⏱️" : existingClaim.status == 'resolved' ? "تمت المعالجة 🟢" : "مرفوضة 🔴"})',
-                          style: AppTextStyles.labelMed.copyWith(fontWeight: FontWeight.bold),
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            existingClaim.isPending ? Icons.pending_actions_rounded : 
+                            existingClaim.isResolved ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded,
+                            color: existingClaim.isResolved ? AppColors.success : 
+                                   existingClaim.isPending ? AppColors.gold : AppColors.error,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'حالة مطالبة الضمان: ${existingClaim.isPending ? "قيد المراجعة ⏱️" : existingClaim.isResolved ? "تمت المعالجة بنجاح 🟢" : "مرفوضة 🔴"}',
+                              style: AppTextStyles.labelMed.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
                       ),
+                      if (existingClaim.isRejected && existingClaim.rejectionReason != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'سبب الرفض: ${existingClaim.rejectionReason}',
+                            style: AppTextStyles.labelMed.copyWith(color: AppColors.error),
+                          ),
+                        ),
+                      ],
+                      if (existingClaim.isResolved && existingClaim.adminNotes != null && existingClaim.adminNotes!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'ملاحظة الإدارة: ${existingClaim.adminNotes}',
+                          style: AppTextStyles.labelMed.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-              ] else if (isWarrantyValid) ...[
+              ]
+else if (isWarrantyValid) ...[
                 AppButton(
                   label: 'تقديم مطالبة ضمان / إعادة زيارة 🛡️',
                   icon: Icons.assignment_return_rounded,
@@ -987,6 +1021,7 @@ class _WarrantyClaimSheetState extends ConsumerState<_WarrantyClaimSheet> {
         'claim_images': _images,
         'status': 'pending',
         'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
       };
 
       await Supabase.instance.client.from('warranty_claims').insert(claimData);
