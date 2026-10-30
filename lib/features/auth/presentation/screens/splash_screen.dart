@@ -104,18 +104,34 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       body: Stack(
         alignment: Alignment.center,
         children: [
-          // ─── Ambient Glow Pulse ──────────────────────────────────────
+          // ─── Depth & Atmosphere ──────────────────────────────────────
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.2,
+                  colors: [
+                    AppColors.surface1.withValues(alpha: 0.4),
+                    AppColors.background,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ─── Ambient Glow Pulse (Refined) ───────────────────────────
           AnimatedBuilder(
             animation: _glowController,
             builder: (context, child) {
               return Container(
-                width: 300,
-                height: 300,
+                width: 400,
+                height: 400,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.gold.withValues(alpha: _glowOpacity.value),
+                      AppColors.gold.withValues(alpha: _glowOpacity.value * 0.4),
                       AppColors.gold.withValues(alpha: 0.0),
                     ],
                   ),
@@ -133,33 +149,40 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 child: FadeTransition(
                   opacity: _logoOpacity,
                   child: Container(
-                    width: 150,
-                    height: 150,
+                    width: 170,
+                    height: 170,
+                    padding: const EdgeInsets.all(25),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.surface2, AppColors.surface1],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      color: AppColors.surface1.withValues(alpha: 0.7),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.gold.withValues(alpha: 0.3),
-                          blurRadius: 40,
-                          spreadRadius: 2,
+                          color: AppColors.gold.withValues(alpha: 0.15),
+                          blurRadius: 60,
+                          spreadRadius: 10,
                         ),
                       ],
-                      border: Border.all(color: AppColors.gold.withValues(alpha: 0.5), width: 1.5),
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.engineering_rounded,
-                      size: 80,
-                      color: AppColors.gold,
+                    child: Hero(
+                      tag: 'app_logo',
+                      child: Image.asset(
+                        'assets/images/logo2.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.engineering_rounded,
+                          size: 90,
+                          color: AppColors.gold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
               FadeTransition(
                 opacity: _logoOpacity,
                 child: Column(
@@ -170,18 +193,29 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         'حرفي',
                         style: AppTextStyles.displayLarge.copyWith(
                           color: Colors.white,
-                          fontSize: 48,
-                          letterSpacing: 2,
+                          fontSize: 54,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'خيارك الأول للصيانة المنزلية',
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: AppColors.textSecondary,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: AppColors.gold.withValues(alpha: 0.1), width: 0.5),
+                          bottom: BorderSide(color: AppColors.gold.withValues(alpha: 0.1), width: 0.5),
+                        ),
+                      ),
+                      child: Text(
+                        'خيارك الأول للصيانة المنزلية',
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.textSecondary.withValues(alpha: 0.9),
+                          letterSpacing: 1.5,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -190,18 +224,30 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             ],
           ),
 
-          // ─── Loading Indicator at Bottom ──────────────────────────────
+          // ─── Refined Progress at Bottom ──────────────────────────────
           Positioned(
-            bottom: 60,
+            bottom: 80,
             child: FadeTransition(
               opacity: _logoOpacity,
-              child: const SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
-                ),
+              child: Column(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'جاري التحميل...',
+                    style: AppTextStyles.labelMed.copyWith(
+                      color: AppColors.textMuted.withValues(alpha: 0.5),
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
