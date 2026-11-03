@@ -121,134 +121,142 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           ),
 
           // ─── Ambient Glow Pulse (Refined) ───────────────────────────
-          AnimatedBuilder(
-            animation: _glowController,
-            builder: (context, child) {
-              return Container(
-                width: 400,
-                height: 400,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.gold.withValues(alpha: _glowOpacity.value * 0.4),
-                      AppColors.gold.withValues(alpha: 0.0),
-                    ],
+          Center(
+            child: AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, child) {
+                return Container(
+                  width: 400,
+                  height: 400,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        AppColors.gold.withValues(alpha: _glowOpacity.value * 0.4),
+                        AppColors.gold.withValues(alpha: 0.0),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
 
           // ─── Logo & Branding ─────────────────────────────────────────
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ScaleTransition(
-                scale: _logoScale,
-                child: FadeTransition(
-                  opacity: _logoOpacity,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF0D1526), // متناسق مع لون قلب اللوجو
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.gold.withValues(alpha: 0.2),
-                          blurRadius: 50,
-                          spreadRadius: 5,
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaleTransition(
+                  scale: _logoScale,
+                  child: FadeTransition(
+                    opacity: _logoOpacity,
+                    child: Container(
+                      width: 180,
+                      height: 180,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF0D1526), // متناسق مع لون قلب اللوجو
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.gold.withValues(alpha: 0.2),
+                            blurRadius: 50,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.3),
+                          width: 2,
                         ),
-                      ],
-                      border: Border.all(
-                        color: AppColors.gold.withValues(alpha: 0.3),
-                        width: 2,
                       ),
-                    ),
-                    child: ClipOval(
-                      child: Hero(
-                        tag: 'app_logo',
-                        child: Image.asset(
-                          'assets/images/logo2.png',
-                          fit: BoxFit.cover, // هذا سيخفي الزوايا البيضاء تماماً
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.engineering_rounded,
-                            size: 90,
-                            color: AppColors.gold,
+                      child: ClipOval(
+                        child: Hero(
+                          tag: 'app_logo',
+                          child: Image.asset(
+                            'assets/images/logo2.png',
+                            fit: BoxFit.cover, // هذا سيخفي الزوايا البيضاء تماماً
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.engineering_rounded,
+                              size: 90,
+                              color: AppColors.gold,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              FadeTransition(
-                opacity: _logoOpacity,
-                child: Column(
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => AppGradients.goldButton.createShader(bounds),
-                      child: Text(
-                        'حرفي',
-                        style: AppTextStyles.displayLarge.copyWith(
-                          color: Colors.white,
-                          fontSize: 54,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
+                const SizedBox(height: 32),
+                FadeTransition(
+                  opacity: _logoOpacity,
+                  child: Column(
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) => AppGradients.goldButton.createShader(bounds),
+                        child: Text(
+                          'حرفي',
+                          style: AppTextStyles.displayLarge.copyWith(
+                            color: Colors.white,
+                            fontSize: 54,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: AppColors.gold.withValues(alpha: 0.1), width: 0.5),
-                          bottom: BorderSide(color: AppColors.gold.withValues(alpha: 0.1), width: 0.5),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: AppColors.gold.withValues(alpha: 0.1), width: 0.5),
+                            bottom: BorderSide(color: AppColors.gold.withValues(alpha: 0.1), width: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          'خيارك الأول للصيانة المنزلية',
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            color: AppColors.textSecondary.withValues(alpha: 0.9),
+                            letterSpacing: 1.5,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        'خيارك الأول للصيانة المنزلية',
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.textSecondary.withValues(alpha: 0.9),
-                          letterSpacing: 1.5,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // ─── Refined Progress at Bottom ──────────────────────────────
           Positioned(
             bottom: 80,
-            child: FadeTransition(
-              opacity: _logoOpacity,
-              child: Column(
-                children: [
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+            left: 0,
+            right: 0,
+            child: Center(
+              child: FadeTransition(
+                opacity: _logoOpacity,
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.gold),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'جاري التحميل...',
-                    style: AppTextStyles.labelMed.copyWith(
-                      color: AppColors.textMuted.withValues(alpha: 0.5),
-                      letterSpacing: 1,
+                    const SizedBox(height: 16),
+                    Text(
+                      'جاري التحميل...',
+                      style: AppTextStyles.labelMed.copyWith(
+                        color: AppColors.textMuted.withValues(alpha: 0.5),
+                        letterSpacing: 1,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
