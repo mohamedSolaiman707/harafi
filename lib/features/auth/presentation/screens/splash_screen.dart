@@ -149,33 +149,34 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 child: FadeTransition(
                   opacity: _logoOpacity,
                   child: Container(
-                    width: 170,
-                    height: 170,
-                    padding: const EdgeInsets.all(25),
+                    width: 180,
+                    height: 180,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.surface1.withValues(alpha: 0.7),
+                      color: const Color(0xFF0D1526), // متناسق مع لون قلب اللوجو
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.gold.withValues(alpha: 0.15),
-                          blurRadius: 60,
-                          spreadRadius: 10,
+                          color: AppColors.gold.withValues(alpha: 0.2),
+                          blurRadius: 50,
+                          spreadRadius: 5,
                         ),
                       ],
                       border: Border.all(
-                        color: AppColors.gold.withValues(alpha: 0.25),
-                        width: 1,
+                        color: AppColors.gold.withValues(alpha: 0.3),
+                        width: 2,
                       ),
                     ),
-                    child: Hero(
-                      tag: 'app_logo',
-                      child: Image.asset(
-                        'assets/images/logo2.png',
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const Icon(
-                          Icons.engineering_rounded,
-                          size: 90,
-                          color: AppColors.gold,
+                    child: ClipOval(
+                      child: Hero(
+                        tag: 'app_logo',
+                        child: Image.asset(
+                          'assets/images/logo2.png',
+                          fit: BoxFit.cover, // هذا سيخفي الزوايا البيضاء تماماً
+                          errorBuilder: (context, error, stackTrace) => const Icon(
+                            Icons.engineering_rounded,
+                            size: 90,
+                            color: AppColors.gold,
+                          ),
                         ),
                       ),
                     ),
